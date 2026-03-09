@@ -114,6 +114,7 @@ Final summary: ok=12345 err=12 elapsed=60.01s tps=205.72 p95=4.10ms p99=8.33ms m
 
 - By default (`-connection-mode long-running`), each worker pins one long-lived Go MySQL connection so interval slow counts can be attributed per connection.
 - Use `-connection-mode per-transaction` to force each transaction to open a fresh connection and close it afterwards.
+- TCP connections are opened with `TCP_NODELAY`; on Linux, `TCP_QUICKACK` is also enabled on a best-effort basis.
 - Use a least-privilege database account for benchmarking to reduce risk when running write queries.
 
 ## Docker

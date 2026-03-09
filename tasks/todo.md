@@ -97,3 +97,20 @@
 - Added a regression test that cancels the benchmark context inside a worker run and verifies no totals are recorded.
 - Updated `tasks/lessons.md` with the rule to exclude shutdown-induced cancellation errors from completed-work statistics.
 - Validation: `gofmt -w runner.go main_test.go` and `go test ./...` passed.
+
+## Current Task: Optimize TCP Socket Options
+
+- [x] Route TCP MySQL connections through a custom dialer with socket option setup.
+- [x] Enable `TCP_NODELAY` on TCP connections and best-effort `TCP_QUICKACK` on Linux.
+- [x] Add focused tests for TCP vs non-TCP driver config handling.
+- [x] Update README notes to document the TCP socket behavior.
+- [x] Run `gofmt` and `go test ./...`, then record review notes.
+
+### Review
+
+- Added a shared `openDB` path that builds a MySQL connector from parsed DSN config instead of going through plain `sql.Open`.
+- For TCP-based DSNs (`tcp`, `tcp4`, `tcp6`), the connector now uses a custom dialer that enables `TCP_NODELAY` on every TCP socket before handing it to the MySQL driver.
+- Added Linux-only best-effort `TCP_QUICKACK` via a small build-tagged helper, while non-Linux builds keep the helper as a no-op so cross-platform builds stay clean.
+- Added tests to verify TCP DSNs are routed through the optimized custom network and non-TCP DSNs remain untouched.
+- Updated both README files to document the new socket behavior.
+- Validation: `gofmt -w dialer.go tcp_quickack_linux.go tcp_quickack_other.go runner.go main_test.go`, `go test ./...`, and `GOOS=linux GOARCH=amd64 go build ./...` passed.

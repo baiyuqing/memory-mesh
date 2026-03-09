@@ -93,6 +93,7 @@ Final summary: ok=12345 err=12 elapsed=60.01s tps=205.72 p95=4.10ms p99=8.33ms m
 
 - 默认模式（`-connection-mode long-running`）会让每个 worker 固定占用一条长连接，这样可以按连接统计区间内的慢请求次数。
 - 如需模拟每笔事务独立建连，请使用 `-connection-mode per-transaction`。
+- TCP 连接会默认开启 `TCP_NODELAY`；在 Linux 上还会尽力开启 `TCP_QUICKACK`。
 - 建议使用最小权限数据库账号执行压测，尤其是执行写入语句时。
 
 ## 开发与测试

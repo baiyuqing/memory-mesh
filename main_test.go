@@ -38,6 +38,26 @@ func TestHistogramQuantile(t *testing.T) {
 	}
 }
 
+func TestBuildMySQLDriverConfigOptimizesTCP(t *testing.T) {
+	cfg, err := buildMySQLDriverConfig("mock.user:mock_password@tcp(127.0.0.1:3306)/test")
+	if err != nil {
+		t.Fatalf("buildMySQLDriverConfig returned error: %v", err)
+	}
+	if cfg.Net != optimizedTCPNetworkName {
+		t.Fatalf("net=%q want=%q", cfg.Net, optimizedTCPNetworkName)
+	}
+}
+
+func TestBuildMySQLDriverConfigLeavesUnixUntouched(t *testing.T) {
+	cfg, err := buildMySQLDriverConfig("mock.user:mock_password@unix(/tmp/mysql.sock)/test")
+	if err != nil {
+		t.Fatalf("buildMySQLDriverConfig returned error: %v", err)
+	}
+	if cfg.Net != "unix" {
+		t.Fatalf("net=%q", cfg.Net)
+	}
+}
+
 func TestWritePrometheusMetrics(t *testing.T) {
 	m := newMetrics(time.Now().Add(-2*time.Second), 2, 2*time.Millisecond)
 	m.record(0, 1200*time.Microsecond, nil)

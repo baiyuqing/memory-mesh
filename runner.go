@@ -6,8 +6,6 @@ import (
 	"errors"
 	"strings"
 	"time"
-
-	_ "github.com/go-sql-driver/mysql"
 )
 
 type txBeginner interface {
@@ -66,7 +64,7 @@ func makeQueryRunnerFactory(cfg config) (queryRunnerFactory, func(), error) {
 	if cfg.connectionMode == connectionModePerTxn {
 		factory := func(context.Context) (queryRunner, func(), error) {
 			runner := func(ctx context.Context) error {
-				db, err := sql.Open("mysql", cfg.dsn)
+				db, err := openDB(cfg)
 				if err != nil {
 					return err
 				}
@@ -80,7 +78,7 @@ func makeQueryRunnerFactory(cfg config) (queryRunnerFactory, func(), error) {
 		return factory, func() {}, nil
 	}
 
-	db, err := sql.Open("mysql", cfg.dsn)
+	db, err := openDB(cfg)
 	if err != nil {
 		return nil, nil, err
 	}
