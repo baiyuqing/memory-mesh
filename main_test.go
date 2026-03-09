@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"net/http/httptest"
 	"os"
@@ -108,6 +109,23 @@ func TestMetricsSlowCounts(t *testing.T) {
 	}
 	if got := ratio(totalSlow.total, totalOK+totalErrs); got != 0.75 {
 		t.Fatalf("totalSlowRatio=%v", got)
+	}
+}
+
+func TestWorkerIgnoresShutdownContextError(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	m := newMetrics(time.Now(), 1, 200*time.Millisecond)
+
+	run := func(ctx context.Context) error {
+		cancel()
+		return ctx.Err()
+	}
+
+	worker(ctx, 0, run, m)
+
+	totalOK, totalErrs, totalHist, totalSlow := m.snapshotTotal()
+	if totalOK != 0 || totalErrs != 0 || totalHist.count != 0 || totalSlow.total != 0 {
+		t.Fatalf("unexpected totals: ok=%d errs=%d count=%d slow=%d", totalOK, totalErrs, totalHist.count, totalSlow.total)
 	}
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 	"time"
 
@@ -108,6 +109,16 @@ func worker(ctx context.Context, connectionID int, run queryRunner, m *metrics) 
 		}
 		start := time.Now()
 		err := run(ctx)
+		if shouldIgnoreQueryResult(ctx, err) {
+			return
+		}
 		m.record(connectionID, time.Since(start), err)
 	}
+}
+
+func shouldIgnoreQueryResult(ctx context.Context, err error) bool {
+	if err == nil || ctx.Err() == nil {
+		return false
+	}
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }

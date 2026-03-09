@@ -83,3 +83,17 @@
 - Exported `mysqlbench_latency_spike_ratio` in Prometheus alongside the existing raw slow-query counters.
 - Updated tests to cover slow failed queries and ratio calculations, and refreshed README examples in both languages.
 - Validation: `gofmt -w main.go main_test.go metrics.go reporting.go` and `go test ./...` passed.
+
+## Current Task: Ignore Shutdown Cancellation Errors
+
+- [x] Exclude benchmark shutdown context cancellation/deadline errors from query statistics.
+- [x] Add regression coverage for worker shutdown behavior.
+- [x] Run `gofmt` and `go test ./...`, then record review notes.
+
+### Review
+
+- Updated worker result handling to stop without recording a failure when the benchmark context is already canceled and the in-flight query returns `context canceled` or `context deadline exceeded`.
+- This prevents shutdown tail requests from inflating `err`, `slow_over_*`, or ratio metrics in the final summary.
+- Added a regression test that cancels the benchmark context inside a worker run and verifies no totals are recorded.
+- Updated `tasks/lessons.md` with the rule to exclude shutdown-induced cancellation errors from completed-work statistics.
+- Validation: `gofmt -w runner.go main_test.go` and `go test ./...` passed.
