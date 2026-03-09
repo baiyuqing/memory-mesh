@@ -21,12 +21,14 @@ func reporter(ctx context.Context, m *metrics, interval time.Duration) {
 		case <-ticker.C:
 			we, wl, ws := m.snapshotWindow()
 			ts, te, tl, slow := m.snapshotTotal()
+			windowQueries := wl.count + we
+			totalQueries := ts + te
 			elapsed := time.Since(m.startedAt).Seconds()
 			wm := readMemStats()
-			fmt.Printf("[%s] interval_ok=%d interval_err=%d interval_p95=%.2fms interval_p99=%.2fms interval_max=%.2fms interval_slow_over_%s=%d interval_slow_by_conn=%s total_ok=%d total_err=%d total_tps=%.2f total_p95=%.2fms total_p99=%.2fms total_max=%.2fms total_slow_over_%s=%d mem_alloc_mb=%.2f mem_sys_mb=%.2f\n",
+			fmt.Printf("[%s] interval_ok=%d interval_err=%d interval_p95=%.2fms interval_p99=%.2fms interval_max=%.2fms interval_slow_over_%s=%d interval_slow_ratio=%.6f interval_slow_by_conn=%s total_ok=%d total_err=%d total_tps=%.2f total_p95=%.2fms total_p99=%.2fms total_max=%.2fms total_slow_over_%s=%d total_slow_ratio=%.6f mem_alloc_mb=%.2f mem_sys_mb=%.2f\n",
 				time.Now().Format(time.RFC3339), wl.count, we, wl.quantile(0.95), wl.quantile(0.99), wl.maxMS,
-				ws.threshold, ws.total, ws.formatByConnection(),
-				ts, te, float64(ts)/elapsed, tl.quantile(0.95), tl.quantile(0.99), tl.maxMS, slow.threshold, slow.total,
+				ws.threshold, ws.total, ratio(ws.total, windowQueries), ws.formatByConnection(),
+				ts, te, float64(ts)/elapsed, tl.quantile(0.95), tl.quantile(0.99), tl.maxMS, slow.threshold, slow.total, ratio(slow.total, totalQueries),
 				float64(wm.Alloc)/(1024*1024), float64(wm.Sys)/(1024*1024))
 		}
 	}
@@ -92,11 +94,15 @@ func writePrometheusMetrics(w http.ResponseWriter, m *metrics) {
 	fmt.Fprintln(w, "# TYPE mysqlbench_latency_spike_threshold_ms gauge")
 	fmt.Fprintf(w, "mysqlbench_latency_spike_threshold_ms %.3f\n", float64(slow.threshold.Microseconds())/1000.0)
 
-	fmt.Fprintln(w, "# HELP mysqlbench_latency_spikes_total Total successful queries above the configured latency spike threshold.")
+	fmt.Fprintln(w, "# HELP mysqlbench_latency_spikes_total Total queries above the configured latency spike threshold.")
 	fmt.Fprintln(w, "# TYPE mysqlbench_latency_spikes_total counter")
 	fmt.Fprintf(w, "mysqlbench_latency_spikes_total %d\n", slow.total)
 
-	fmt.Fprintln(w, "# HELP mysqlbench_connection_latency_spikes_total Total successful queries above the configured latency spike threshold by connection.")
+	fmt.Fprintln(w, "# HELP mysqlbench_latency_spike_ratio Ratio of queries above the configured latency spike threshold.")
+	fmt.Fprintln(w, "# TYPE mysqlbench_latency_spike_ratio gauge")
+	fmt.Fprintf(w, "mysqlbench_latency_spike_ratio %.6f\n", ratio(slow.total, ts+te))
+
+	fmt.Fprintln(w, "# HELP mysqlbench_connection_latency_spikes_total Total queries above the configured latency spike threshold by connection.")
 	fmt.Fprintln(w, "# TYPE mysqlbench_connection_latency_spikes_total counter")
 	for i, count := range slow.byConn {
 		fmt.Fprintf(w, "mysqlbench_connection_latency_spikes_total{connection=\"%d\"} %d\n", i, count)

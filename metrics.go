@@ -122,6 +122,15 @@ func newMetrics(start time.Time, concurrency int, slowThreshold time.Duration) *
 }
 
 func (m *metrics) record(connectionID int, duration time.Duration, err error) {
+	if duration > m.slowThreshold {
+		m.totalSlow.Add(1)
+		m.windowSlow.Add(1)
+		if connectionID >= 0 && connectionID < len(m.totalSlowByConn) {
+			m.totalSlowByConn[connectionID].Add(1)
+			m.windowSlowByConn[connectionID].Add(1)
+		}
+	}
+
 	if err != nil {
 		m.totalFailure.Add(1)
 		m.windowErrors.Add(1)
@@ -132,14 +141,6 @@ func (m *metrics) record(connectionID int, duration time.Duration, err error) {
 	m.totalSuccess.Add(1)
 	m.totalHistogram.observe(ms)
 	m.windowHistogram.observe(ms)
-	if duration > m.slowThreshold {
-		m.totalSlow.Add(1)
-		m.windowSlow.Add(1)
-		if connectionID >= 0 && connectionID < len(m.totalSlowByConn) {
-			m.totalSlowByConn[connectionID].Add(1)
-			m.windowSlowByConn[connectionID].Add(1)
-		}
-	}
 }
 
 func (m *metrics) snapshotWindow() (errs uint64, hs histogramSnapshot, slow slowSnapshot) {
@@ -177,6 +178,13 @@ func (s slowSnapshot) formatByConnection() string {
 		return "-"
 	}
 	return strings.Join(parts, ",")
+}
+
+func ratio(numerator, denominator uint64) float64 {
+	if denominator == 0 {
+		return 0
+	}
+	return float64(numerator) / float64(denominator)
 }
 
 func loadAtomicSlice(values []atomic.Uint64) []uint64 {

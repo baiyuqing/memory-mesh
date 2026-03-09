@@ -15,7 +15,7 @@ It repeatedly executes a SQL statement (default: `SELECT 1`) using Go's MySQL cl
   - Success and error counts
   - TPS (transactions per second)
   - Latency `p95`, `p99`, and `max`
-  - Counts of successful queries above a configurable slow-latency threshold, including per-connection interval counts
+  - Raw counts and ratios for queries above a configurable slow-latency threshold, including per-connection interval counts
   - Runtime memory usage (`mem_alloc_mb`, `mem_sys_mb`)
 - Optionally exposes Prometheus-compatible metrics over HTTP.
 - Prints a final benchmark summary at the end.
@@ -76,7 +76,7 @@ go build -o mysqlbench .
 - `-report-interval` (default: `5s`)
   - Periodic reporting cadence.
 - `-slow-threshold` (default: `200ms`)
-  - Count successful queries above this latency as spikes in interval logs, final summary, and Prometheus metrics.
+  - Count queries above this latency as spikes, and emit both raw counts and ratios in interval logs, final summary, and Prometheus metrics.
 - `-prometheus-listen` (default: empty)
   - HTTP listen address for Prometheus scraping, e.g. `:9090`. Empty disables endpoint.
 - `-prometheus-path` (default: `/metrics`)
@@ -93,7 +93,7 @@ Enable the metrics endpoint with `-prometheus-listen`:
   -prometheus-path '/metrics'
 ```
 
-Then scrape `http://localhost:9090/metrics`. Exported series include success/error counters, TPS gauge, latency histogram, slow-latency spike counters (global and per connection), and Go memory gauges.
+Then scrape `http://localhost:9090/metrics`. Exported series include success/error counters, TPS gauge, latency histogram, slow-latency spike counters and ratio, per-connection spike counters, and Go memory gauges.
 
 ## Output format
 
@@ -101,13 +101,13 @@ During execution, `mysqlbench` emits lines like:
 
 ```text
 [2026-01-01T12:00:00Z] interval_ok=160 interval_err=0 interval_p95=3.12ms interval_p99=4.80ms interval_max=9.42ms total_ok=320 total_err=0 total_tps=64.00 total_p95=3.30ms total_p99=5.01ms total_max=9.42ms
-[2026-01-01T12:00:05Z] interval_ok=160 interval_err=0 interval_p95=3.12ms interval_p99=4.80ms interval_max=220.41ms interval_slow_over_200ms=3 interval_slow_by_conn=conn1:1,conn7:2 total_ok=320 total_err=0 total_tps=64.00 total_p95=3.30ms total_p99=5.01ms total_max=220.41ms total_slow_over_200ms=5
+[2026-01-01T12:00:05Z] interval_ok=160 interval_err=0 interval_p95=3.12ms interval_p99=4.80ms interval_max=220.41ms interval_slow_over_200ms=3 interval_slow_ratio=0.018750 interval_slow_by_conn=conn1:1,conn7:2 total_ok=320 total_err=0 total_tps=64.00 total_p95=3.30ms total_p99=5.01ms total_max=220.41ms total_slow_over_200ms=5 total_slow_ratio=0.015625
 ```
 
 At completion:
 
 ```text
-Final summary: ok=12345 err=12 elapsed=60.01s tps=205.72 p95=4.10ms p99=8.33ms max=42.71ms slow_over_200ms=9
+Final summary: ok=12345 err=12 elapsed=60.01s tps=205.72 p95=4.10ms p99=8.33ms max=42.71ms slow_over_200ms=9 slow_ratio=0.000728
 ```
 
 ## Notes and caveats

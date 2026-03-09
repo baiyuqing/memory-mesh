@@ -13,7 +13,7 @@
   - 成功/失败次数
   - TPS（每秒事务数）
   - 延迟 `p95`、`p99`、`max`
-  - 超过可配置慢延迟阈值的次数，以及按连接拆分的区间计数
+  - 超过可配置慢延迟阈值的原始次数、占总 query 的比例，以及按连接拆分的区间计数
 - 结束时输出最终汇总结果。
 
 ## 运行要求
@@ -72,7 +72,7 @@ go build -o mysqlbench .
 - `-report-interval`（默认：`5s`）
   - 周期性统计输出间隔。
 - `-slow-threshold`（默认：`200ms`）
-  - 将成功请求中延迟超过该阈值的样本记为 spike，并输出到周期日志、最终汇总和 Prometheus 指标中。
+  - 将延迟超过该阈值的 query 记为 spike，并在周期日志、最终汇总和 Prometheus 指标中输出原始次数和比例。
 
 ## 输出格式
 
@@ -80,13 +80,13 @@ go build -o mysqlbench .
 
 ```text
 [2026-01-01T12:00:00Z] interval_ok=160 interval_err=0 interval_p95=3.12ms interval_p99=4.80ms interval_max=9.42ms total_ok=320 total_err=0 total_tps=64.00 total_p95=3.30ms total_p99=5.01ms total_max=9.42ms
-[2026-01-01T12:00:05Z] interval_ok=160 interval_err=0 interval_p95=3.12ms interval_p99=4.80ms interval_max=220.41ms interval_slow_over_200ms=3 interval_slow_by_conn=conn1:1,conn7:2 total_ok=320 total_err=0 total_tps=64.00 total_p95=3.30ms total_p99=5.01ms total_max=220.41ms total_slow_over_200ms=5
+[2026-01-01T12:00:05Z] interval_ok=160 interval_err=0 interval_p95=3.12ms interval_p99=4.80ms interval_max=220.41ms interval_slow_over_200ms=3 interval_slow_ratio=0.018750 interval_slow_by_conn=conn1:1,conn7:2 total_ok=320 total_err=0 total_tps=64.00 total_p95=3.30ms total_p99=5.01ms total_max=220.41ms total_slow_over_200ms=5 total_slow_ratio=0.015625
 ```
 
 结束时会输出：
 
 ```text
-Final summary: ok=12345 err=12 elapsed=60.01s tps=205.72 p95=4.10ms p99=8.33ms max=42.71ms slow_over_200ms=9
+Final summary: ok=12345 err=12 elapsed=60.01s tps=205.72 p95=4.10ms p99=8.33ms max=42.71ms slow_over_200ms=9 slow_ratio=0.000728
 ```
 
 ## 注意事项

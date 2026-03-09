@@ -89,8 +89,9 @@ func main() {
 	<-ctx.Done()
 	wg.Wait()
 	ts, te, tl, slow := m.snapshotTotal()
+	totalQueries := ts + te
 	elapsed := time.Since(m.startedAt).Seconds()
-	fmt.Printf("Final summary: ok=%d err=%d elapsed=%.2fs tps=%.2f p95=%.2fms p99=%.2fms max=%.2fms slow_over_%s=%d\n", ts, te, elapsed, float64(ts)/elapsed, tl.quantile(0.95), tl.quantile(0.99), tl.maxMS, cfg.slowThreshold, slow.total)
+	fmt.Printf("Final summary: ok=%d err=%d elapsed=%.2fs tps=%.2f p95=%.2fms p99=%.2fms max=%.2fms slow_over_%s=%d slow_ratio=%.6f\n", ts, te, elapsed, float64(ts)/elapsed, tl.quantile(0.95), tl.quantile(0.99), tl.maxMS, cfg.slowThreshold, slow.total, ratio(slow.total, totalQueries))
 }
 
 func closeCleanups(cleanups []func()) {

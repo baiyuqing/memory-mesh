@@ -66,3 +66,20 @@
 - Exported Prometheus metrics for the configured threshold, total spike count, and per-connection spike counters.
 - Added unit coverage for spike counting/reset behavior, Prometheus output, and slow-threshold flag parsing.
 - Validation: `gofmt -w config.go main.go main_test.go metrics.go reporting.go runner.go` and `go test ./...` passed.
+
+## Current Task: Add Slow Query Ratio Output
+
+- [x] Define the slow-query ratio denominator and align the slow-count semantics with it.
+- [x] Add interval and total slow-query ratio output alongside raw counts.
+- [x] Export a Prometheus ratio metric for slow queries.
+- [x] Update tests and docs for the new ratio fields.
+- [x] Run `gofmt` and `go test ./...`, then record review notes.
+
+### Review
+
+- Defined slow-query ratio as `slow_queries / total_queries`, where total queries include both successes and failures.
+- Updated slow-query counting to include failed queries when their end-to-end duration exceeds the configured threshold.
+- Added `interval_slow_ratio` and `total_slow_ratio` to console output, and `slow_ratio` to the final summary.
+- Exported `mysqlbench_latency_spike_ratio` in Prometheus alongside the existing raw slow-query counters.
+- Updated tests to cover slow failed queries and ratio calculations, and refreshed README examples in both languages.
+- Validation: `gofmt -w main.go main_test.go metrics.go reporting.go` and `go test ./...` passed.
