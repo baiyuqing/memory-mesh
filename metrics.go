@@ -3,6 +3,8 @@ package main
 import (
 	"math"
 	"sort"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -90,22 +92,36 @@ type metrics struct {
 	totalFailure atomic.Uint64
 	windowErrors atomic.Uint64
 
-	totalHistogram  *histogram
-	windowHistogram *histogram
-	startedAt       time.Time
+	totalHistogram   *histogram
+	windowHistogram  *histogram
+	totalSlow        atomic.Uint64
+	windowSlow       atomic.Uint64
+	totalSlowByConn  []atomic.Uint64
+	windowSlowByConn []atomic.Uint64
+	slowThreshold    time.Duration
+	startedAt        time.Time
 }
 
-func newMetrics(start time.Time) *metrics {
+type slowSnapshot struct {
+	total     uint64
+	byConn    []uint64
+	threshold time.Duration
+}
+
+func newMetrics(start time.Time, concurrency int, slowThreshold time.Duration) *metrics {
 	// Upper bounds in milliseconds. Keep this list compact to minimize memory/CPU overhead.
 	bounds := []float64{0.25, 0.5, 1, 2, 5, 10, 20, 50, 100, 250, 500, 1000, 2000, 5000, 10000}
 	return &metrics{
-		totalHistogram:  newHistogram(bounds),
-		windowHistogram: newHistogram(bounds),
-		startedAt:       start,
+		totalHistogram:   newHistogram(bounds),
+		windowHistogram:  newHistogram(bounds),
+		totalSlowByConn:  make([]atomic.Uint64, concurrency),
+		windowSlowByConn: make([]atomic.Uint64, concurrency),
+		slowThreshold:    slowThreshold,
+		startedAt:        start,
 	}
 }
 
-func (m *metrics) record(duration time.Duration, err error) {
+func (m *metrics) record(connectionID int, duration time.Duration, err error) {
 	if err != nil {
 		m.totalFailure.Add(1)
 		m.windowErrors.Add(1)
@@ -116,19 +132,67 @@ func (m *metrics) record(duration time.Duration, err error) {
 	m.totalSuccess.Add(1)
 	m.totalHistogram.observe(ms)
 	m.windowHistogram.observe(ms)
+	if duration > m.slowThreshold {
+		m.totalSlow.Add(1)
+		m.windowSlow.Add(1)
+		if connectionID >= 0 && connectionID < len(m.totalSlowByConn) {
+			m.totalSlowByConn[connectionID].Add(1)
+			m.windowSlowByConn[connectionID].Add(1)
+		}
+	}
 }
 
-func (m *metrics) snapshotWindow() (errs uint64, hs histogramSnapshot) {
+func (m *metrics) snapshotWindow() (errs uint64, hs histogramSnapshot, slow slowSnapshot) {
 	errs = m.windowErrors.Swap(0)
 	hs = m.windowHistogram.snapshotAndReset()
+	slow = slowSnapshot{
+		total:     m.windowSlow.Swap(0),
+		byConn:    swapAtomicSlice(m.windowSlowByConn),
+		threshold: m.slowThreshold,
+	}
 	return
 }
 
-func (m *metrics) snapshotTotal() (success, failures uint64, hs histogramSnapshot) {
+func (m *metrics) snapshotTotal() (success, failures uint64, hs histogramSnapshot, slow slowSnapshot) {
 	success = m.totalSuccess.Load()
 	failures = m.totalFailure.Load()
 	hs = m.totalHistogram.snapshot()
+	slow = slowSnapshot{
+		total:     m.totalSlow.Load(),
+		byConn:    loadAtomicSlice(m.totalSlowByConn),
+		threshold: m.slowThreshold,
+	}
 	return
+}
+
+func (s slowSnapshot) formatByConnection() string {
+	parts := make([]string, 0, len(s.byConn))
+	for i, count := range s.byConn {
+		if count == 0 {
+			continue
+		}
+		parts = append(parts, "conn"+strconv.Itoa(i)+":"+strconv.FormatUint(count, 10))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, ",")
+}
+
+func loadAtomicSlice(values []atomic.Uint64) []uint64 {
+	out := make([]uint64, len(values))
+	for i := range values {
+		out[i] = values[i].Load()
+	}
+	return out
+}
+
+func swapAtomicSlice(values []atomic.Uint64) []uint64 {
+	out := make([]uint64, len(values))
+	for i := range values {
+		out[i] = values[i].Swap(0)
+	}
+	return out
 }
 
 func quantile(sorted []float64, q float64) float64 {

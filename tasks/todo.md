@@ -49,3 +49,20 @@
 - Added regression tests for both combined-argument and quoted-value DSN forms.
 - Verified account segment extraction remains stable for DSN inputs, without embedding concrete credentials.
 - Validation: `go test ./...` passed.
+
+## Current Task: Count Per-Connection Latency Spikes
+
+- [x] Review the current execution model and decide how to make "per-connection" reporting meaningful.
+- [x] Add metrics to count latency samples above `200ms` per connection and in total.
+- [x] Surface the new counts in interval logs and Prometheus output.
+- [x] Add/adjust tests for spike counting and reporting output.
+- [x] Run `gofmt` and `go test ./...`, then record review notes.
+
+### Review
+
+- Changed `long-running` mode to allocate one dedicated `sql.Conn` per worker so interval spike counts can be attributed to a stable connection ID.
+- Added `-slow-threshold` with a default of `200ms`, and tracked both interval and cumulative counts for successful queries above that threshold.
+- Extended console reporting with `interval_slow_over_<threshold>`, `interval_slow_by_conn`, and `total_slow_over_<threshold>`, plus a final summary total.
+- Exported Prometheus metrics for the configured threshold, total spike count, and per-connection spike counters.
+- Added unit coverage for spike counting/reset behavior, Prometheus output, and slow-threshold flag parsing.
+- Validation: `gofmt -w config.go main.go main_test.go metrics.go reporting.go runner.go` and `go test ./...` passed.

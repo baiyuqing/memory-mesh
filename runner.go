@@ -9,8 +9,12 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func runQuery(ctx context.Context, db *sql.DB, query string) error {
-	tx, err := db.BeginTx(ctx, nil)
+type txBeginner interface {
+	BeginTx(context.Context, *sql.TxOptions) (*sql.Tx, error)
+}
+
+func runQuery(ctx context.Context, beginner txBeginner, query string) error {
+	tx, err := beginner.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -55,19 +59,24 @@ func runQuery(ctx context.Context, db *sql.DB, query string) error {
 
 type queryRunner func(context.Context) error
 
-func makeQueryRunner(cfg config) (queryRunner, func(), error) {
+type queryRunnerFactory func(context.Context) (queryRunner, func(), error)
+
+func makeQueryRunnerFactory(cfg config) (queryRunnerFactory, func(), error) {
 	if cfg.connectionMode == connectionModePerTxn {
-		runner := func(ctx context.Context) error {
-			db, err := sql.Open("mysql", cfg.dsn)
-			if err != nil {
-				return err
+		factory := func(context.Context) (queryRunner, func(), error) {
+			runner := func(ctx context.Context) error {
+				db, err := sql.Open("mysql", cfg.dsn)
+				if err != nil {
+					return err
+				}
+				db.SetMaxOpenConns(1)
+				db.SetMaxIdleConns(0)
+				defer db.Close()
+				return runQuery(ctx, db, cfg.query)
 			}
-			db.SetMaxOpenConns(1)
-			db.SetMaxIdleConns(0)
-			defer db.Close()
-			return runQuery(ctx, db, cfg.query)
+			return runner, func() {}, nil
 		}
-		return runner, func() {}, nil
+		return factory, func() {}, nil
 	}
 
 	db, err := sql.Open("mysql", cfg.dsn)
@@ -77,14 +86,20 @@ func makeQueryRunner(cfg config) (queryRunner, func(), error) {
 	db.SetMaxOpenConns(cfg.concurrency)
 	db.SetMaxIdleConns(cfg.concurrency)
 
-	runner := func(ctx context.Context) error {
-		return runQuery(ctx, db, cfg.query)
+	factory := func(ctx context.Context) (queryRunner, func(), error) {
+		conn, err := db.Conn(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+		runner := func(ctx context.Context) error {
+			return runQuery(ctx, conn, cfg.query)
+		}
+		return runner, func() { _ = conn.Close() }, nil
 	}
-	cleanup := func() { _ = db.Close() }
-	return runner, cleanup, nil
+	return factory, func() { _ = db.Close() }, nil
 }
 
-func worker(ctx context.Context, run queryRunner, m *metrics) {
+func worker(ctx context.Context, connectionID int, run queryRunner, m *metrics) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -93,6 +108,6 @@ func worker(ctx context.Context, run queryRunner, m *metrics) {
 		}
 		start := time.Now()
 		err := run(ctx)
-		m.record(time.Since(start), err)
+		m.record(connectionID, time.Since(start), err)
 	}
 }

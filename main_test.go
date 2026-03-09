@@ -38,10 +38,10 @@ func TestHistogramQuantile(t *testing.T) {
 }
 
 func TestWritePrometheusMetrics(t *testing.T) {
-	m := newMetrics(time.Now().Add(-2 * time.Second))
-	m.record(1200*time.Microsecond, nil)
-	m.record(3*time.Millisecond, nil)
-	m.record(0, assertErr{})
+	m := newMetrics(time.Now().Add(-2*time.Second), 2, 2*time.Millisecond)
+	m.record(0, 1200*time.Microsecond, nil)
+	m.record(1, 3*time.Millisecond, nil)
+	m.record(0, 0, assertErr{})
 
 	rr := httptest.NewRecorder()
 	writePrometheusMetrics(rr, m)
@@ -51,11 +51,56 @@ func TestWritePrometheusMetrics(t *testing.T) {
 		"mysqlbench_success_total 2",
 		"mysqlbench_failure_total 1",
 		"mysqlbench_latency_ms_count 2",
+		"mysqlbench_latency_spike_threshold_ms 2.000",
+		"mysqlbench_latency_spikes_total 1",
+		"mysqlbench_connection_latency_spikes_total{connection=\"0\"} 0",
+		"mysqlbench_connection_latency_spikes_total{connection=\"1\"} 1",
 		"mysqlbench_memory_alloc_bytes",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("missing %q in output: %s", want, out)
 		}
+	}
+}
+
+func TestMetricsSlowCounts(t *testing.T) {
+	m := newMetrics(time.Now(), 3, 200*time.Millisecond)
+	m.record(0, 250*time.Millisecond, nil)
+	m.record(0, 199*time.Millisecond, nil)
+	m.record(2, 350*time.Millisecond, nil)
+	m.record(1, 0, assertErr{})
+
+	windowErrs, windowHist, windowSlow := m.snapshotWindow()
+	if windowErrs != 1 {
+		t.Fatalf("windowErrs=%d", windowErrs)
+	}
+	if windowHist.count != 3 {
+		t.Fatalf("windowCount=%d", windowHist.count)
+	}
+	if windowSlow.total != 2 {
+		t.Fatalf("windowSlowTotal=%d", windowSlow.total)
+	}
+	if got := windowSlow.formatByConnection(); got != "conn0:1,conn2:1" {
+		t.Fatalf("windowSlowByConnection=%q", got)
+	}
+
+	windowErrs, windowHist, windowSlow = m.snapshotWindow()
+	if windowErrs != 0 || windowHist.count != 0 || windowSlow.total != 0 {
+		t.Fatalf("window reset failed: errs=%d count=%d slow=%d", windowErrs, windowHist.count, windowSlow.total)
+	}
+
+	totalOK, totalErrs, totalHist, totalSlow := m.snapshotTotal()
+	if totalOK != 3 || totalErrs != 1 {
+		t.Fatalf("totals ok=%d errs=%d", totalOK, totalErrs)
+	}
+	if totalHist.count != 3 {
+		t.Fatalf("totalCount=%d", totalHist.count)
+	}
+	if totalSlow.total != 2 {
+		t.Fatalf("totalSlow=%d", totalSlow.total)
+	}
+	if got := totalSlow.formatByConnection(); got != "conn0:1,conn2:1" {
+		t.Fatalf("totalSlowByConnection=%q", got)
 	}
 }
 
@@ -72,13 +117,16 @@ func TestParseFlagsConnectionMode(t *testing.T) {
 	}()
 
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-	os.Args = []string{"mysqlbench", "-connection-mode", connectionModePerTxn, "-duration", "1s", "-report-interval", "1s"}
+	os.Args = []string{"mysqlbench", "-connection-mode", connectionModePerTxn, "-duration", "1s", "-report-interval", "1s", "-slow-threshold", "200ms"}
 	cfg, err := parseFlags()
 	if err != nil {
 		t.Fatalf("parseFlags returned error: %v", err)
 	}
 	if cfg.connectionMode != connectionModePerTxn {
 		t.Fatalf("connectionMode=%q", cfg.connectionMode)
+	}
+	if cfg.slowThreshold != 200*time.Millisecond {
+		t.Fatalf("slowThreshold=%s", cfg.slowThreshold)
 	}
 
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)

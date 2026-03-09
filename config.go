@@ -19,6 +19,7 @@ type config struct {
 	concurrency      int
 	duration         time.Duration
 	reportInterval   time.Duration
+	slowThreshold    time.Duration
 	prometheusListen string
 	prometheusPath   string
 }
@@ -36,6 +37,7 @@ func parseFlags() (config, error) {
 	flag.IntVar(&cfg.concurrency, "concurrency", 1, "Number of concurrent workers")
 	flag.DurationVar(&cfg.duration, "duration", 30*time.Second, "Benchmark duration")
 	flag.DurationVar(&cfg.reportInterval, "report-interval", 5*time.Second, "Statistics report interval")
+	flag.DurationVar(&cfg.slowThreshold, "slow-threshold", 200*time.Millisecond, "Count successful queries above this latency as spikes")
 	flag.StringVar(&cfg.prometheusListen, "prometheus-listen", "", "Prometheus metrics listen address (e.g. :9090). Empty disables endpoint")
 	flag.StringVar(&cfg.prometheusPath, "prometheus-path", "/metrics", "Prometheus metrics path")
 	if err := flag.CommandLine.Parse(normalizeFlagArgs(os.Args[1:])); err != nil {
@@ -43,8 +45,8 @@ func parseFlags() (config, error) {
 	}
 	cfg.dsn = trimMatchingQuotes(strings.TrimSpace(cfg.dsn))
 
-	if cfg.concurrency <= 0 || cfg.duration <= 0 || cfg.reportInterval <= 0 {
-		return cfg, errors.New("concurrency, duration, and report-interval must be > 0")
+	if cfg.concurrency <= 0 || cfg.duration <= 0 || cfg.reportInterval <= 0 || cfg.slowThreshold <= 0 {
+		return cfg, errors.New("concurrency, duration, report-interval, and slow-threshold must be > 0")
 	}
 	if cfg.dsn == "" || cfg.query == "" {
 		return cfg, errors.New("dsn and query must not be empty")
