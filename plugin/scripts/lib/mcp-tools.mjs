@@ -1,4 +1,4 @@
-import { formatMemory, getMemoryById, listRecentMemories, searchMemories } from "./store.mjs";
+import { formatMemory, getMemoryById, listRecentMemories, searchMemories, storeMemory } from "./store.mjs";
 
 export function getToolDefinitions() {
   return [
@@ -63,6 +63,40 @@ export function getToolDefinitions() {
         required: ["id"],
       },
     },
+    {
+      name: "store_memory",
+      description: "Persist a team-shared memory item for the current project. Useful for Codex or explicit durable notes.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          content: {
+            type: "string",
+            description: "The memory content to persist.",
+          },
+          cwd: {
+            type: "string",
+            description: "Optional working directory used to infer the project key.",
+          },
+          title: {
+            type: "string",
+          },
+          tags: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+          },
+          memoryType: {
+            type: "string",
+            description: "Optional memory type label such as explicit, decision, constraint, or worklog.",
+          },
+          metadata: {
+            type: "object",
+          },
+        },
+        required: ["content"],
+      },
+    },
   ];
 }
 
@@ -116,6 +150,10 @@ export async function callTool(name, args = {}) {
     return textResult(memory ? formatMemory(memory) : `Memory not found: ${args.id}`);
   }
 
+  if (name === "store_memory") {
+    const result = await storeMemory(args);
+    return textResult(result ? `Stored shared memory.\n\n${result.summary || result.content || ""}` : "Nothing was stored.");
+  }
+
   throw new Error(`Unknown tool: ${name}`);
 }
-

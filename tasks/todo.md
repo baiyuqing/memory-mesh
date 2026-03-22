@@ -25,3 +25,22 @@
 - `npm test`
 - Manual hook flow via `node plugin/scripts/cli.mjs hook ...`
 - Manual MCP stdio request against `node plugin/scripts/mcp-server.mjs`
+
+## Current Task: Add Multi-Agent Shared Memory via mem9
+
+- [x] Inspect `mem9-ai/mem9` to confirm whether it supports shared memory across agent clients.
+- [x] Refactor the plugin memory layer so local storage remains intact while a remote backend can be selected.
+- [x] Add `mem9` backend support for shared search/store from Claude Code hooks and MCP tools.
+- [x] Add an explicit `store_memory` MCP tool so Codex can write shared memory without Claude hook lifecycles.
+- [x] Document Claude Code + Codex shared-memory setup against the same `mem9` backend.
+- [x] Add regression tests for `mem9` backend behavior and rerun the suite.
+
+### Review
+
+- Confirmed from the upstream `mem9` repository that it is explicitly designed for shared cloud memory across Claude Code and other agent clients.
+- Added backend selection via `CLAUDE_CODE_MEMORY_BACKEND`, with `local` as the default and `mem9` as the shared remote option.
+- Kept local session journaling for summary generation, then pushed summarized memory into `mem9` when the remote backend is enabled.
+- Added `store_memory` to the MCP surface so Codex can persist durable team notes into the same project memory pool.
+- Added documentation for shared setup and agent identity conventions in `README.md` and `docs/mem9-shared-memory.md`.
+- Validation:
+- `npm test`

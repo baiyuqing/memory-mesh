@@ -25,7 +25,7 @@ async function withTempStore(run) {
 
 test("tool definitions expose the expected MCP surface", () => {
   const names = getToolDefinitions().map((tool) => tool.name);
-  assert.deepEqual(names, ["search_memories", "list_recent_memories", "get_memory"]);
+  assert.deepEqual(names, ["search_memories", "list_recent_memories", "get_memory", "store_memory"]);
 });
 
 test("get_memory returns a formatted memory body", async () => {
@@ -37,5 +37,24 @@ test("get_memory returns a formatted memory body", async () => {
     const result = await callTool("get_memory", { id: "memory-1" });
     assert.match(result.content[0].text, /Remember plugin installation steps/);
     assert.match(result.content[0].text, /Summary:/);
+  });
+});
+
+test("store_memory persists a local explicit memory", async () => {
+  await withTempStore(async () => {
+    const result = await callTool("store_memory", {
+      cwd: process.cwd(),
+      content: "The shared deploy workflow uses a single release branch.",
+      memoryType: "decision",
+    });
+
+    assert.match(result.content[0].text, /Stored shared memory/);
+
+    const recall = await callTool("search_memories", {
+      cwd: process.cwd(),
+      query: "release branch",
+    });
+
+    assert.match(recall.content[0].text, /shared deploy workflow/i);
   });
 });
