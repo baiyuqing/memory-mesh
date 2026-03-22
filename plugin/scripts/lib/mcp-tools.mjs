@@ -192,6 +192,35 @@ export function getToolDefinitions() {
         required: ["handoff"],
       },
     },
+    {
+      name: "remember_goal",
+      description: "Store a team goal or north-star objective. Goals are always shown first in context.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          goal: {
+            type: "string",
+            description: "The goal or objective the team should work toward.",
+          },
+          cwd: {
+            type: "string",
+          },
+          title: {
+            type: "string",
+          },
+          tags: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+          },
+          metadata: {
+            type: "object",
+          },
+        },
+        required: ["goal"],
+      },
+    },
   ];
 }
 
@@ -276,6 +305,15 @@ export async function callTool(name, args = {}) {
       memoryType: "handoff",
     });
     return textResult(result ? `Stored team handoff.\n\n${result.summary || ""}` : "Nothing was stored.");
+  }
+
+  if (name === "remember_goal") {
+    const result = await storeMemory({
+      ...args,
+      content: args.goal,
+      memoryType: "goal",
+    });
+    return textResult(result ? `Stored team goal.\n\n${result.summary || ""}` : "Nothing was stored.");
   }
 
   throw new Error(`Unknown tool: ${name}`);

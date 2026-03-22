@@ -17,7 +17,7 @@ import {
   MAX_VALUE_PREVIEW,
   READ_TOOLS,
 } from "./constants.mjs";
-import { getAgentId, getTeamId } from "./config.mjs";
+import { getAgentId, getRole, getTeamId } from "./config.mjs";
 import { getProjectContext } from "./project.mjs";
 
 function nowIso() {
@@ -219,6 +219,7 @@ function buildSharedTags(project, options = {}, extraTags = [], agentId = getAge
     `workspace:${project.workspaceLabel}`,
     `agent:${agentId}`,
     getTeamId(options) ? `team:${getTeamId(options)}` : "",
+    getRole(options) ? `role:${getRole(options)}` : "",
     ...extraTags,
   ]);
 }
@@ -649,7 +650,16 @@ function selectContextMemories(memories, limit = MAX_CONTEXT_MEMORIES) {
     return selected;
   };
 
-  const durable = take(memories.filter((memory) => DURABLE_MEMORY_TYPES.has(getMemoryType(memory))), durableLimit);
+  const durable = take(
+    memories
+      .filter((memory) => DURABLE_MEMORY_TYPES.has(getMemoryType(memory)))
+      .sort((a, b) => {
+        const aGoal = getMemoryType(a) === "goal" ? 0 : 1;
+        const bGoal = getMemoryType(b) === "goal" ? 0 : 1;
+        return aGoal - bGoal;
+      }),
+    durableLimit,
+  );
   const activity = take(memories.filter((memory) => ACTIVITY_MEMORY_TYPES.has(getMemoryType(memory))), activityLimit);
   const fallback = take(memories, Math.max(boundedLimit - durable.length - activity.length, 0));
 
@@ -679,6 +689,21 @@ function renderContextSection(lines, title, memories) {
   });
 }
 
+function buildTeamRoster(memories) {
+  const agents = new Map();
+  for (const memory of memories) {
+    if (!memory.agentId) continue;
+    const role = (memory.tags || []).find((t) => t.startsWith("role:"))?.slice(5) || "";
+    const existing = agents.get(memory.agentId);
+    if (!existing || memory.updatedAt > existing.updatedAt) {
+      agents.set(memory.agentId, { role, updatedAt: memory.updatedAt });
+    }
+  }
+  if (agents.size === 0) return "";
+  const parts = [...agents.entries()].map(([id, { role }]) => (role ? `${id} (${role})` : id));
+  return `Team: ${parts.join(", ")}`;
+}
+
 export function renderContextFromMemories(memories, input = {}) {
   if (memories.length === 0) {
     return "";
@@ -688,7 +713,15 @@ export function renderContextFromMemories(memories, input = {}) {
   const { durable, activity, fallback } = selectContextMemories(memories, input.limit || MAX_CONTEXT_MEMORIES);
   const header = `Persistent memory for ${project?.projectLabel || memories[0].projectLabel}`;
   const lines = [header, ""];
-  renderContextSection(lines, "Durable team memory:", durable);
+
+  const roster = buildTeamRoster(memories);
+  if (roster) {
+    lines.push(roster);
+    lines.push("");
+  }
+
+  const hasGoals = durable.some((m) => getMemoryType(m) === "goal");
+  renderContextSection(lines, hasGoals ? "Team goals & durable memory:" : "Durable team memory:", durable);
   renderContextSection(lines, "Recent shared worklog:", activity);
   renderContextSection(lines, "Other recent memory:", fallback);
 
@@ -701,7 +734,7 @@ export async function renderContextBlock(input = {}, options = {}) {
     {
       cwd: input.cwd,
       projectKey: input.projectKey,
-      limit: input.limit || MAX_CONTEXT_MEMORIES,
+      limit: MAX_CONTEXT_SCAN_MEMORIES,
     },
     options,
   );
