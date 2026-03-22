@@ -1,158 +1,222 @@
-<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">Memory Mesh</title>
-  <desc id="desc">A minimal hero showing AI agents connected through a shared memory mesh, with decisions, constraints, and handoffs flowing between them.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="640" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0D1117"/>
-      <stop offset="0.5" stop-color="#111921"/>
-      <stop offset="1" stop-color="#0D1117"/>
+    <!-- Background gradient -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFF8F0"/>
+      <stop offset="100%" style="stop-color:#FFF0E0"/>
     </linearGradient>
-    <linearGradient id="meshGlow" x1="440" y1="180" x2="840" y2="520" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#3EC8C8" stop-opacity="0.15"/>
-      <stop offset="1" stop-color="#FF9E54" stop-opacity="0.10"/>
-    </linearGradient>
-    <linearGradient id="coreGrad" x1="600" y1="280" x2="680" y2="400" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#3EC8C8"/>
-      <stop offset="1" stop-color="#2A9D9D"/>
-    </linearGradient>
-    <linearGradient id="ringGrad" x1="540" y1="240" x2="740" y2="440" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#3EC8C8" stop-opacity="0.6"/>
-      <stop offset="1" stop-color="#FF9E54" stop-opacity="0.4"/>
-    </linearGradient>
-    <radialGradient id="glowCenter" cx="640" cy="340" r="200" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#3EC8C8" stop-opacity="0.08"/>
-      <stop offset="1" stop-color="#3EC8C8" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="6" result="blur"/>
-      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    <!-- Memory glow -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="20"/>
+    <!-- Soft shadow -->
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000020"/>
     </filter>
-    <filter id="nodeGlow" x="-100%" y="-100%" width="300%" height="300%">
-      <feGaussianBlur stdDeviation="8"/>
-    </filter>
-    <style>
-      .mono { font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
-      .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
-    </style>
+    <!-- Mesh line gradient -->
+    <linearGradient id="meshGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FF8C42"/>
+      <stop offset="100%" style="stop-color:#FFD166"/>
+    </linearGradient>
+    <!-- Panel divider gradient -->
+    <linearGradient id="divider" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E0E0E0;stop-opacity:0"/>
+      <stop offset="50%" style="stop-color:#D0D0D0;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#E0E0E0;stop-opacity:0"/>
+    </linearGradient>
   </defs>
 
   <!-- Background -->
-  <rect width="1280" height="640" fill="url(#bg)"/>
+  <rect width="960" height="540" rx="16" fill="url(#bg)"/>
 
-  <!-- Subtle grid -->
-  <g opacity="0.04" stroke="#3EC8C8" stroke-width="0.5">
-    <line x1="0" y1="80" x2="1280" y2="80"/><line x1="0" y1="160" x2="1280" y2="160"/>
-    <line x1="0" y1="240" x2="1280" y2="240"/><line x1="0" y1="320" x2="1280" y2="320"/>
-    <line x1="0" y1="400" x2="1280" y2="400"/><line x1="0" y1="480" x2="1280" y2="480"/>
-    <line x1="0" y1="560" x2="1280" y2="560"/>
-    <line x1="160" y1="0" x2="160" y2="640"/><line x1="320" y1="0" x2="320" y2="640"/>
-    <line x1="480" y1="0" x2="480" y2="640"/><line x1="640" y1="0" x2="640" y2="640"/>
-    <line x1="800" y1="0" x2="800" y2="640"/><line x1="960" y1="0" x2="960" y2="640"/>
-    <line x1="1120" y1="0" x2="1120" y2="640"/>
+  <!-- ===== LEFT PANEL: Without Memory Mesh ===== -->
+
+  <!-- Panel label -->
+  <text x="240" y="52" text-anchor="middle" font-size="15" font-weight="600" fill="#B0706A" letter-spacing="1">WITHOUT MEMORY MESH</text>
+  <line x1="140" y1="62" x2="340" y2="62" stroke="#E8C4BF" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Desk -->
+  <rect x="120" y="380" width="240" height="12" rx="6" fill="#D4A88C"/>
+  <rect x="140" y="392" width="8" height="60" rx="3" fill="#C49A7C"/>
+  <rect x="332" y="392" width="8" height="60" rx="3" fill="#C49A7C"/>
+
+  <!-- Monitor on desk -->
+  <rect x="175" y="290" width="130" height="90" rx="8" fill="#4A5568" filter="url(#shadow)"/>
+  <rect x="181" y="296" width="118" height="72" rx="4" fill="#2D3748"/>
+  <!-- Screen content: messy code lines -->
+  <rect x="190" y="308" width="40" height="4" rx="2" fill="#68D39155"/>
+  <rect x="235" y="308" width="25" height="4" rx="2" fill="#FC8D6255"/>
+  <rect x="190" y="318" width="55" height="4" rx="2" fill="#63B3ED55"/>
+  <rect x="250" y="318" width="30" height="4" rx="2" fill="#F6E05E55"/>
+  <rect x="190" y="328" width="35" height="4" rx="2" fill="#B794F455"/>
+  <rect x="190" y="338" width="50" height="4" rx="2" fill="#68D39155"/>
+  <rect x="245" y="338" width="20" height="4" rx="2" fill="#FC8D6255"/>
+  <rect x="190" y="348" width="60" height="4" rx="2" fill="#63B3ED55"/>
+  <!-- Monitor stand -->
+  <rect x="228" y="374" width="24" height="8" rx="2" fill="#4A5568"/>
+
+  <!-- Confused Robot (left) -->
+  <!-- Body -->
+  <rect x="72" y="280" width="70" height="80" rx="16" fill="#7EB8DA" filter="url(#shadow)"/>
+  <!-- Antenna -->
+  <line x1="107" y1="240" x2="107" y2="260" stroke="#5A9BBE" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="107" cy="236" r="6" fill="#FF8C42"/>
+  <!-- Head -->
+  <rect x="78" y="255" width="58" height="45" rx="12" fill="#8EC8E8" filter="url(#shadow)"/>
+  <!-- Eyes (X_X confused) -->
+  <g stroke="#E85D4A" stroke-width="2.5" stroke-linecap="round">
+    <line x1="93" y1="272" x2="100" y2="279"/><line x1="100" y1="272" x2="93" y2="279"/>
+    <line x1="113" y1="272" x2="120" y2="279"/><line x1="120" y1="272" x2="113" y2="279"/>
+  </g>
+  <!-- Mouth (wavy confused) -->
+  <path d="M93 290 Q98 286 103 290 Q108 294 113 290" fill="none" stroke="#E85D4A" stroke-width="2" stroke-linecap="round"/>
+  <!-- Arms -->
+  <path d="M72 310 Q55 320 50 340" fill="none" stroke="#6AA8C8" stroke-width="5" stroke-linecap="round"/>
+  <path d="M142 310 Q155 315 158 325" fill="none" stroke="#6AA8C8" stroke-width="5" stroke-linecap="round"/>
+  <!-- Question mark hand -->
+  <text x="46" y="358" font-size="20" fill="#E85D4A" font-weight="bold">?</text>
+
+  <!-- Floating question marks -->
+  <text x="60" y="230" font-size="24" fill="#E8937A" opacity="0.8" font-weight="bold">?</text>
+  <text x="130" y="220" font-size="18" fill="#E8937A" opacity="0.6" font-weight="bold">?</text>
+  <text x="90" y="208" font-size="30" fill="#E8937A" opacity="0.7" font-weight="bold">?</text>
+
+  <!-- Thought bubble: "What was decided?" -->
+  <rect x="150" y="170" width="200" height="60" rx="14" fill="white" stroke="#E8C4BF" stroke-width="1.5" filter="url(#shadow)"/>
+  <circle cx="145" cy="242" r="4" fill="white" stroke="#E8C4BF" stroke-width="1"/>
+  <circle cx="140" cy="230" r="6" fill="white" stroke="#E8C4BF" stroke-width="1"/>
+  <circle cx="142" cy="215" r="9" fill="white" stroke="#E8C4BF" stroke-width="1"/>
+  <text x="250" y="193" text-anchor="middle" font-size="13" fill="#B0706A" font-weight="500">Who wrote this code?</text>
+  <text x="250" y="212" text-anchor="middle" font-size="13" fill="#B0706A" font-weight="500">What was decided? Why?!</text>
+
+  <!-- Small "yesterday's session" ghost -->
+  <g opacity="0.35">
+    <rect x="330" y="300" width="80" height="55" rx="8" fill="#CBD5E0" stroke="#A0AEC0" stroke-width="1" stroke-dasharray="4 3"/>
+    <text x="370" y="322" text-anchor="middle" font-size="9" fill="#718096">Session #41</text>
+    <text x="370" y="336" text-anchor="middle" font-size="9" fill="#718096">decisions...</text>
+    <text x="370" y="350" text-anchor="middle" font-size="9" fill="#718096">context...</text>
+  </g>
+  <text x="370" y="370" text-anchor="middle" font-size="16" fill="#A0AEC0" font-weight="bold">LOST</text>
+
+  <!-- ===== DIVIDER ===== -->
+  <line x1="480" y1="40" x2="480" y2="500" stroke="url(#divider)" stroke-width="2"/>
+  <!-- Arrow -->
+  <g transform="translate(480, 260)">
+    <circle r="22" fill="#FF8C42" opacity="0.15"/>
+    <polygon points="10,0 -6,-8 -6,8" fill="#FF8C42"/>
   </g>
 
-  <!-- Center glow -->
-  <circle cx="640" cy="340" r="220" fill="url(#glowCenter)"/>
-  <ellipse cx="640" cy="340" rx="160" ry="160" fill="url(#meshGlow)" filter="url(#softGlow)"/>
+  <!-- ===== RIGHT PANEL: With Memory Mesh ===== -->
 
-  <!-- ===== Mesh connections (edges) ===== -->
-  <line x1="280" y1="180" x2="640" y2="340" stroke="#3EC8C8" stroke-width="1.5" stroke-opacity="0.25" stroke-dasharray="6 10">
-    <animate attributeName="stroke-dashoffset" from="0" to="-32" dur="3s" repeatCount="indefinite"/>
-  </line>
-  <line x1="1000" y1="180" x2="640" y2="340" stroke="#FF9E54" stroke-width="1.5" stroke-opacity="0.25" stroke-dasharray="6 10">
-    <animate attributeName="stroke-dashoffset" from="0" to="-32" dur="3.5s" repeatCount="indefinite"/>
-  </line>
-  <line x1="280" y1="500" x2="640" y2="340" stroke="#6BA4D4" stroke-width="1.5" stroke-opacity="0.25" stroke-dasharray="6 10">
-    <animate attributeName="stroke-dashoffset" from="0" to="-32" dur="2.8s" repeatCount="indefinite"/>
-  </line>
-  <line x1="1000" y1="500" x2="640" y2="340" stroke="#3EC8C8" stroke-width="1.5" stroke-opacity="0.25" stroke-dasharray="6 10">
-    <animate attributeName="stroke-dashoffset" from="0" to="-32" dur="3.2s" repeatCount="indefinite"/>
-  </line>
+  <!-- Panel label -->
+  <text x="720" y="52" text-anchor="middle" font-size="15" font-weight="600" fill="#2D8A6E" letter-spacing="1">WITH MEMORY MESH</text>
+  <line x1="620" y1="62" x2="820" y2="62" stroke="#A8E6CF" stroke-width="2" stroke-linecap="round"/>
 
-  <!-- Cross connections -->
-  <line x1="280" y1="180" x2="1000" y2="180" stroke="#3EC8C8" stroke-width="0.8" stroke-opacity="0.08"/>
-  <line x1="280" y1="500" x2="1000" y2="500" stroke="#3EC8C8" stroke-width="0.8" stroke-opacity="0.08"/>
-  <line x1="280" y1="180" x2="280" y2="500" stroke="#3EC8C8" stroke-width="0.8" stroke-opacity="0.08"/>
-  <line x1="1000" y1="180" x2="1000" y2="500" stroke="#3EC8C8" stroke-width="0.8" stroke-opacity="0.08"/>
-  <line x1="280" y1="180" x2="1000" y2="500" stroke="#3EC8C8" stroke-width="0.5" stroke-opacity="0.05"/>
-  <line x1="1000" y1="180" x2="280" y2="500" stroke="#3EC8C8" stroke-width="0.5" stroke-opacity="0.05"/>
-
-  <!-- ===== Center hub ===== -->
-  <circle cx="640" cy="340" r="72" fill="none" stroke="url(#ringGrad)" stroke-width="1.5" stroke-dasharray="4 8" opacity="0.5">
-    <animateTransform attributeName="transform" type="rotate" from="0 640 340" to="360 640 340" dur="60s" repeatCount="indefinite"/>
-  </circle>
-  <circle cx="640" cy="340" r="56" fill="none" stroke="url(#ringGrad)" stroke-width="1" stroke-dasharray="2 6" opacity="0.3">
-    <animateTransform attributeName="transform" type="rotate" from="360 640 340" to="0 640 340" dur="45s" repeatCount="indefinite"/>
-  </circle>
-
-  <!-- Core -->
-  <circle cx="640" cy="340" r="36" fill="#111921" stroke="url(#coreGrad)" stroke-width="2.5"/>
-  <circle cx="628" cy="328" r="4" fill="#3EC8C8"/>
-  <circle cx="652" cy="328" r="4" fill="#3EC8C8"/>
-  <circle cx="640" cy="352" r="4" fill="#3EC8C8"/>
-  <line x1="628" y1="328" x2="652" y2="328" stroke="#3EC8C8" stroke-width="1.5" stroke-opacity="0.7"/>
-  <line x1="628" y1="328" x2="640" y2="352" stroke="#3EC8C8" stroke-width="1.5" stroke-opacity="0.7"/>
-  <line x1="652" y1="328" x2="640" y2="352" stroke="#3EC8C8" stroke-width="1.5" stroke-opacity="0.7"/>
-
-  <!-- Orbiting dots -->
-  <circle r="3.5" fill="#3EC8C8" opacity="0.8">
-    <animateMotion dur="20s" repeatCount="indefinite" path="M640,268 A72,72 0 1,1 639.9,268"/>
-  </circle>
-  <circle r="3" fill="#FF9E54" opacity="0.7">
-    <animateMotion dur="20s" repeatCount="indefinite" path="M640,268 A72,72 0 1,1 639.9,268" begin="-10s"/>
-  </circle>
-
-  <!-- ===== Agent nodes ===== -->
-  <g filter="url(#nodeGlow)"><circle cx="280" cy="180" r="12" fill="#3EC8C8" opacity="0.25"/></g>
-  <circle cx="280" cy="180" r="8" fill="#111921" stroke="#3EC8C8" stroke-width="2"/>
-  <text x="280" y="160" text-anchor="middle" class="mono" fill="#3EC8C8" font-size="13" font-weight="600" opacity="0.9">Claude Code</text>
-
-  <g filter="url(#nodeGlow)"><circle cx="1000" cy="180" r="12" fill="#FF9E54" opacity="0.25"/></g>
-  <circle cx="1000" cy="180" r="8" fill="#111921" stroke="#FF9E54" stroke-width="2"/>
-  <text x="1000" y="160" text-anchor="middle" class="mono" fill="#FF9E54" font-size="13" font-weight="600" opacity="0.9">Codex</text>
-
-  <g filter="url(#nodeGlow)"><circle cx="280" cy="500" r="12" fill="#6BA4D4" opacity="0.25"/></g>
-  <circle cx="280" cy="500" r="8" fill="#111921" stroke="#6BA4D4" stroke-width="2"/>
-  <text x="280" y="530" text-anchor="middle" class="mono" fill="#6BA4D4" font-size="13" font-weight="600" opacity="0.9">Agent A</text>
-
-  <g filter="url(#nodeGlow)"><circle cx="1000" cy="500" r="12" fill="#3EC8C8" opacity="0.25"/></g>
-  <circle cx="1000" cy="500" r="8" fill="#111921" stroke="#3EC8C8" stroke-width="2"/>
-  <text x="1000" y="530" text-anchor="middle" class="mono" fill="#3EC8C8" font-size="13" font-weight="600" opacity="0.9">New Agent</text>
-
-  <!-- ===== Floating memory type tags ===== -->
-  <g transform="translate(420, 230)">
-    <rect x="0" y="0" width="100" height="26" rx="13" fill="#1C2A35" stroke="#3EC8C8" stroke-width="1" stroke-opacity="0.4"/>
-    <text x="50" y="17" text-anchor="middle" class="mono" fill="#3EC8C8" font-size="11" font-weight="500">decision</text>
+  <!-- Memory Mesh Network (center-right) -->
+  <g filter="url(#glow)" opacity="0.6">
+    <!-- Mesh lines connecting memory nodes -->
+    <line x1="660" y1="200" x2="740" y2="260" stroke="url(#meshGrad)" stroke-width="1.5" opacity="0.5"/>
+    <line x1="780" y1="200" x2="740" y2="260" stroke="url(#meshGrad)" stroke-width="1.5" opacity="0.5"/>
+    <line x1="660" y1="200" x2="780" y2="200" stroke="url(#meshGrad)" stroke-width="1.5" opacity="0.5"/>
+    <line x1="660" y1="200" x2="620" y2="280" stroke="url(#meshGrad)" stroke-width="1.5" opacity="0.4"/>
+    <line x1="780" y1="200" x2="850" y2="270" stroke="url(#meshGrad)" stroke-width="1.5" opacity="0.4"/>
+    <line x1="740" y1="260" x2="620" y2="280" stroke="url(#meshGrad)" stroke-width="1.5" opacity="0.4"/>
+    <line x1="740" y1="260" x2="850" y2="270" stroke="url(#meshGrad)" stroke-width="1.5" opacity="0.4"/>
+    <line x1="620" y1="280" x2="680" y2="350" stroke="url(#meshGrad)" stroke-width="1.5" opacity="0.3"/>
+    <line x1="850" y1="270" x2="790" y2="350" stroke="url(#meshGrad)" stroke-width="1.5" opacity="0.3"/>
+    <line x1="680" y1="350" x2="790" y2="350" stroke="url(#meshGrad)" stroke-width="1.5" opacity="0.3"/>
+    <line x1="740" y1="260" x2="680" y2="350" stroke="url(#meshGrad)" stroke-width="1.5" opacity="0.3"/>
+    <line x1="740" y1="260" x2="790" y2="350" stroke="url(#meshGrad)" stroke-width="1.5" opacity="0.3"/>
   </g>
 
-  <g transform="translate(770, 230)">
-    <rect x="0" y="0" width="104" height="26" rx="13" fill="#1C2A35" stroke="#FF9E54" stroke-width="1" stroke-opacity="0.4"/>
-    <text x="52" y="17" text-anchor="middle" class="mono" fill="#FF9E54" font-size="11" font-weight="500">constraint</text>
+  <!-- Memory nodes -->
+  <!-- Node: Decision -->
+  <g transform="translate(660, 200)">
+    <rect x="-42" y="-16" width="84" height="32" rx="10" fill="#FFD166" filter="url(#shadow)" opacity="0.9"/>
+    <text x="0" y="4" text-anchor="middle" font-size="10" fill="#7A5A00" font-weight="600">Use Postgres</text>
+  </g>
+  <!-- Node: Constraint -->
+  <g transform="translate(780, 200)">
+    <rect x="-38" y="-16" width="76" height="32" rx="10" fill="#A8E6CF" filter="url(#shadow)" opacity="0.9"/>
+    <text x="0" y="4" text-anchor="middle" font-size="10" fill="#1A7A4E" font-weight="600">No ORM</text>
+  </g>
+  <!-- Node: Context (center) -->
+  <g transform="translate(740, 260)">
+    <circle r="24" fill="#FF8C42" opacity="0.15"/>
+    <circle r="16" fill="#FF8C42" opacity="0.3"/>
+    <text x="0" y="4" text-anchor="middle" font-size="8" fill="#C45A10" font-weight="700">MESH</text>
+  </g>
+  <!-- Node: Architecture -->
+  <g transform="translate(620, 280)">
+    <rect x="-44" y="-14" width="88" height="28" rx="10" fill="#C4B5FD" filter="url(#shadow)" opacity="0.9"/>
+    <text x="0" y="4" text-anchor="middle" font-size="9" fill="#5B21B6" font-weight="600">Event-driven</text>
+  </g>
+  <!-- Node: Handoff -->
+  <g transform="translate(850, 270)">
+    <rect x="-36" y="-14" width="72" height="28" rx="10" fill="#FCA5A5" filter="url(#shadow)" opacity="0.9"/>
+    <text x="0" y="4" text-anchor="middle" font-size="9" fill="#991B1B" font-weight="600">Auth TODO</text>
   </g>
 
-  <g transform="translate(410, 440)">
-    <rect x="0" y="0" width="88" height="26" rx="13" fill="#1C2A35" stroke="#6BA4D4" stroke-width="1" stroke-opacity="0.4"/>
-    <text x="44" y="17" text-anchor="middle" class="mono" fill="#6BA4D4" font-size="11" font-weight="500">handoff</text>
+  <!-- Happy Robot 1 (Claude Code) -->
+  <g transform="translate(640, 350)">
+    <!-- Body -->
+    <rect x="-30" y="10" width="60" height="65" rx="14" fill="#7EB8DA" filter="url(#shadow)"/>
+    <!-- Antenna -->
+    <line x1="0" y1="-25" x2="0" y2="-8" stroke="#5A9BBE" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="0" cy="-29" r="5" fill="#48BB78"/>
+    <!-- Head -->
+    <rect x="-26" y="-10" width="52" height="38" rx="11" fill="#8EC8E8" filter="url(#shadow)"/>
+    <!-- Happy eyes -->
+    <circle cx="-10" cy="6" r="4" fill="#2D6A8A"/>
+    <circle cx="10" cy="6" r="4" fill="#2D6A8A"/>
+    <circle cx="-9" cy="5" r="1.5" fill="white"/>
+    <circle cx="11" cy="5" r="1.5" fill="white"/>
+    <!-- Happy mouth -->
+    <path d="M-8 16 Q0 24 8 16" fill="none" stroke="#2D6A8A" stroke-width="2" stroke-linecap="round"/>
+    <!-- Label -->
+    <text x="0" y="90" text-anchor="middle" font-size="10" fill="#4A7A94" font-weight="600">Claude Code</text>
   </g>
 
-  <g transform="translate(790, 440)">
-    <rect x="0" y="0" width="88" height="26" rx="13" fill="#1C2A35" stroke="#3EC8C8" stroke-width="1" stroke-opacity="0.4"/>
-    <text x="44" y="17" text-anchor="middle" class="mono" fill="#3EC8C8" font-size="11" font-weight="500">worklog</text>
+  <!-- Happy Robot 2 (Codex) -->
+  <g transform="translate(830, 350)">
+    <!-- Body -->
+    <rect x="-30" y="10" width="60" height="65" rx="14" fill="#B794F4" filter="url(#shadow)"/>
+    <!-- Antenna -->
+    <line x1="0" y1="-25" x2="0" y2="-8" stroke="#9F7AEA" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="0" cy="-29" r="5" fill="#48BB78"/>
+    <!-- Head -->
+    <rect x="-26" y="-10" width="52" height="38" rx="11" fill="#D6BCFA" filter="url(#shadow)"/>
+    <!-- Happy eyes -->
+    <circle cx="-10" cy="6" r="4" fill="#553C9A"/>
+    <circle cx="10" cy="6" r="4" fill="#553C9A"/>
+    <circle cx="-9" cy="5" r="1.5" fill="white"/>
+    <circle cx="11" cy="5" r="1.5" fill="white"/>
+    <!-- Happy mouth -->
+    <path d="M-8 16 Q0 24 8 16" fill="none" stroke="#553C9A" stroke-width="2" stroke-linecap="round"/>
+    <!-- Label -->
+    <text x="0" y="90" text-anchor="middle" font-size="10" fill="#6B46C1" font-weight="600">Codex</text>
   </g>
 
-  <!-- ===== Title block ===== -->
-  <text x="72" y="72" class="mono" fill="#3EC8C8" font-size="13" font-weight="600" letter-spacing="0.15em" opacity="0.7">SHARED ENGINEERING MEMORY</text>
-
-  <text x="72" y="590" class="sans" fill="#E8F0F8" font-size="48" font-weight="700" letter-spacing="-0.02em">Memory Mesh</text>
-
-  <text x="74" y="622" class="sans" fill="#7B8FA3" font-size="16" font-weight="400">Persistent context for AI agents — decisions, constraints, and handoffs that survive across sessions.</text>
-
-  <!-- ===== Bottom-right badge ===== -->
-  <g transform="translate(1040, 600)">
-    <rect x="0" y="0" width="180" height="28" rx="14" fill="#1C2A35" stroke="#3EC8C8" stroke-width="1" stroke-opacity="0.2"/>
-    <text x="90" y="18" text-anchor="middle" class="mono" fill="#7B8FA3" font-size="11">zero deps · local + mem9</text>
+  <!-- Connection lines from robots to mesh -->
+  <g opacity="0.5">
+    <line x1="640" y1="350" x2="680" y2="350" stroke="#FF8C42" stroke-width="2" stroke-dasharray="4 3"/>
+    <line x1="830" y1="350" x2="790" y2="350" stroke="#FF8C42" stroke-width="2" stroke-dasharray="4 3"/>
   </g>
+
+  <!-- Thought bubble for right robot: "I remember!" -->
+  <rect x="720" y="120" width="180" height="50" rx="14" fill="white" stroke="#A8E6CF" stroke-width="1.5" filter="url(#shadow)"/>
+  <circle cx="760" cy="182" r="4" fill="white" stroke="#A8E6CF" stroke-width="1"/>
+  <circle cx="750" cy="195" r="6" fill="white" stroke="#A8E6CF" stroke-width="1"/>
+  <text x="810" y="142" text-anchor="middle" font-size="13" fill="#2D8A6E" font-weight="500">We decided on Postgres</text>
+  <text x="810" y="158" text-anchor="middle" font-size="13" fill="#2D8A6E" font-weight="500">because of X. Got it!</text>
+
+  <!-- ===== BOTTOM TITLE BAR ===== -->
+  <rect x="0" y="480" width="960" height="60" rx="0" fill="#2D3748" opacity="0.04"/>
+  <!-- Logo text -->
+  <text x="480" y="515" text-anchor="middle" font-size="22" font-weight="700" fill="#2D3748">
+    <tspan fill="#FF8C42">Memory</tspan><tspan fill="#4A5568"> Mesh</tspan>
+  </text>
+  <text x="480" y="535" text-anchor="middle" font-size="12" fill="#718096" font-weight="400">Shared persistent memory for AI coding agents</text>
+
 </svg>
