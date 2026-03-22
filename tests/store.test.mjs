@@ -143,7 +143,7 @@ test("local store keeps typed memories searchable and filterable", async () => {
   });
 });
 
-test("renderContextBlock shows goals first and includes team roster", async () => {
+test("renderContextBlock shows goals first in durable section", async () => {
   await withTempStore(async (dataHome) => {
     const cwd = process.cwd();
 
@@ -156,7 +156,7 @@ test("renderContextBlock shows goals first and includes team roster", async () =
         memoryType: "goal",
         updatedAt: "2026-03-20T00:00:00.000Z",
       },
-      { dataHome, agentId: "alice", role: "pm" },
+      { dataHome, agentId: "alice" },
     );
     await storeMemory(
       {
@@ -167,7 +167,7 @@ test("renderContextBlock shows goals first and includes team roster", async () =
         memoryType: "decision",
         updatedAt: "2026-03-21T00:00:00.000Z",
       },
-      { dataHome, agentId: "bob", role: "tech-lead" },
+      { dataHome, agentId: "bob" },
     );
     await storeMemory(
       {
@@ -178,13 +178,13 @@ test("renderContextBlock shows goals first and includes team roster", async () =
         memoryType: "handoff",
         updatedAt: "2026-03-22T00:00:00.000Z",
       },
-      { dataHome, agentId: "charlie", role: "dev" },
+      { dataHome, agentId: "charlie" },
     );
 
     const context = await renderContextBlock({ cwd }, { dataHome });
 
     // Goals appear in the durable section with the goals label
-    assert.match(context, /Team goals & durable memory:/);
+    assert.match(context, /Goals & durable memory:/);
     assert.match(context, /\[goal\]/);
     assert.match(context, /Ship v2 API/);
 
@@ -192,12 +192,6 @@ test("renderContextBlock shows goals first and includes team roster", async () =
     const goalIdx = context.indexOf("[goal]");
     const decisionIdx = context.indexOf("[decision]");
     assert.ok(goalIdx < decisionIdx, "goal should appear before decision");
-
-    // Team roster is shown
-    assert.match(context, /Team:/);
-    assert.match(context, /alice \(pm\)/);
-    assert.match(context, /bob \(tech-lead\)/);
-    assert.match(context, /charlie \(dev\)/);
   });
 });
 
@@ -243,10 +237,10 @@ test("renderContextBlock prioritizes durable memories ahead of raw worklogs", as
     await summarizeSession({ sessionId: "ctx-session", cwd, createdAt: "2026-03-22T02:00:00.000Z" }, { dataHome });
 
     const context = await renderContextBlock({ cwd }, { dataHome });
-    assert.match(context, /Durable team memory:/);
+    assert.match(context, /Durable memory:/);
     assert.match(context, /Shared backend decision/);
     assert.match(context, /Worktree safety constraint/);
-    assert.match(context, /Recent shared worklog:/);
+    assert.match(context, /Recent activity:/);
     assert.match(context, /Branch migration handoff/);
     assert.match(context, /\[decision\]/);
     assert.match(context, /\[session-summary\]/);

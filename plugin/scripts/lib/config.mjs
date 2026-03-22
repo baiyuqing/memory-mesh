@@ -31,7 +31,3 @@ export function getAgentId(options = {}) {
 export function getTeamId(options = {}) {
   return options.teamId || process.env.MEMORY_MESH_TEAM_ID || process.env.CLAUDE_CODE_MEMORY_TEAM_ID || "";
 }
-
-export function getRole(options = {}) {
-  return options.role || process.env.MEMORY_MESH_ROLE || "";
-}

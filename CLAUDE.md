@@ -2,7 +2,7 @@
 
 ## Project
 
-Memory Mesh — a Claude Code plugin for shared persistent memory across AI coding agents (Claude Code, Codex). Zero dependencies beyond Node.js ≥18.
+Memory Mesh — context relay for AI coding agents. Preserves goals, decisions, constraints, and handoffs across agent sessions so the next agent picks up where the last left off. Zero dependencies beyond Node.js ≥18.
 
 ## Structure
 
@@ -12,13 +12,13 @@ plugin/
     cli.mjs              # Hook entry points (setup, session-start, observe, summarize)
     mcp-server.mjs       # Stdio MCP server exposing memory tools
     lib/
-      config.mjs         # Env var config (backend, agentId, teamId, role)
+      config.mjs         # Env var config (backend, agentId, teamId)
       constants.mjs      # Memory types, limits, tool classifications
-      local-store.mjs    # File-based storage, context injection, roster
+      local-store.mjs    # File-based storage, context injection
       mem9-client.mjs    # Remote mem9 HTTP backend
       mcp-tools.mjs      # MCP tool definitions and handlers
       project.mjs        # Git project context detection
-      store.mjs          # Storage facade (routes local ↔ mem9)
+      store.mjs          # Storage facade (dual-write local + mem9, merged reads)
   hooks/hooks.json       # Claude Code hook configuration
 tests/                   # node --test, no framework
 examples/                # Runnable demo scripts
@@ -41,6 +41,7 @@ examples/                # Runnable demo scripts
 
 - Hook lifecycle: Setup → SessionStart (inject context) → UserPromptSubmit (record) → PostToolUse (record) → Stop (summarize)
 - Memory types: `goal` > `decision` > `constraint` (durable) | `session-summary`, `handoff`, `worklog` (activity)
-- Context injection selects up to 5 memories from 20 scanned: 3 durable (goals first) + 2 activity
-- Team roster is auto-derived from memory authors, not from a registry
-- Local sessions are always the source of truth; mem9 is a sync target
+- Context injection: lightweight refs (~500 tokens) — type + title + 80-char hint + ID; agents use `get_memory` for full details
+- Selection: up to 5 from 20 scanned — 3 durable (goals first) + 2 activity
+- Dual-write: storeMemory writes local (verbatim) + mem9 (shared); reads merge both, local wins
+- Local is always source of truth; mem9 is a sync target for cross-agent sharing

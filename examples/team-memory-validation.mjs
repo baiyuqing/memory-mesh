@@ -132,10 +132,10 @@ export async function runTeamMemoryValidation(options = {}) {
     assert.match(decisions.content[0].text, /Main branch ownership/);
     assert.match(handoffs.content[0].text, /Type=handoff/);
     assert.match(handoffs.content[0].text, /shared retrieval on session start/i);
-    assert.match(context, /Durable team memory:/);
+    assert.match(context, /Durable memory:/);
     assert.match(context, /Main branch ownership/);
     assert.match(context, /Legacy code safety/);
-    assert.match(context, /Recent shared worklog:/);
+    assert.match(context, /Recent activity:/);
     assert.match(context, /\[handoff\]/);
     assert.match(context, /\[session-summary\]/);
 

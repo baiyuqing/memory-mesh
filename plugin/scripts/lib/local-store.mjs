@@ -18,7 +18,7 @@ import {
   MAX_VALUE_PREVIEW,
   READ_TOOLS,
 } from "./constants.mjs";
-import { getAgentId, getRole, getTeamId } from "./config.mjs";
+import { getAgentId, getTeamId } from "./config.mjs";
 import { getProjectContext } from "./project.mjs";
 
 function nowIso() {
@@ -220,7 +220,6 @@ function buildSharedTags(project, options = {}, extraTags = [], agentId = getAge
     `workspace:${project.workspaceLabel}`,
     `agent:${agentId}`,
     getTeamId(options) ? `team:${getTeamId(options)}` : "",
-    getRole(options) ? `role:${getRole(options)}` : "",
     ...extraTags,
   ]);
 }
@@ -691,21 +690,6 @@ function renderContextSection(lines, title, memories) {
   lines.push("");
 }
 
-function buildTeamRoster(memories) {
-  const agents = new Map();
-  for (const memory of memories) {
-    if (!memory.agentId) continue;
-    const role = (memory.tags || []).find((t) => t.startsWith("role:"))?.slice(5) || "";
-    const existing = agents.get(memory.agentId);
-    if (!existing || memory.updatedAt > existing.updatedAt) {
-      agents.set(memory.agentId, { role, updatedAt: memory.updatedAt });
-    }
-  }
-  if (agents.size === 0) return "";
-  const parts = [...agents.entries()].map(([id, { role }]) => (role ? `${id} (${role})` : id));
-  return `Team: ${parts.join(", ")}`;
-}
-
 export function renderContextFromMemories(memories, input = {}) {
   if (memories.length === 0) {
     return "";
@@ -716,15 +700,9 @@ export function renderContextFromMemories(memories, input = {}) {
   const header = `Persistent memory for ${project?.projectLabel || memories[0].projectLabel}`;
   const lines = [header, ""];
 
-  const roster = buildTeamRoster(memories);
-  if (roster) {
-    lines.push(roster);
-    lines.push("");
-  }
-
   const hasGoals = durable.some((m) => getMemoryType(m) === "goal");
-  renderContextSection(lines, hasGoals ? "Team goals & durable memory:" : "Durable team memory:", durable);
-  renderContextSection(lines, "Recent shared worklog:", activity);
+  renderContextSection(lines, hasGoals ? "Goals & durable memory:" : "Durable memory:", durable);
+  renderContextSection(lines, "Recent activity:", activity);
   renderContextSection(lines, "Other recent memory:", fallback);
 
   lines.push("Use `get_memory` with any ID above for full details, or `search_memories` to find more.");

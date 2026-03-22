@@ -7,6 +7,6 @@ test("team memory validation example passes and renders the expected context", a
 
   assert.match(result.decisions, /Type=decision/);
   assert.match(result.handoffs, /Type=handoff/);
-  assert.match(result.context, /Durable team memory:/);
-  assert.match(result.context, /Recent shared worklog:/);
+  assert.match(result.context, /Durable memory:/);
+  assert.match(result.context, /Recent activity:/);
 });
