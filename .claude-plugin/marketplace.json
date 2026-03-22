@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Claude Code plugins by Bai Yuqing",
-    "homepage": "https://github.com/baiyuqing/otto"
+    "homepage": "https://github.com/baiyuqing/memory-mesh"
   },
   "plugins": [
     {
