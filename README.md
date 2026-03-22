@@ -119,4 +119,10 @@ More detail is in [`docs/mem9-shared-memory.md`](./docs/mem9-shared-memory.md).
 npm test
 ```
 
+```bash
+npm run demo:team-memory
+```
+
+The validation example is documented in [`docs/team-memory-validation.md`](./docs/team-memory-validation.md).
+
 The actual installable plugin lives in [`plugin/`](./plugin) and the marketplace manifest lives in [`.claude-plugin/marketplace.json`](./.claude-plugin/marketplace.json).

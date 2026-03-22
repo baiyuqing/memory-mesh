@@ -61,3 +61,19 @@
 - Fixed tag merging so custom tags no longer drop required project, workspace, team, or agent scope tags.
 - Validation:
 - `npm test`
+
+## Current Task: Add an Executable Validation Example
+
+- [x] Design a realistic shared-memory scenario that exercises durable memory plus worklog behavior.
+- [x] Add a runnable example script and a short validation guide with expected outputs.
+- [x] Verify the example end-to-end and commit the result.
+
+### Review
+
+- Added a runnable team-memory validation example under `examples/team-memory-validation.mjs`.
+- Documented the scenario and expected outputs in `docs/team-memory-validation.md`.
+- Added `npm run demo:team-memory` so the example can be exercised without live `mem9` credentials.
+- Added a regression test so the validation example itself stays healthy under `npm test`.
+- Validation:
+- `npm test`
+- `npm run demo:team-memory`

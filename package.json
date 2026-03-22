@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "demo:team-memory": "node examples/team-memory-validation.mjs",
     "test": "node --test",
     "verify": "npm test"
   },
@@ -11,4 +12,3 @@
     "node": ">=18.0.0"
   }
 }
-
