@@ -91,29 +91,106 @@ export async function summarizeSession(input, options = {}) {
 }
 
 export async function listRecentMemories(input = {}, options = {}) {
+  if (!isRemoteBackend(options)) {
+    return localStore.listRecentMemories(input, options);
+  }
+
   const impl = await resolveBackend(options);
-  return impl.listRecentMemories(input, options);
+  const [localR, remoteR] = await Promise.allSettled([
+    localStore.listRecentMemories(input, options),
+    impl.listRecentMemories(input, options),
+  ]);
+
+  return mergeMemories(
+    localR.status === "fulfilled" ? localR.value : [],
+    remoteR.status === "fulfilled" ? remoteR.value : [],
+    input.limit || MAX_CONTEXT_SCAN_MEMORIES,
+  );
 }
 
 export async function searchMemories(input = {}, options = {}) {
+  if (!isRemoteBackend(options)) {
+    return localStore.searchMemories(input, options);
+  }
+
   const impl = await resolveBackend(options);
-  return impl.searchMemories(input, options);
+  const [localR, remoteR] = await Promise.allSettled([
+    localStore.searchMemories(input, options),
+    impl.searchMemories(input, options),
+  ]);
+
+  return mergeMemories(
+    localR.status === "fulfilled" ? localR.value : [],
+    remoteR.status === "fulfilled" ? remoteR.value : [],
+    input.limit || MAX_CONTEXT_SCAN_MEMORIES,
+  );
 }
 
 export async function getMemoryById(id, options = {}) {
-  const impl = await resolveBackend(options);
-  return impl.getMemoryById(id, options);
+  // Always try local first for verbatim fidelity
+  const local = await localStore.getMemoryById(id, options);
+  if (local) {
+    return local;
+  }
+
+  if (!isRemoteBackend(options)) {
+    return null;
+  }
+
+  // Fall back to remote for cross-agent memories
+  try {
+    const impl = await resolveBackend(options);
+    return await impl.getMemoryById(id, options);
+  } catch {
+    return null;
+  }
+}
+
+function isRemoteBackend(options = {}) {
+  return getBackend(options) !== "local";
+}
+
+function mergeMemories(localMemories, remoteMemories, limit) {
+  const seen = new Map();
+  for (const m of localMemories) seen.set(m.id, m);
+  for (const m of remoteMemories) {
+    const localId = m.metadata?.localId;
+    if (!seen.has(m.id) && !(localId && seen.has(localId))) {
+      seen.set(m.id, m);
+    }
+  }
+  return [...seen.values()]
+    .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""))
+    .slice(0, limit);
 }
 
 export async function storeMemory(input = {}, options = {}) {
-  const impl = await resolveBackend(options);
-  return impl.storeMemory(
-    {
-      ...input,
-      agentId: input.agentId || getAgentId(options),
-    },
-    options,
-  );
+  const enriched = {
+    ...input,
+    agentId: input.agentId || getAgentId(options),
+  };
+
+  // Always write locally (verbatim source of truth)
+  const local = await localStore.storeMemory(enriched, options);
+
+  if (!isRemoteBackend(options)) {
+    return local;
+  }
+
+  // Sync to remote for cross-agent sharing, attach localId for dedup
+  try {
+    const impl = await resolveBackend(options);
+    const remote = await impl.storeMemory(
+      { ...enriched, metadata: { ...enriched.metadata, localId: local.id } },
+      options,
+    );
+    return { ...local, remote };
+  } catch (error) {
+    return {
+      ...local,
+      remoteError: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 export async function renderContextBlock(input = {}, options = {}) {

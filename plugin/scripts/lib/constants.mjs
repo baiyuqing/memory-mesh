@@ -16,6 +16,7 @@ export const MAX_CONTEXT_SCAN_MEMORIES = 20;
 export const MAX_CONTEXT_DURABLE_MEMORIES = 3;
 export const MAX_CONTEXT_ACTIVITY_MEMORIES = 2;
 export const MAX_SEARCH_RESULTS = 10;
+export const MAX_CONTEXT_HINT_LENGTH = 80;
 export const DURABLE_MEMORY_TYPES = new Set([
   "goal",
   "decision",
