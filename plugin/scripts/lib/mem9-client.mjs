@@ -1,4 +1,4 @@
-import { getAgentId, getRole, getTeamId } from "./config.mjs";
+import { getAgentId, getTeamId } from "./config.mjs";
 import { MAX_CONTEXT_MEMORIES, MAX_SEARCH_RESULTS } from "./constants.mjs";
 import { getProjectContext } from "./project.mjs";
 
@@ -98,7 +98,6 @@ function buildProjectTags(project, options = {}, extraTags = [], agentId = getAg
     `workspace:${project.workspaceLabel}`,
     `agent:${agentId}`,
     getTeamId(options) ? `team:${getTeamId(options)}` : "",
-    getRole(options) ? `role:${getRole(options)}` : "",
     ...extraTags,
   ]);
 }
