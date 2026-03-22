@@ -1,5 +1,6 @@
 # Memory Mesh
 
+[![CI](https://github.com/baiyuqing/otto/actions/workflows/ci.yml/badge.svg)](https://github.com/baiyuqing/otto/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green.svg)](https://nodejs.org)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](#)
