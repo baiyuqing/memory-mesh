@@ -2,7 +2,20 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { DEFAULT_DATA_HOME, IMPORTANT_TOOLS, CHANGE_TOOLS, READ_TOOLS, MAX_CONTEXT_MEMORIES, MAX_PROMPT_LENGTH, MAX_SEARCH_RESULTS, MAX_VALUE_PREVIEW } from "./constants.mjs";
+import {
+  ACTIVITY_MEMORY_TYPES,
+  CHANGE_TOOLS,
+  DEFAULT_DATA_HOME,
+  DURABLE_MEMORY_TYPES,
+  IMPORTANT_TOOLS,
+  MAX_CONTEXT_ACTIVITY_MEMORIES,
+  MAX_CONTEXT_DURABLE_MEMORIES,
+  MAX_CONTEXT_MEMORIES,
+  MAX_PROMPT_LENGTH,
+  MAX_SEARCH_RESULTS,
+  MAX_VALUE_PREVIEW,
+  READ_TOOLS,
+} from "./constants.mjs";
 import { getAgentId, getTeamId } from "./config.mjs";
 import { getProjectContext } from "./project.mjs";
 
@@ -32,6 +45,10 @@ function stringifyPreview(value, limit = MAX_VALUE_PREVIEW) {
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
+}
+
+function normalizeMemoryType(value, fallback = "") {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
 function normalizePrompt(prompt) {
@@ -191,14 +208,41 @@ function buildActionLine(tool) {
   return parts.join(" ");
 }
 
-function buildSharedTags(project, options = {}, extraTags = []) {
+function buildSharedTags(project, options = {}, extraTags = [], agentId = getAgentId(options)) {
   return unique([
     `project:${project.projectKey}`,
     `workspace:${project.workspaceLabel}`,
-    `agent:${getAgentId(options)}`,
+    `agent:${agentId}`,
     getTeamId(options) ? `team:${getTeamId(options)}` : "",
     ...extraTags,
   ]);
+}
+
+function memoryTypeFromTags(tags = []) {
+  const tag = tags.find((value) => value.startsWith("kind:"));
+  return tag ? tag.slice("kind:".length) : "";
+}
+
+export function getMemoryType(memory) {
+  return normalizeMemoryType(
+    memory?.memoryType,
+    normalizeMemoryType(memory?.metadata?.memoryType, memoryTypeFromTags(memory?.tags || []) || "explicit"),
+  );
+}
+
+function requestedMemoryTypes(input = {}) {
+  return unique([
+    normalizeMemoryType(input.memoryType),
+    ...(Array.isArray(input.memoryTypes) ? input.memoryTypes.map((value) => normalizeMemoryType(value)) : []),
+  ]);
+}
+
+function filterByMemoryTypes(memories, input = {}) {
+  const allowed = new Set(requestedMemoryTypes(input));
+  if (allowed.size === 0) {
+    return memories;
+  }
+  return memories.filter((memory) => allowed.has(getMemoryType(memory)));
 }
 
 function buildSummary(session, options = {}) {
@@ -239,6 +283,7 @@ function buildSummary(session, options = {}) {
       },
       options,
       ["kind:session-summary"],
+      session.agentId || getAgentId(options),
     ),
   };
 }
@@ -259,6 +304,7 @@ function memorySearchText(memory) {
     memory.projectLabel,
     memory.workspaceLabel,
     memory.agentId,
+    getMemoryType(memory),
     memory.request,
     memory.latestPrompt,
     memory.summary,
@@ -399,6 +445,7 @@ export async function summarizeSession(input, options = {}) {
       projectLabel: session.projectLabel,
       workspaceLabel: session.workspaceLabel,
       agentId: session.agentId || getAgentId(options),
+      memoryType: "session-summary",
     },
     ...summary,
   };
@@ -460,7 +507,7 @@ function filterByProject(memories, projectKey) {
 export async function listRecentMemories(input = {}, options = {}) {
   const projectKey = input.projectKey || (input.cwd ? getProjectContext(input.cwd).projectKey : null);
   const limit = input.limit || MAX_CONTEXT_MEMORIES;
-  const memories = filterByProject(await loadMemoryFiles(options), projectKey);
+  const memories = filterByMemoryTypes(filterByProject(await loadMemoryFiles(options), projectKey), input);
   return memories.slice(0, limit);
 }
 
@@ -469,7 +516,7 @@ export async function searchMemories(input = {}, options = {}) {
   const projectKey = input.projectKey || (input.cwd ? getProjectContext(input.cwd).projectKey : null);
   const query = input.query?.trim() || "";
 
-  const matches = filterByProject(await loadMemoryFiles(options), projectKey)
+  const matches = filterByMemoryTypes(filterByProject(await loadMemoryFiles(options), projectKey), input)
     .map((memory) => ({
       memory,
       score: scoreMemory(memory, query),
@@ -494,6 +541,8 @@ export async function getMemoryById(id, options = {}) {
 export async function storeMemory(input = {}, options = {}) {
   const project = getProjectContext(input.cwd || process.cwd());
   const content = normalizePrompt(input.content || input.summary || "");
+  const memoryType = normalizeMemoryType(input.memoryType, "explicit");
+  const agentId = input.agentId || getAgentId(options);
 
   if (!content || content === "[non-text prompt]") {
     return null;
@@ -501,7 +550,7 @@ export async function storeMemory(input = {}, options = {}) {
 
   const memory = {
     id: input.id || `memory-${Date.now()}-${hashId(content).slice(0, 8)}`,
-    agentId: input.agentId || getAgentId(options),
+    agentId,
     projectKey: input.projectKey || project.projectKey,
     projectLabel: input.projectLabel || project.projectLabel,
     workspaceLabel: input.workspaceLabel || project.workspaceLabel,
@@ -511,7 +560,7 @@ export async function storeMemory(input = {}, options = {}) {
     updatedAt: input.updatedAt || nowIso(),
     promptCount: input.promptCount || 0,
     toolEventCount: input.toolEventCount || 0,
-    memoryType: input.memoryType || "explicit",
+    memoryType,
     title: truncate(input.title || content, 80),
     request: truncate(input.request || content, 200),
     latestPrompt: truncate(input.latestPrompt || content, 200),
@@ -521,8 +570,19 @@ export async function storeMemory(input = {}, options = {}) {
     filesRead: unique(input.filesRead || []),
     commands: unique(input.commands || []),
     tools: unique(input.tools || []),
-    tags: unique(input.tags || buildSharedTags(project, options, ["kind:explicit"])),
-    metadata: input.metadata || {},
+    tags: unique([
+      ...buildSharedTags(project, options, [`kind:${memoryType}`], agentId),
+      ...(input.tags || []),
+    ]),
+    metadata: {
+      backend: "local",
+      projectKey: input.projectKey || project.projectKey,
+      projectLabel: input.projectLabel || project.projectLabel,
+      workspaceLabel: input.workspaceLabel || project.workspaceLabel,
+      agentId,
+      memoryType,
+      ...(input.metadata || {}),
+    },
   };
 
   const paths = await ensureStore(options);
@@ -535,6 +595,7 @@ export function formatMemory(memory) {
     `ID: ${memory.id}`,
     `Project: ${memory.projectLabel} (${memory.workspaceLabel})`,
     `Agent: ${memory.agentId || "unknown"}`,
+    `Type: ${getMemoryType(memory)}`,
     `Updated: ${memory.updatedAt}`,
     `Request: ${memory.request}`,
     `Summary: ${memory.summary}`,
@@ -562,18 +623,45 @@ export function formatMemory(memory) {
   return lines.join("\n");
 }
 
-export function renderContextFromMemories(memories, input = {}) {
+function selectContextMemories(memories, limit = MAX_CONTEXT_MEMORIES) {
+  const boundedLimit = Math.max(1, limit);
+  const durableLimit = Math.min(MAX_CONTEXT_DURABLE_MEMORIES, boundedLimit);
+  const activityLimit = Math.min(
+    MAX_CONTEXT_ACTIVITY_MEMORIES,
+    Math.max(boundedLimit - durableLimit, 0),
+  );
+  const chosenIds = new Set();
+
+  const take = (entries, count) => {
+    const selected = [];
+    for (const memory of entries) {
+      if (selected.length >= count || chosenIds.has(memory.id)) {
+        continue;
+      }
+      selected.push(memory);
+      chosenIds.add(memory.id);
+    }
+    return selected;
+  };
+
+  const durable = take(memories.filter((memory) => DURABLE_MEMORY_TYPES.has(getMemoryType(memory))), durableLimit);
+  const activity = take(memories.filter((memory) => ACTIVITY_MEMORY_TYPES.has(getMemoryType(memory))), activityLimit);
+  const fallback = take(memories, Math.max(boundedLimit - durable.length - activity.length, 0));
+
+  return { durable, activity, fallback };
+}
+
+function renderContextSection(lines, title, memories) {
   if (memories.length === 0) {
-    return "";
+    return;
   }
 
-  const project = input.cwd ? getProjectContext(input.cwd) : null;
-  const header = `Persistent memory for ${project?.projectLabel || memories[0].projectLabel} (most recent first)`;
-  const lines = [header, ""];
+  lines.push(title);
+  lines.push("");
 
   memories.forEach((memory, index) => {
     const agent = memory.agentId ? ` | by ${memory.agentId}` : "";
-    lines.push(`${index + 1}. ${memory.updatedAt}${agent} | ${memory.title}`);
+    lines.push(`${index + 1}. [${getMemoryType(memory)}] ${memory.updatedAt}${agent} | ${memory.title}`);
     lines.push(`   ${memory.summary}`);
     if (memory.filesChanged?.length > 0) {
       lines.push(`   Files: ${memory.filesChanged.slice(0, 4).join(", ")}`);
@@ -584,6 +672,20 @@ export function renderContextFromMemories(memories, input = {}) {
     lines.push(`   Memory ID: ${memory.id}`);
     lines.push("");
   });
+}
+
+export function renderContextFromMemories(memories, input = {}) {
+  if (memories.length === 0) {
+    return "";
+  }
+
+  const project = input.cwd ? getProjectContext(input.cwd) : null;
+  const { durable, activity, fallback } = selectContextMemories(memories, input.limit || MAX_CONTEXT_MEMORIES);
+  const header = `Persistent memory for ${project?.projectLabel || memories[0].projectLabel}`;
+  const lines = [header, ""];
+  renderContextSection(lines, "Durable team memory:", durable);
+  renderContextSection(lines, "Recent shared worklog:", activity);
+  renderContextSection(lines, "Other recent memory:", fallback);
 
   lines.push("Use the claude-code-memory MCP tools for full details or search.");
   return lines.join("\n").trim();

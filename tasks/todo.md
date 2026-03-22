@@ -44,3 +44,20 @@
 - Added documentation for shared setup and agent identity conventions in `README.md` and `docs/mem9-shared-memory.md`.
 - Validation:
 - `npm test`
+
+## Current Task: Structure Team Memory for Durable Collaboration
+
+- [x] Fix local-backend memory typing so explicit decisions and constraints can be filtered correctly.
+- [x] Add focused MCP write tools for durable team facts and handoffs instead of relying on one generic shared note API.
+- [x] Prioritize durable memories over raw worklogs when injecting session-start context.
+- [x] Add regression coverage for typed memory filters, context prioritization, and the new MCP tools.
+- [x] Run verification, review the diff, and commit the changes.
+
+### Review
+
+- Fixed local memory typing so `memoryType` now survives storage, filtering, and tag-based search.
+- Added `remember_decision`, `remember_constraint`, and `remember_handoff` on top of the existing generic `store_memory` path.
+- Changed session-start context injection to prefer durable memory types first, then recent shared worklogs, then fallback memory.
+- Fixed tag merging so custom tags no longer drop required project, workspace, team, or agent scope tags.
+- Validation:
+- `npm test`

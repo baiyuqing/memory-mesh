@@ -7,8 +7,8 @@ This plugin can run against `mem9` so Claude Code and Codex share one project me
 - Claude Code hooks record prompts and tool activity locally.
 - On `Stop`, the plugin compacts that work into a memory summary.
 - In `mem9` mode, the summary is pushed to the configured `mem9` tenant or API key space.
-- On `SessionStart`, Claude Code pulls recent shared memories back into context.
-- Codex connects to the same MCP server and uses `search_memories` and `store_memory` against the same backend.
+- On `SessionStart`, Claude Code pulls a wider recent sample and prefers durable memory types before recent worklogs.
+- Codex connects to the same MCP server and uses `search_memories`, `store_memory`, and focused remember tools against the same backend.
 
 ## Required Environment
 
@@ -64,11 +64,16 @@ Then Codex can:
 - search existing team memory
 - fetch a specific memory by ID
 - store explicit durable notes with `store_memory`
+- store durable decisions with `remember_decision`
+- store hard constraints with `remember_constraint`
+- leave resumable baton-passing notes with `remember_handoff`
 
 ## Recommended Team Pattern
 
 - Auto-capture worklogs from Claude Code hooks.
-- Use `store_memory` for explicit durable facts or decisions.
+- Use `remember_decision` and `remember_constraint` for durable team truths.
+- Use `remember_handoff` for agent-to-agent continuation notes.
+- Keep `store_memory` as the generic escape hatch when the note type does not fit the focused tools.
 - Keep agent IDs stable.
 - Keep one team ID per engineering group or repo domain.
 - Use the same `MEM9_API_KEY` or tenant across all participating agents.

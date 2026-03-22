@@ -1,4 +1,5 @@
 import { getAgentId, getBackend } from "./config.mjs";
+import { MAX_CONTEXT_MEMORIES, MAX_CONTEXT_SCAN_MEMORIES } from "./constants.mjs";
 import * as localStore from "./local-store.mjs";
 import * as mem9Client from "./mem9-client.mjs";
 
@@ -83,15 +84,18 @@ export async function storeMemory(input = {}, options = {}) {
 }
 
 export async function renderContextBlock(input = {}, options = {}) {
+  const requestedLimit = input.limit || MAX_CONTEXT_MEMORIES;
   const memories = await listRecentMemories(
     {
       cwd: input.cwd,
       projectKey: input.projectKey,
-      limit: input.limit,
-      memoryType: input.memoryType,
+      limit: Math.max(requestedLimit, MAX_CONTEXT_SCAN_MEMORIES),
     },
     options,
   );
 
-  return localStore.renderContextFromMemories(memories, input);
+  return localStore.renderContextFromMemories(memories, {
+    ...input,
+    limit: requestedLimit,
+  });
 }

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { listRecentMemories, recordPrompt, summarizeSession } from "../plugin/scripts/lib/store.mjs";
+import { listRecentMemories, recordPrompt, storeMemory, summarizeSession } from "../plugin/scripts/lib/store.mjs";
 
 async function withTempStore(run) {
   const dataHome = await mkdtemp(join(tmpdir(), "claude-code-memory-mem9-"));
@@ -116,6 +116,45 @@ test("mem9 backend reads shared memories for the current project", async () => {
       assert.equal(memories[0].id, "remote-1");
       assert.equal(memories[0].agentId, "codex");
       assert.match(memories[0].summary, /build pipeline/i);
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+});
+
+test("mem9 backend preserves typed tags when storing explicit durable memory", async () => {
+  await withTempStore(async () => {
+    const requests = [];
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async (url, init = {}) => {
+      requests.push({ url: String(url), init });
+      return {
+        ok: true,
+        status: 202,
+        async json() {
+          return { status: "accepted" };
+        },
+        async text() {
+          return JSON.stringify({ status: "accepted" });
+        },
+      };
+    };
+
+    try {
+      await storeMemory({
+        cwd: process.cwd(),
+        content: "The team must keep old mysqlbench code on its own branch.",
+        memoryType: "constraint",
+        tags: ["area:git"],
+      });
+
+      assert.equal(requests.length, 1);
+      const body = JSON.parse(requests[0].init.body);
+      assert.ok(body.tags.includes("kind:constraint"));
+      assert.ok(body.tags.includes("project:otto"));
+      assert.ok(body.tags.includes("agent:codex"));
+      assert.ok(body.tags.includes("area:git"));
+      assert.equal(body.metadata.memoryType, "constraint");
     } finally {
       globalThis.fetch = previousFetch;
     }

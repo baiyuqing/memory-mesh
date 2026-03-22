@@ -17,6 +17,10 @@ function unique(values) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function normalizeMemoryType(value, fallback = "") {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
 function parseMetadata(raw) {
   if (!raw) {
     return {};
@@ -88,14 +92,24 @@ async function request(path, init = {}, options = {}) {
   return response.json();
 }
 
-function buildProjectTags(project, options = {}, extraTags = []) {
+function buildProjectTags(project, options = {}, extraTags = [], agentId = getAgentId(options)) {
   return unique([
     `project:${project.projectKey}`,
     `workspace:${project.workspaceLabel}`,
-    `agent:${getAgentId(options)}`,
+    `agent:${agentId}`,
     getTeamId(options) ? `team:${getTeamId(options)}` : "",
     ...extraTags,
   ]);
+}
+
+function inferMemoryType(memory, metadata) {
+  return normalizeMemoryType(
+    memory.memory_type,
+    normalizeMemoryType(
+      metadata.memoryType,
+      (memory.tags || []).find((tag) => tag.startsWith("kind:"))?.slice("kind:".length) || "explicit",
+    ),
+  );
 }
 
 function normalizeMemory(memory, input = {}, options = {}) {
@@ -118,7 +132,7 @@ function normalizeMemory(memory, input = {}, options = {}) {
     updatedAt: memory.updated_at || memory.created_at || nowIso(),
     promptCount: metadata.promptCount || 0,
     toolEventCount: metadata.toolEventCount || 0,
-    memoryType: memory.memory_type || metadata.memoryType || "shared",
+    memoryType: inferMemoryType(memory, metadata),
     title: metadata.title || truncate(content.split("\n")[0] || content, 80),
     request: metadata.request || truncate(content, 200),
     latestPrompt: metadata.latestPrompt || truncate(content, 200),
@@ -184,7 +198,12 @@ export async function getMemoryById(id, options = {}) {
 
 export async function storeMemory(input = {}, options = {}) {
   const project = getProjectContext(input.cwd || process.cwd());
-  const tags = unique(input.tags || buildProjectTags(project, options, [`kind:${input.memoryType || "explicit"}`]));
+  const memoryType = normalizeMemoryType(input.memoryType, "explicit");
+  const agentId = input.agentId || getAgentId(options);
+  const tags = unique([
+    ...buildProjectTags(project, options, [`kind:${memoryType}`], agentId),
+    ...(input.tags || []),
+  ]);
   const metadata = {
     ...input.metadata,
     backend: "mem9",
@@ -196,7 +215,7 @@ export async function storeMemory(input = {}, options = {}) {
     workspaceLabel: input.workspaceLabel || project.workspaceLabel,
     cwd: input.cwd || project.cwd,
     gitRoot: project.gitRoot,
-    agentId: input.agentId || getAgentId(options),
+    agentId,
     promptCount: input.promptCount || 0,
     toolEventCount: input.toolEventCount || 0,
     filesChanged: input.filesChanged || [],
@@ -204,7 +223,7 @@ export async function storeMemory(input = {}, options = {}) {
     commands: input.commands || [],
     tools: input.tools || [],
     keyActions: input.keyActions || [],
-    memoryType: input.memoryType || "explicit",
+    memoryType,
     startedAt: input.startedAt || nowIso(),
   };
 
@@ -219,7 +238,7 @@ export async function storeMemory(input = {}, options = {}) {
       method: "POST",
       body: JSON.stringify({
         content,
-        agent_id: input.agentId || getAgentId(options),
+        agent_id: agentId,
         tags,
         metadata,
       }),

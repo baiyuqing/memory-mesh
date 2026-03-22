@@ -25,6 +25,10 @@ export function getToolDefinitions() {
             minimum: 1,
             maximum: 20,
           },
+          memoryType: {
+            type: "string",
+            description: "Optional memory type filter such as decision, constraint, handoff, or session-summary.",
+          },
         },
         required: ["query"],
       },
@@ -45,6 +49,10 @@ export function getToolDefinitions() {
             type: "number",
             minimum: 1,
             maximum: 20,
+          },
+          memoryType: {
+            type: "string",
+            description: "Optional memory type filter such as decision, constraint, handoff, or session-summary.",
           },
         },
       },
@@ -97,6 +105,93 @@ export function getToolDefinitions() {
         required: ["content"],
       },
     },
+    {
+      name: "remember_decision",
+      description: "Store a durable team decision for the current project.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          decision: {
+            type: "string",
+            description: "The engineering decision that should be retained for the team.",
+          },
+          cwd: {
+            type: "string",
+          },
+          title: {
+            type: "string",
+          },
+          tags: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+          },
+          metadata: {
+            type: "object",
+          },
+        },
+        required: ["decision"],
+      },
+    },
+    {
+      name: "remember_constraint",
+      description: "Store a durable engineering constraint, limitation, or invariant for the current project.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          constraint: {
+            type: "string",
+            description: "The constraint that future agents should respect.",
+          },
+          cwd: {
+            type: "string",
+          },
+          title: {
+            type: "string",
+          },
+          tags: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+          },
+          metadata: {
+            type: "object",
+          },
+        },
+        required: ["constraint"],
+      },
+    },
+    {
+      name: "remember_handoff",
+      description: "Store a team handoff note that helps another agent continue the work.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          handoff: {
+            type: "string",
+            description: "The current state, next step, or handoff note to persist.",
+          },
+          cwd: {
+            type: "string",
+          },
+          title: {
+            type: "string",
+          },
+          tags: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+          },
+          metadata: {
+            type: "object",
+          },
+        },
+        required: ["handoff"],
+      },
+    },
   ];
 }
 
@@ -122,6 +217,7 @@ function renderCompactList(memories) {
       const commands = memory.commands.slice(0, 2).join(" | ");
       const details = [
         `ID=${memory.id}`,
+        `Type=${memory.memoryType}`,
         `Updated=${memory.updatedAt}`,
         files ? `Files=${files}` : "",
         commands ? `Commands=${commands}` : "",
@@ -153,6 +249,33 @@ export async function callTool(name, args = {}) {
   if (name === "store_memory") {
     const result = await storeMemory(args);
     return textResult(result ? `Stored shared memory.\n\n${result.summary || result.content || ""}` : "Nothing was stored.");
+  }
+
+  if (name === "remember_decision") {
+    const result = await storeMemory({
+      ...args,
+      content: args.decision,
+      memoryType: "decision",
+    });
+    return textResult(result ? `Stored team decision.\n\n${result.summary || ""}` : "Nothing was stored.");
+  }
+
+  if (name === "remember_constraint") {
+    const result = await storeMemory({
+      ...args,
+      content: args.constraint,
+      memoryType: "constraint",
+    });
+    return textResult(result ? `Stored team constraint.\n\n${result.summary || ""}` : "Nothing was stored.");
+  }
+
+  if (name === "remember_handoff") {
+    const result = await storeMemory({
+      ...args,
+      content: args.handoff,
+      memoryType: "handoff",
+    });
+    return textResult(result ? `Stored team handoff.\n\n${result.summary || ""}` : "Nothing was stored.");
   }
 
   throw new Error(`Unknown tool: ${name}`);

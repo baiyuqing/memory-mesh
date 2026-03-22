@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getMemoryById, listRecentMemories, recordPrompt, recordToolUse, renderContextBlock, searchMemories, summarizeSession } from "../plugin/scripts/lib/store.mjs";
+import { getMemoryById, listRecentMemories, recordPrompt, recordToolUse, renderContextBlock, searchMemories, storeMemory, summarizeSession } from "../plugin/scripts/lib/store.mjs";
 
 async function withTempStore(run) {
   const dataHome = await mkdtemp(join(tmpdir(), "claude-code-memory-"));
@@ -93,3 +93,92 @@ test("searchMemories returns relevant recent memories", async () => {
   });
 });
 
+test("local store keeps typed memories searchable and filterable", async () => {
+  await withTempStore(async (dataHome) => {
+    const cwd = process.cwd();
+
+    await storeMemory(
+      {
+        id: "decision-1",
+        cwd,
+        content: "Use mem9 as the shared team memory backend.",
+        memoryType: "decision",
+        tags: ["area:memory"],
+      },
+      { dataHome, agentId: "codex" },
+    );
+    await storeMemory(
+      {
+        id: "handoff-1",
+        cwd,
+        content: "Next agent should wire Codex config to the MCP server.",
+        memoryType: "handoff",
+      },
+      { dataHome, agentId: "claude-code" },
+    );
+
+    const decisions = await listRecentMemories({ cwd, memoryType: "decision" }, { dataHome });
+    assert.equal(decisions.length, 1);
+    assert.equal(decisions[0].id, "decision-1");
+    assert.ok(decisions[0].tags.includes("kind:decision"));
+    assert.ok(decisions[0].tags.includes("project:otto"));
+    assert.ok(decisions[0].tags.includes("agent:codex"));
+    assert.ok(decisions[0].tags.includes("area:memory"));
+
+    const handoffSearch = await searchMemories({ cwd, query: "next agent", memoryType: "handoff" }, { dataHome });
+    assert.equal(handoffSearch.length, 1);
+    assert.equal(handoffSearch[0].id, "handoff-1");
+  });
+});
+
+test("renderContextBlock prioritizes durable memories ahead of raw worklogs", async () => {
+  await withTempStore(async (dataHome) => {
+    const cwd = process.cwd();
+
+    await storeMemory(
+      {
+        id: "decision-ctx",
+        cwd,
+        content: "Always route shared team memory through mem9 for Claude Code and Codex.",
+        title: "Shared backend decision",
+        memoryType: "decision",
+        updatedAt: "2026-03-21T00:00:00.000Z",
+      },
+      { dataHome },
+    );
+    await storeMemory(
+      {
+        id: "constraint-ctx",
+        cwd,
+        content: "Do not write team memory into the main worktree checkout.",
+        title: "Worktree safety constraint",
+        memoryType: "constraint",
+        updatedAt: "2026-03-20T00:00:00.000Z",
+      },
+      { dataHome },
+    );
+    await storeMemory(
+      {
+        id: "handoff-ctx",
+        cwd,
+        content: "Current status: main now points at the plugin repo; next step is config polish.",
+        title: "Branch migration handoff",
+        memoryType: "handoff",
+        updatedAt: "2026-03-22T01:00:00.000Z",
+      },
+      { dataHome },
+    );
+
+    await recordPrompt({ sessionId: "ctx-session", cwd, prompt: "Tighten the MCP toolset" }, { dataHome });
+    await summarizeSession({ sessionId: "ctx-session", cwd, createdAt: "2026-03-22T02:00:00.000Z" }, { dataHome });
+
+    const context = await renderContextBlock({ cwd }, { dataHome });
+    assert.match(context, /Durable team memory:/);
+    assert.match(context, /Shared backend decision/);
+    assert.match(context, /Worktree safety constraint/);
+    assert.match(context, /Recent shared worklog:/);
+    assert.match(context, /Branch migration handoff/);
+    assert.match(context, /\[decision\]/);
+    assert.match(context, /\[session-summary\]/);
+  });
+});

@@ -11,7 +11,22 @@ export const HOOK_OK = {
 export const MAX_PROMPT_LENGTH = 2000;
 export const MAX_VALUE_PREVIEW = 4000;
 export const MAX_CONTEXT_MEMORIES = 5;
+export const MAX_CONTEXT_SCAN_MEMORIES = 20;
+export const MAX_CONTEXT_DURABLE_MEMORIES = 3;
+export const MAX_CONTEXT_ACTIVITY_MEMORIES = 2;
 export const MAX_SEARCH_RESULTS = 10;
+export const DURABLE_MEMORY_TYPES = new Set([
+  "decision",
+  "constraint",
+  "ownership",
+  "runbook",
+  "api-contract",
+]);
+export const ACTIVITY_MEMORY_TYPES = new Set([
+  "session-summary",
+  "worklog",
+  "handoff",
+]);
 export const IMPORTANT_TOOLS = new Set([
   "Bash",
   "Edit",
@@ -40,4 +55,3 @@ export const READ_TOOLS = new Set([
   "LS",
   "ListDir",
 ]);
-

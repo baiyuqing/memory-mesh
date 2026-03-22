@@ -15,7 +15,8 @@ The plugin stores prompt and tool activity as local session journals, turns them
 - Optional `mem9` remote backend for shared team memory
 - Automatic context injection on new or compacted Claude Code sessions
 - Stop-time memory summarization from prompts and tool usage
-- MCP tools for `search_memories`, `list_recent_memories`, `get_memory`, and `store_memory`
+- Session-start context that prefers durable decisions and constraints over noisy worklogs
+- MCP tools for `search_memories`, `list_recent_memories`, `get_memory`, `store_memory`, `remember_decision`, `remember_constraint`, and `remember_handoff`
 - Zero runtime dependencies beyond Node.js
 
 ## Install
@@ -75,7 +76,7 @@ If you use the older tenant-scoped API instead of API keys, set `MEM9_TENANT_ID`
 
 The plugin uses Claude Code hooks:
 
-- `SessionStart` injects recent memories for the current project.
+- `SessionStart` injects recent project memory, with durable team facts first and recent worklogs second.
 - `UserPromptSubmit` records the user prompt into a local session journal.
 - `PostToolUse` records tool activity, changed files, and shell commands.
 - `Stop` compacts the current session into a reusable memory snapshot.
@@ -97,13 +98,17 @@ Codex can use:
 - `list_recent_memories`
 - `get_memory`
 - `store_memory`
+- `remember_decision`
+- `remember_constraint`
+- `remember_handoff`
 
-That gives Codex an explicit write path even though it does not use Claude Code hook lifecycle events.
+That gives Codex an explicit write path even though it does not use Claude Code hook lifecycle events, and it makes durable team facts easier to separate from routine worklogs.
 
 ## Shared Memory Notes
 
 - Shared retrieval is project-scoped by Git common directory, not worktree-scoped.
 - Stored tags include project, workspace, agent, and memory kind.
+- Context injection prefers durable memory types such as `decision` and `constraint`, then fills with recent `handoff` or `session-summary` worklogs.
 - `mem9` mode is a shared backend; local mode remains available for private memory.
 
 More detail is in [`docs/mem9-shared-memory.md`](./docs/mem9-shared-memory.md).
