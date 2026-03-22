@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "claude-code-memory": {
+      "type": "stdio",
+      "command": "${CLAUDE_PLUGIN_ROOT}/scripts/mcp-server.mjs"
+    }
+  }
+}
+
