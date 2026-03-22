@@ -1,5 +1,21 @@
 # Task Plan
 
+## Current Task: Add a Distinctive README Hero Image
+
+- [x] Design a repo-hosted homepage image that feels playful while clearly explaining Memory Mesh.
+- [x] Add the image asset to the repository and feature it at the top of the README.
+- [x] Verify the README paths and commit the change with signoff.
+
+### Review
+
+- Added a repo-hosted SVG hero image for the README homepage under `assets/memory-mesh-hero.svg`.
+- Made the image visually explain the real product idea: manager, developers, test, and a new developer sharing decisions, constraints, handoffs, and worklogs through Memory Mesh.
+- Featured the image at the top of the README so the GitHub homepage is more distinctive without depending on external assets.
+- Validation:
+- `python3` XML parse of `assets/memory-mesh-hero.svg`
+- `git diff --check`
+- `npm test`
+
 ## Current Task: Rebrand the Project as Memory Mesh
 
 - [x] Rename the public plugin identity from `claude-code-memory` to `memory-mesh`.

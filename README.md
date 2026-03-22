@@ -1,5 +1,7 @@
 # Memory Mesh
 
+![Memory Mesh hero](./assets/memory-mesh-hero.svg)
+
 `memory-mesh` is a Claude Code plugin marketplace repo for shared engineering memory across Claude Code and Codex.
 
 It supports:

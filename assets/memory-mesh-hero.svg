@@ -1,0 +1,122 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Memory Mesh hero</title>
+  <desc id="desc">A playful system diagram showing manager, developers, test, and a new developer sharing decisions, constraints, handoffs, and worklogs through a shared Memory Mesh project context.</desc>
+  <defs>
+    <linearGradient id="bg" x1="112" y1="88" x2="1148" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF6E8"/>
+      <stop offset="0.45" stop-color="#F4FBFA"/>
+      <stop offset="1" stop-color="#EAF1FF"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="400" y1="170" x2="880" y2="550" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10354A"/>
+      <stop offset="1" stop-color="#184F66"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="454" y1="202" x2="828" y2="514" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF9E54"/>
+      <stop offset="1" stop-color="#3EC8C8"/>
+    </linearGradient>
+    <style>
+      .eyebrow { font: 600 18px ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; letter-spacing: 0.12em; text-transform: uppercase; fill: #0E3148; }
+      .title { font: 700 62px Georgia, "Times New Roman", serif; fill: #0B2234; }
+      .subtitle { font: 500 24px ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #26485E; }
+      .card-title { font: 700 24px ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #0B2234; }
+      .card-line { font: 500 18px ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; fill: #31556D; }
+      .mesh-title { font: 700 36px Georgia, "Times New Roman", serif; fill: #FFF8EF; }
+      .mesh-copy { font: 500 18px ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #D7EEF1; }
+      .chip { font: 700 15px ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; fill: #0D3147; }
+      .caption { font: 600 15px ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; fill: #5B7A8F; text-transform: uppercase; letter-spacing: 0.08em; }
+      .spark { font: 700 14px ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; fill: #0B2234; }
+    </style>
+  </defs>
+
+  <rect x="24" y="24" width="1232" height="672" rx="36" fill="url(#bg)"/>
+
+  <path d="M120 176C241 140 335 148 430 214" stroke="#8ED0C8" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 12"/>
+  <path d="M1020 188C928 146 842 152 772 218" stroke="#FFBF86" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 12"/>
+  <path d="M168 568C300 624 356 602 450 522" stroke="#A3BDD8" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 12"/>
+  <path d="M1112 550C996 618 888 608 790 520" stroke="#98D9D1" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 12"/>
+  <circle cx="174" cy="164" r="6" fill="#3EC8C8"/>
+  <circle cx="1036" cy="176" r="6" fill="#FF9E54"/>
+  <circle cx="184" cy="560" r="6" fill="#658FB2"/>
+  <circle cx="1098" cy="538" r="6" fill="#3EC8C8"/>
+
+  <text x="120" y="104" class="eyebrow">shared engineering memory</text>
+  <text x="120" y="162" class="title">Memory Mesh</text>
+  <text x="120" y="205" class="subtitle">A team-wide context layer for Claude Code, Codex, and the next developer who joins late.</text>
+
+  <rect x="92" y="256" width="252" height="144" rx="24" fill="#FFFDF8" stroke="#E4D4BA" stroke-width="2"/>
+  <text x="120" y="298" class="card-title">Manager</text>
+  <text x="120" y="330" class="card-line">decision: feature goal</text>
+  <text x="120" y="358" class="card-line">constraint: hard boundary</text>
+  <text x="120" y="386" class="card-line">acceptance: what done means</text>
+  <rect x="236" y="273" width="84" height="28" rx="14" fill="#FFE0C0"/>
+  <text x="254" y="292" class="chip">durable</text>
+
+  <rect x="90" y="464" width="256" height="146" rx="24" fill="#F8FCFF" stroke="#C6D8E9" stroke-width="2"/>
+  <text x="118" y="506" class="card-title">Dev 1</text>
+  <text x="118" y="538" class="card-line">decision: architecture</text>
+  <text x="118" y="566" class="card-line">handoff: current progress</text>
+  <text x="118" y="594" class="card-line">worklog: recent changes</text>
+  <rect x="248" y="481" width="74" height="28" rx="14" fill="#D7EEF1"/>
+  <text x="265" y="500" class="chip">build</text>
+
+  <rect x="940" y="256" width="246" height="144" rx="24" fill="#FFFDF8" stroke="#E4D4BA" stroke-width="2"/>
+  <text x="968" y="298" class="card-title">Test</text>
+  <text x="968" y="330" class="card-line">constraint: test gate</text>
+  <text x="968" y="358" class="card-line">constraint: risk note</text>
+  <text x="968" y="386" class="card-line">handoff: what's still missing</text>
+  <rect x="1082" y="273" width="78" height="28" rx="14" fill="#DCEBFF"/>
+  <text x="1099" y="292" class="chip">verify</text>
+
+  <rect x="912" y="462" width="280" height="148" rx="24" fill="#F7FFFC" stroke="#C4E2D8" stroke-width="2"/>
+  <text x="940" y="504" class="card-title">New Dev</text>
+  <text x="940" y="536" class="card-line">reads durable memory first</text>
+  <text x="940" y="564" class="card-line">then handoff + worklog</text>
+  <text x="940" y="592" class="card-line">starts coding without reset</text>
+  <rect x="1084" y="479" width="80" height="28" rx="14" fill="#D7F3EC"/>
+  <text x="1102" y="498" class="chip">join</text>
+
+  <path d="M344 328H420" stroke="#E29D4E" stroke-width="4" stroke-linecap="round"/>
+  <path d="M346 536H424" stroke="#6DA4C7" stroke-width="4" stroke-linecap="round"/>
+  <path d="M860 328H938" stroke="#E29D4E" stroke-width="4" stroke-linecap="round"/>
+  <path d="M858 536H910" stroke="#4FAFAF" stroke-width="4" stroke-linecap="round"/>
+
+  <path d="M420 330C454 330 454 256 512 256" stroke="#E29D4E" stroke-width="4" stroke-linecap="round"/>
+  <path d="M424 536C454 536 462 506 514 506" stroke="#6DA4C7" stroke-width="4" stroke-linecap="round"/>
+  <path d="M860 330C828 330 826 256 770 256" stroke="#E29D4E" stroke-width="4" stroke-linecap="round"/>
+  <path d="M910 536C862 536 846 506 768 506" stroke="#4FAFAF" stroke-width="4" stroke-linecap="round"/>
+
+  <rect x="414" y="218" width="452" height="316" rx="34" fill="url(#panel)"/>
+  <rect x="438" y="242" width="404" height="268" rx="28" fill="#0F4257" stroke="url(#accent)" stroke-width="2"/>
+
+  <text x="474" y="294" class="mesh-title">Memory Mesh</text>
+  <text x="474" y="326" class="mesh-copy">project-scoped shared context</text>
+  <text x="474" y="350" class="mesh-copy">decision + constraint + handoff + worklog</text>
+
+  <rect x="474" y="384" width="132" height="34" rx="17" fill="#FFE0C0"/>
+  <text x="497" y="406" class="chip">project:repo</text>
+  <rect x="620" y="384" width="118" height="34" rx="17" fill="#D7EEF1"/>
+  <text x="646" y="406" class="chip">team:platform</text>
+  <rect x="752" y="384" width="68" height="34" rx="17" fill="#DCEBFF"/>
+  <text x="769" y="406" class="chip">kind:*</text>
+
+  <circle cx="646" cy="468" r="54" fill="#0B3145" stroke="#FFB46D" stroke-width="3"/>
+  <circle cx="646" cy="468" r="26" fill="#3EC8C8"/>
+  <circle cx="584" cy="438" r="9" fill="#FF9E54"/>
+  <circle cx="710" cy="438" r="9" fill="#DDEEFF"/>
+  <circle cx="586" cy="504" r="9" fill="#DDEEFF"/>
+  <circle cx="706" cy="504" r="9" fill="#FF9E54"/>
+  <path d="M584 438L646 468L710 438" stroke="#FFD4A3" stroke-width="3" stroke-linecap="round"/>
+  <path d="M586 504L646 468L706 504" stroke="#A7E6DF" stroke-width="3" stroke-linecap="round"/>
+
+  <text x="446" y="554" class="caption">Context routing</text>
+  <text x="446" y="584" class="mesh-copy">SessionStart loads durable memory first.</text>
+  <text x="446" y="608" class="mesh-copy">Recent handoff and worklog fill the rest.</text>
+
+  <rect x="874" y="120" width="256" height="74" rx="18" fill="#FFFDF8" stroke="#E5D7C4" stroke-width="2"/>
+  <text x="900" y="150" class="caption">why it matters</text>
+  <text x="900" y="177" class="spark">new dev does not start from zero</text>
+
+  <rect x="100" y="116" width="172" height="34" rx="17" fill="#FFF3E2" stroke="#E8C99E" stroke-width="1.5"/>
+  <text x="122" y="138" class="chip">shared memory, not chat drift</text>
+</svg>
