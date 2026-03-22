@@ -1,5 +1,21 @@
 # Task Plan
 
+## Current Task: Redraw the README Hero in a More Cartoon Style
+
+- [x] Replace the first SVG hero with a more cartoon-forward visual language.
+- [x] Swap literal role names for more abstract collaboration archetypes.
+- [x] Re-verify the SVG asset, README path, and test suite before committing.
+
+### Review
+
+- Replaced the first hero graphic with a more playful cartoon composition built around rounded character cards, chat bubbles, and a central memory mesh core.
+- Switched the labels away from the user's literal role names to abstract archetypes: `Pathfinder`, `Builder`, `Spotter`, and `Fresh Eyes`.
+- Kept the image repo-hosted and README-friendly so GitHub can render it without external dependencies.
+- Validation:
+- `python3` XML parse of `assets/memory-mesh-hero.svg`
+- `git diff --check`
+- `npm test`
+
 ## Current Task: Add a Distinctive README Hero Image
 
 - [x] Design a repo-hosted homepage image that feels playful while clearly explaining Memory Mesh.
