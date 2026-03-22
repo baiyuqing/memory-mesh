@@ -1,13 +1,40 @@
 import { getAgentId, getBackend } from "./config.mjs";
 import { MAX_CONTEXT_MEMORIES, MAX_CONTEXT_SCAN_MEMORIES } from "./constants.mjs";
 import * as localStore from "./local-store.mjs";
-import * as mem9Client from "./mem9-client.mjs";
 
 export const ensureStore = localStore.ensureStore;
 export const formatMemory = localStore.formatMemory;
 
-function backendImpl(options = {}) {
-  return getBackend(options) === "mem9" ? mem9Client : localStore;
+const BUILTIN_BACKENDS = {
+  local: () => localStore,
+  mem9: () => import("./mem9-client.mjs"),
+};
+
+const backendCache = new Map();
+
+async function resolveBackend(options = {}) {
+  const name = getBackend(options);
+
+  if (backendCache.has(name)) {
+    return backendCache.get(name);
+  }
+
+  let mod;
+  if (BUILTIN_BACKENDS[name]) {
+    mod = await BUILTIN_BACKENDS[name]();
+  } else {
+    // Treat as a module path (relative or absolute)
+    mod = await import(name);
+  }
+
+  const required = ["listRecentMemories", "searchMemories", "getMemoryById", "storeMemory"];
+  const missing = required.filter((fn) => typeof mod[fn] !== "function");
+  if (missing.length > 0) {
+    throw new Error(`Backend "${name}" is missing required exports: ${missing.join(", ")}`);
+  }
+
+  backendCache.set(name, mod);
+  return mod;
 }
 
 export async function recordPrompt(input, options = {}) {
@@ -43,9 +70,11 @@ export async function summarizeSession(input, options = {}) {
     return null;
   }
 
-  if (getBackend(options) === "mem9") {
+  const backend = getBackend(options);
+  if (backend !== "local") {
     try {
-      const remote = await mem9Client.storeMemory(memory, options);
+      const impl = await resolveBackend(options);
+      const remote = await impl.storeMemory(memory, options);
       return {
         ...memory,
         remote,
@@ -62,19 +91,23 @@ export async function summarizeSession(input, options = {}) {
 }
 
 export async function listRecentMemories(input = {}, options = {}) {
-  return backendImpl(options).listRecentMemories(input, options);
+  const impl = await resolveBackend(options);
+  return impl.listRecentMemories(input, options);
 }
 
 export async function searchMemories(input = {}, options = {}) {
-  return backendImpl(options).searchMemories(input, options);
+  const impl = await resolveBackend(options);
+  return impl.searchMemories(input, options);
 }
 
 export async function getMemoryById(id, options = {}) {
-  return backendImpl(options).getMemoryById(id, options);
+  const impl = await resolveBackend(options);
+  return impl.getMemoryById(id, options);
 }
 
 export async function storeMemory(input = {}, options = {}) {
-  return backendImpl(options).storeMemory(
+  const impl = await resolveBackend(options);
+  return impl.storeMemory(
     {
       ...input,
       agentId: input.agentId || getAgentId(options),
