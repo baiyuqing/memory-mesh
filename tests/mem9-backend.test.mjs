@@ -14,6 +14,7 @@ async function withTempStore(run) {
     CLAUDE_CODE_MEMORY_HOME: process.env.CLAUDE_CODE_MEMORY_HOME,
     CLAUDE_CODE_MEMORY_BACKEND: process.env.CLAUDE_CODE_MEMORY_BACKEND,
     MEM9_API_URL: process.env.MEM9_API_URL,
+    MEM9_API_KEY: process.env.MEM9_API_KEY,
     MEM9_TENANT_ID: process.env.MEM9_TENANT_ID,
     CLAUDE_CODE_MEMORY_AGENT_ID: process.env.CLAUDE_CODE_MEMORY_AGENT_ID,
   };
@@ -21,6 +22,7 @@ async function withTempStore(run) {
   process.env.MEMORY_MESH_HOME = dataHome;
   process.env.MEMORY_MESH_BACKEND = "mem9";
   process.env.MEM9_API_URL = "https://mem9.example.test";
+  delete process.env.MEM9_API_KEY;
   process.env.MEM9_TENANT_ID = "tenant-123";
   process.env.MEMORY_MESH_AGENT_ID = "codex";
 

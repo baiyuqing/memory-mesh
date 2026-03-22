@@ -11,6 +11,7 @@ import {
   LEGACY_DATA_HOME,
   MAX_CONTEXT_ACTIVITY_MEMORIES,
   MAX_CONTEXT_DURABLE_MEMORIES,
+  MAX_CONTEXT_HINT_LENGTH,
   MAX_CONTEXT_MEMORIES,
   MAX_PROMPT_LENGTH,
   MAX_SEARCH_RESULTS,
@@ -666,27 +667,28 @@ function selectContextMemories(memories, limit = MAX_CONTEXT_MEMORIES) {
   return { durable, activity, fallback };
 }
 
+function truncateHint(text, maxLen) {
+  if (!text) return "";
+  const clean = text.replace(/\n/g, " ").trim();
+  if (clean.length <= maxLen) return clean;
+  return clean.slice(0, maxLen - 1) + "…";
+}
+
 function renderContextSection(lines, title, memories) {
   if (memories.length === 0) {
     return;
   }
 
   lines.push(title);
+  for (const memory of memories) {
+    const type = getMemoryType(memory);
+    const badge = DURABLE_MEMORY_TYPES.has(type) ? "📌" : "🔄";
+    const agent = memory.agentId ? ` by ${memory.agentId}` : "";
+    const hint = truncateHint(memory.summary, MAX_CONTEXT_HINT_LENGTH);
+    const hintPart = hint ? ` — ${hint}` : "";
+    lines.push(`  ${badge} [${type}]${agent}: ${memory.title || "(untitled)"}${hintPart} — ID: ${memory.id}`);
+  }
   lines.push("");
-
-  memories.forEach((memory, index) => {
-    const agent = memory.agentId ? ` | by ${memory.agentId}` : "";
-    lines.push(`${index + 1}. [${getMemoryType(memory)}] ${memory.updatedAt}${agent} | ${memory.title}`);
-    lines.push(`   ${memory.summary}`);
-    if (memory.filesChanged?.length > 0) {
-      lines.push(`   Files: ${memory.filesChanged.slice(0, 4).join(", ")}`);
-    }
-    if (memory.commands?.length > 0) {
-      lines.push(`   Commands: ${memory.commands.slice(0, 2).join(" | ")}`);
-    }
-    lines.push(`   Memory ID: ${memory.id}`);
-    lines.push("");
-  });
 }
 
 function buildTeamRoster(memories) {
@@ -725,7 +727,7 @@ export function renderContextFromMemories(memories, input = {}) {
   renderContextSection(lines, "Recent shared worklog:", activity);
   renderContextSection(lines, "Other recent memory:", fallback);
 
-  lines.push("Use the Memory Mesh MCP tools for full details or search.");
+  lines.push("Use `get_memory` with any ID above for full details, or `search_memories` to find more.");
   return lines.join("\n").trim();
 }
 

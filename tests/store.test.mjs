@@ -7,9 +7,19 @@ import { getMemoryById, listRecentMemories, recordPrompt, recordToolUse, renderC
 
 async function withTempStore(run) {
   const dataHome = await mkdtemp(join(tmpdir(), "memory-mesh-"));
+  // Isolate from env-level mem9 config so tests always use local backend
+  const savedBackend = process.env.MEMORY_MESH_BACKEND;
+  const savedApiKey = process.env.MEM9_API_KEY;
+  const savedTenantId = process.env.MEM9_TENANT_ID;
+  delete process.env.MEMORY_MESH_BACKEND;
+  delete process.env.MEM9_API_KEY;
+  delete process.env.MEM9_TENANT_ID;
   try {
     await run(dataHome);
   } finally {
+    if (savedBackend !== undefined) process.env.MEMORY_MESH_BACKEND = savedBackend;
+    if (savedApiKey !== undefined) process.env.MEM9_API_KEY = savedApiKey;
+    if (savedTenantId !== undefined) process.env.MEM9_TENANT_ID = savedTenantId;
     await rm(dataHome, { recursive: true, force: true });
   }
 }
@@ -238,5 +248,31 @@ test("renderContextBlock prioritizes durable memories ahead of raw worklogs", as
     assert.match(context, /Branch migration handoff/);
     assert.match(context, /\[decision\]/);
     assert.match(context, /\[session-summary\]/);
+  });
+});
+
+test("renderContextBlock uses lightweight references with memory IDs", async () => {
+  await withTempStore(async (dataHome) => {
+    const cwd = process.cwd();
+    await storeMemory(
+      {
+        id: "ref-test-1",
+        cwd,
+        content: "A long summary that should be truncated to a short hint in the lightweight context reference format.",
+        title: "Test reference format",
+        memoryType: "decision",
+      },
+      { dataHome, agentId: "alice" },
+    );
+
+    const context = await renderContextBlock({ cwd }, { dataHome });
+
+    // Single-line lightweight format with badge and ID
+    assert.match(context, /📌 \[decision\] by alice: Test reference format/);
+    assert.match(context, /ID: ref-test-1/);
+    // No multi-line Memory ID: prefix (old format)
+    assert.doesNotMatch(context, /Memory ID:/);
+    // Closing line references get_memory tool
+    assert.match(context, /get_memory/);
   });
 });
