@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { recordPrompt, summarizeSession } from "../plugin/scripts/lib/store.mjs";
 
 async function withTempStore(run) {
-  const dataHome = await mkdtemp(join(tmpdir(), "claude-code-memory-server-"));
+  const dataHome = await mkdtemp(join(tmpdir(), "memory-mesh-server-"));
   try {
     await run(dataHome);
   } finally {
@@ -43,7 +43,7 @@ test("mcp-server responds before stdin close exits the process", async () => {
       cwd,
       env: {
         ...process.env,
-        CLAUDE_CODE_MEMORY_HOME: dataHome,
+        MEMORY_MESH_HOME: dataHome,
       },
       stdio: ["pipe", "pipe", "pipe"],
     });

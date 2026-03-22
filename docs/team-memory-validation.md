@@ -21,7 +21,7 @@ Then a new session loads project context and should show:
 
 The scenario uses this repo's current branch layout:
 
-- Decision: `main` now hosts the `claude-code-memory` project
+- Decision: `main` now hosts the `Memory Mesh` project
 - Constraint: old `mysqlbench` code must remain on the `mysqlbench` branch
 - Handoff: next step is wiring Claude Code and Codex to the same `mem9` backend
 - Worklog: Claude Code tightened the MCP memory toolset and ran `npm test`
@@ -71,8 +71,8 @@ This is the shortest example that proves the design is doing the right thing:
 After the local smoke check passes, you can do the real integration check with live clients:
 
 1. Configure Claude Code and Codex with the same `MEM9_API_KEY` or `MEM9_TENANT_ID`
-2. Keep `CLAUDE_CODE_MEMORY_TEAM_ID` the same across both clients
-3. Use different `CLAUDE_CODE_MEMORY_AGENT_ID` values such as `claude-code` and `codex`
+2. Keep `MEMORY_MESH_TEAM_ID` the same across both clients
+3. Use different `MEMORY_MESH_AGENT_ID` values such as `claude-code` and `codex`
 4. From Codex, call `remember_decision`, `remember_constraint`, or `remember_handoff`
 5. Start a fresh Claude Code session in the same repo
 6. Confirm the injected context surfaces the durable items before the recent worklog

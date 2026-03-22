@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { getMemoryById, listRecentMemories, recordPrompt, recordToolUse, renderContextBlock, searchMemories, storeMemory, summarizeSession } from "../plugin/scripts/lib/store.mjs";
 
 async function withTempStore(run) {
-  const dataHome = await mkdtemp(join(tmpdir(), "claude-code-memory-"));
+  const dataHome = await mkdtemp(join(tmpdir(), "memory-mesh-"));
   try {
     await run(dataHome);
   } finally {

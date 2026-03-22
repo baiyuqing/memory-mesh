@@ -1,9 +1,8 @@
 {
   "mcpServers": {
-    "claude-code-memory": {
+    "memory-mesh": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/scripts/mcp-server.mjs"
     }
   }
 }
-

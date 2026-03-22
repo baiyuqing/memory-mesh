@@ -1,6 +1,6 @@
-# Claude Code Memory Plugin
+# Memory Mesh
 
-`claude-code-memory` is a Claude Code plugin marketplace repo that adds persistent memory to a project.
+`memory-mesh` is a Claude Code plugin marketplace repo for shared engineering memory across Claude Code and Codex.
 
 It supports:
 
@@ -11,7 +11,7 @@ The plugin stores prompt and tool activity as local session journals, turns them
 
 ## Features
 
-- Local persistent memory under `~/.claude-code-memory`
+- Local persistent memory under `~/.memory-mesh`
 - Optional `mem9` remote backend for shared team memory
 - Automatic context injection on new or compacted Claude Code sessions
 - Stop-time memory summarization from prompts and tool usage
@@ -25,7 +25,7 @@ In Claude Code:
 
 ```text
 /plugin marketplace add baiyuqing/otto
-/plugin install claude-code-memory
+/plugin install memory-mesh
 ```
 
 Restart Claude Code after installation.
@@ -37,18 +37,18 @@ Restart Claude Code after installation.
 This is the default mode.
 
 ```text
-CLAUDE_CODE_MEMORY_BACKEND=local
+MEMORY_MESH_BACKEND=local
 ```
 
 Storage lives under:
 
 ```text
-~/.claude-code-memory/
+~/.memory-mesh/
   sessions/
   memories/
 ```
 
-You can override this with `CLAUDE_CODE_MEMORY_HOME`.
+You can override this with `MEMORY_MESH_HOME`.
 
 ### mem9 shared backend
 
@@ -61,16 +61,17 @@ Set these environment variables in Claude Code:
 ```json
 {
   "env": {
-    "CLAUDE_CODE_MEMORY_BACKEND": "mem9",
+    "MEMORY_MESH_BACKEND": "mem9",
     "MEM9_API_URL": "https://api.mem9.ai",
     "MEM9_API_KEY": "your-api-key",
-    "CLAUDE_CODE_MEMORY_AGENT_ID": "claude-code",
-    "CLAUDE_CODE_MEMORY_TEAM_ID": "platform"
+    "MEMORY_MESH_AGENT_ID": "claude-code",
+    "MEMORY_MESH_TEAM_ID": "platform"
   }
 }
 ```
 
 If you use the older tenant-scoped API instead of API keys, set `MEM9_TENANT_ID` instead of `MEM9_API_KEY`.
+Legacy `CLAUDE_CODE_MEMORY_*` environment variables are still accepted for compatibility.
 
 ## How It Works
 
@@ -90,7 +91,7 @@ For a multi-agent team setup:
 - Claude Code uses the plugin hooks to auto-load recent project memory and auto-store session summaries.
 - Codex points its MCP configuration at [`plugin/scripts/mcp-server.mjs`](./plugin/scripts/mcp-server.mjs).
 - Both sides use the same backend and the same `MEM9_API_KEY` or `MEM9_TENANT_ID`.
-- Distinguish agents with `CLAUDE_CODE_MEMORY_AGENT_ID`, for example `claude-code` and `codex`.
+- Distinguish agents with `MEMORY_MESH_AGENT_ID`, for example `claude-code` and `codex`.
 
 Codex can use:
 

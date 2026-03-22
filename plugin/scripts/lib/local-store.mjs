@@ -8,6 +8,7 @@ import {
   DEFAULT_DATA_HOME,
   DURABLE_MEMORY_TYPES,
   IMPORTANT_TOOLS,
+  LEGACY_DATA_HOME,
   MAX_CONTEXT_ACTIVITY_MEMORIES,
   MAX_CONTEXT_DURABLE_MEMORIES,
   MAX_CONTEXT_MEMORIES,
@@ -57,7 +58,11 @@ function normalizePrompt(prompt) {
 }
 
 function buildPaths(options = {}) {
-  const dataHome = options.dataHome || process.env.CLAUDE_CODE_MEMORY_HOME || DEFAULT_DATA_HOME;
+  const dataHome =
+    options.dataHome ||
+    process.env.MEMORY_MESH_HOME ||
+    process.env.CLAUDE_CODE_MEMORY_HOME ||
+    (existsSync(DEFAULT_DATA_HOME) ? DEFAULT_DATA_HOME : existsSync(LEGACY_DATA_HOME) ? LEGACY_DATA_HOME : DEFAULT_DATA_HOME);
   return {
     dataHome,
     sessionsDir: join(dataHome, "sessions"),
@@ -687,7 +692,7 @@ export function renderContextFromMemories(memories, input = {}) {
   renderContextSection(lines, "Recent shared worklog:", activity);
   renderContextSection(lines, "Other recent memory:", fallback);
 
-  lines.push("Use the claude-code-memory MCP tools for full details or search.");
+  lines.push("Use the Memory Mesh MCP tools for full details or search.");
   return lines.join("\n").trim();
 }
 

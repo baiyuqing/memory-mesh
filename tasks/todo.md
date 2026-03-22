@@ -1,6 +1,22 @@
 # Task Plan
 
-## Current Task: Build Claude Code Memory Plugin MVP
+## Current Task: Rebrand the Project as Memory Mesh
+
+- [x] Rename the public plugin identity from `claude-code-memory` to `memory-mesh`.
+- [x] Add `MEMORY_MESH_*` configuration aliases while keeping legacy environment variables working.
+- [x] Update docs, examples, and tests to use the new brand and installation command.
+- [x] Run verification, review the diff, and commit the rename.
+
+### Review
+
+- Rebranded the public plugin, marketplace, MCP server, and package identities to `Memory Mesh` / `memory-mesh`.
+- Added `MEMORY_MESH_HOME`, `MEMORY_MESH_BACKEND`, `MEMORY_MESH_AGENT_ID`, and `MEMORY_MESH_TEAM_ID` while retaining legacy `CLAUDE_CODE_MEMORY_*` fallbacks.
+- Switched docs and examples to the new install command and new default data home `~/.memory-mesh`.
+- Added compatibility tests so the new env aliases are preferred and the old names still work.
+- Validation:
+- `npm test`
+
+## Current Task: Build Memory Mesh MVP
 
 - [x] Inspect local context and choose a minimal plugin architecture that matches Claude Code plugin hooks.
 - [x] Scaffold an isolated marketplace/plugin repository with task tracking and package metadata.
@@ -17,7 +33,7 @@
 
 ## Review
 
-- Built a Claude Code marketplace repo with a single installable plugin: `claude-code-memory`.
+- Built a Claude Code marketplace repo with a single installable plugin, now branded as `memory-mesh`.
 - Implemented hook handlers for setup, session start context injection, prompt capture, tool observation, and stop-time summarization using local JSON storage.
 - Added a lightweight stdio MCP server with `search_memories`, `list_recent_memories`, and `get_memory`.
 - Scoped memory by Git common directory so separate worktrees from the same repository share memory.
@@ -38,7 +54,7 @@
 ### Review
 
 - Confirmed from the upstream `mem9` repository that it is explicitly designed for shared cloud memory across Claude Code and other agent clients.
-- Added backend selection via `CLAUDE_CODE_MEMORY_BACKEND`, with `local` as the default and `mem9` as the shared remote option.
+- Added backend selection via `MEMORY_MESH_BACKEND`, with legacy `CLAUDE_CODE_MEMORY_BACKEND` support and `mem9` as the shared remote option.
 - Kept local session journaling for summary generation, then pushed summarized memory into `mem9` when the remote backend is enabled.
 - Added `store_memory` to the MCP surface so Codex can persist durable team notes into the same project memory pool.
 - Added documentation for shared setup and agent identity conventions in `README.md` and `docs/mem9-shared-memory.md`.

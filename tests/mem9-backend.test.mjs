@@ -6,8 +6,11 @@ import { join } from "node:path";
 import { listRecentMemories, recordPrompt, storeMemory, summarizeSession } from "../plugin/scripts/lib/store.mjs";
 
 async function withTempStore(run) {
-  const dataHome = await mkdtemp(join(tmpdir(), "claude-code-memory-mem9-"));
+  const dataHome = await mkdtemp(join(tmpdir(), "memory-mesh-mem9-"));
   const previousEnv = {
+    MEMORY_MESH_HOME: process.env.MEMORY_MESH_HOME,
+    MEMORY_MESH_BACKEND: process.env.MEMORY_MESH_BACKEND,
+    MEMORY_MESH_AGENT_ID: process.env.MEMORY_MESH_AGENT_ID,
     CLAUDE_CODE_MEMORY_HOME: process.env.CLAUDE_CODE_MEMORY_HOME,
     CLAUDE_CODE_MEMORY_BACKEND: process.env.CLAUDE_CODE_MEMORY_BACKEND,
     MEM9_API_URL: process.env.MEM9_API_URL,
@@ -15,11 +18,11 @@ async function withTempStore(run) {
     CLAUDE_CODE_MEMORY_AGENT_ID: process.env.CLAUDE_CODE_MEMORY_AGENT_ID,
   };
 
-  process.env.CLAUDE_CODE_MEMORY_HOME = dataHome;
-  process.env.CLAUDE_CODE_MEMORY_BACKEND = "mem9";
+  process.env.MEMORY_MESH_HOME = dataHome;
+  process.env.MEMORY_MESH_BACKEND = "mem9";
   process.env.MEM9_API_URL = "https://mem9.example.test";
   process.env.MEM9_TENANT_ID = "tenant-123";
-  process.env.CLAUDE_CODE_MEMORY_AGENT_ID = "codex";
+  process.env.MEMORY_MESH_AGENT_ID = "codex";
 
   try {
     await run(dataHome);

@@ -1,9 +1,10 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-export const PLUGIN_NAME = "claude-code-memory";
-export const PLUGIN_VERSION = "0.1.0";
-export const DEFAULT_DATA_HOME = join(homedir(), ".claude-code-memory");
+export const PLUGIN_NAME = "memory-mesh";
+export const PLUGIN_VERSION = "0.2.0";
+export const DEFAULT_DATA_HOME = join(homedir(), ".memory-mesh");
+export const LEGACY_DATA_HOME = join(homedir(), ".claude-code-memory");
 export const HOOK_OK = {
   continue: true,
   suppressOutput: true,

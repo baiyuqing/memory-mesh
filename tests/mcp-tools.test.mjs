@@ -7,17 +7,17 @@ import { callTool, getToolDefinitions } from "../plugin/scripts/lib/mcp-tools.mj
 import { recordPrompt, summarizeSession } from "../plugin/scripts/lib/store.mjs";
 
 async function withTempStore(run) {
-  const dataHome = await mkdtemp(join(tmpdir(), "claude-code-memory-tools-"));
-  const previous = process.env.CLAUDE_CODE_MEMORY_HOME;
-  process.env.CLAUDE_CODE_MEMORY_HOME = dataHome;
+  const dataHome = await mkdtemp(join(tmpdir(), "memory-mesh-tools-"));
+  const previous = process.env.MEMORY_MESH_HOME;
+  process.env.MEMORY_MESH_HOME = dataHome;
 
   try {
     await run(dataHome);
   } finally {
     if (previous === undefined) {
-      delete process.env.CLAUDE_CODE_MEMORY_HOME;
+      delete process.env.MEMORY_MESH_HOME;
     } else {
-      process.env.CLAUDE_CODE_MEMORY_HOME = previous;
+      process.env.MEMORY_MESH_HOME = previous;
     }
     await rm(dataHome, { recursive: true, force: true });
   }

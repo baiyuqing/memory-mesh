@@ -9,10 +9,10 @@
   },
   "plugins": [
     {
-      "name": "claude-code-memory",
-      "version": "0.1.0",
+      "name": "memory-mesh",
+      "version": "0.2.0",
       "source": "./plugin",
-      "description": "Persistent project memory plugin for Claude Code with local summaries and MCP search"
+      "description": "Shared engineering memory for Claude Code and Codex with durable decisions, handoffs, and MCP search"
     }
   ]
 }

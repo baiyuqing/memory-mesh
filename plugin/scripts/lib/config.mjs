@@ -3,6 +3,10 @@ export function getBackend(options = {}) {
     return options.backend;
   }
 
+  if (process.env.MEMORY_MESH_BACKEND) {
+    return process.env.MEMORY_MESH_BACKEND;
+  }
+
   if (process.env.CLAUDE_CODE_MEMORY_BACKEND) {
     return process.env.CLAUDE_CODE_MEMORY_BACKEND;
   }
@@ -17,6 +21,7 @@ export function getBackend(options = {}) {
 export function getAgentId(options = {}) {
   return (
     options.agentId ||
+    process.env.MEMORY_MESH_AGENT_ID ||
     process.env.CLAUDE_CODE_MEMORY_AGENT_ID ||
     process.env.MEM9_AGENT_ID ||
     "claude-code"
@@ -24,6 +29,5 @@ export function getAgentId(options = {}) {
 }
 
 export function getTeamId(options = {}) {
-  return options.teamId || process.env.CLAUDE_CODE_MEMORY_TEAM_ID || "";
+  return options.teamId || process.env.MEMORY_MESH_TEAM_ID || process.env.CLAUDE_CODE_MEMORY_TEAM_ID || "";
 }
-

@@ -1,5 +1,5 @@
 {
-  "description": "claude-code-memory hooks",
+  "description": "memory-mesh hooks",
   "hooks": {
     "Setup": [
       {
@@ -61,4 +61,3 @@
     ]
   }
 }
-

@@ -17,15 +17,15 @@ function heading(title) {
 }
 
 async function withAgent(agentId, run) {
-  const previous = process.env.CLAUDE_CODE_MEMORY_AGENT_ID;
-  process.env.CLAUDE_CODE_MEMORY_AGENT_ID = agentId;
+  const previous = process.env.MEMORY_MESH_AGENT_ID;
+  process.env.MEMORY_MESH_AGENT_ID = agentId;
   try {
     return await run();
   } finally {
     if (previous === undefined) {
-      delete process.env.CLAUDE_CODE_MEMORY_AGENT_ID;
+      delete process.env.MEMORY_MESH_AGENT_ID;
     } else {
-      process.env.CLAUDE_CODE_MEMORY_AGENT_ID = previous;
+      process.env.MEMORY_MESH_AGENT_ID = previous;
     }
   }
 }
@@ -48,24 +48,28 @@ export async function runTeamMemoryValidation(options = {}) {
   const cwd = options.cwd || process.cwd();
   const scenarioName = options.scenarioName || "branch-migration";
   const cleanup = options.cleanup !== false;
-  const dataHome = options.dataHome || (await mkdtemp(join(tmpdir(), "claude-code-memory-demo-")));
+  const dataHome = options.dataHome || (await mkdtemp(join(tmpdir(), "memory-mesh-demo-")));
   const envSnapshot = rememberEnv([
+    "MEMORY_MESH_HOME",
+    "MEMORY_MESH_BACKEND",
+    "MEMORY_MESH_TEAM_ID",
+    "MEMORY_MESH_AGENT_ID",
     "CLAUDE_CODE_MEMORY_HOME",
     "CLAUDE_CODE_MEMORY_BACKEND",
     "CLAUDE_CODE_MEMORY_TEAM_ID",
     "CLAUDE_CODE_MEMORY_AGENT_ID",
   ]);
 
-  process.env.CLAUDE_CODE_MEMORY_HOME = dataHome;
-  process.env.CLAUDE_CODE_MEMORY_BACKEND = options.backend || "local";
-  process.env.CLAUDE_CODE_MEMORY_TEAM_ID = options.teamId || "memory-demo";
+  process.env.MEMORY_MESH_HOME = dataHome;
+  process.env.MEMORY_MESH_BACKEND = options.backend || "local";
+  process.env.MEMORY_MESH_TEAM_ID = options.teamId || "memory-demo";
 
   try {
     await withAgent("claude-code", async () => {
       await callTool("remember_decision", {
         cwd,
         title: "Main branch ownership",
-        decision: "The main branch now hosts the claude-code-memory project.",
+        decision: "The main branch now hosts the Memory Mesh project.",
         tags: ["scenario:branch-migration"],
       });
     });

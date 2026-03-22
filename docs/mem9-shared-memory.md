@@ -13,20 +13,20 @@ This plugin can run against `mem9` so Claude Code and Codex share one project me
 ## Required Environment
 
 ```text
-CLAUDE_CODE_MEMORY_BACKEND=mem9
+MEMORY_MESH_BACKEND=mem9
 MEM9_API_URL=https://api.mem9.ai
 MEM9_API_KEY=...
-CLAUDE_CODE_MEMORY_AGENT_ID=claude-code
-CLAUDE_CODE_MEMORY_TEAM_ID=platform
+MEMORY_MESH_AGENT_ID=claude-code
+MEMORY_MESH_TEAM_ID=platform
 ```
 
 Alternative compatibility mode:
 
 ```text
-CLAUDE_CODE_MEMORY_BACKEND=mem9
+MEMORY_MESH_BACKEND=mem9
 MEM9_API_URL=https://api.mem9.ai
 MEM9_TENANT_ID=...
-CLAUDE_CODE_MEMORY_AGENT_ID=claude-code
+MEMORY_MESH_AGENT_ID=claude-code
 ```
 
 ## Agent IDs
@@ -56,7 +56,7 @@ Search and context injection are project-scoped, so worktrees from the same repo
 Point Codex's MCP configuration at [`plugin/scripts/mcp-server.mjs`](../plugin/scripts/mcp-server.mjs) and set the same `mem9` environment variables, but use:
 
 ```text
-CLAUDE_CODE_MEMORY_AGENT_ID=codex
+MEMORY_MESH_AGENT_ID=codex
 ```
 
 Then Codex can:
@@ -77,3 +77,4 @@ Then Codex can:
 - Keep agent IDs stable.
 - Keep one team ID per engineering group or repo domain.
 - Use the same `MEM9_API_KEY` or tenant across all participating agents.
+- Legacy `CLAUDE_CODE_MEMORY_*` environment variables remain supported for compatibility.
