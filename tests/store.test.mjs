@@ -131,6 +131,64 @@ test("local store keeps typed memories searchable and filterable", async () => {
   });
 });
 
+test("renderContextBlock shows goals first and includes team roster", async () => {
+  await withTempStore(async (dataHome) => {
+    const cwd = process.cwd();
+
+    await storeMemory(
+      {
+        id: "goal-1",
+        cwd,
+        content: "Ship v2 API with full backward compatibility by end of Q3.",
+        title: "Ship v2 API",
+        memoryType: "goal",
+        updatedAt: "2026-03-20T00:00:00.000Z",
+      },
+      { dataHome, agentId: "alice", role: "pm" },
+    );
+    await storeMemory(
+      {
+        id: "decision-1",
+        cwd,
+        content: "Use PostgreSQL for the new service.",
+        title: "Use PostgreSQL",
+        memoryType: "decision",
+        updatedAt: "2026-03-21T00:00:00.000Z",
+      },
+      { dataHome, agentId: "bob", role: "tech-lead" },
+    );
+    await storeMemory(
+      {
+        id: "handoff-1",
+        cwd,
+        content: "Auth module 80% complete, remaining: rate limiting.",
+        title: "Auth progress",
+        memoryType: "handoff",
+        updatedAt: "2026-03-22T00:00:00.000Z",
+      },
+      { dataHome, agentId: "charlie", role: "dev" },
+    );
+
+    const context = await renderContextBlock({ cwd }, { dataHome });
+
+    // Goals appear in the durable section with the goals label
+    assert.match(context, /Team goals & durable memory:/);
+    assert.match(context, /\[goal\]/);
+    assert.match(context, /Ship v2 API/);
+
+    // Goal appears before decision (goal first sorting)
+    const goalIdx = context.indexOf("[goal]");
+    const decisionIdx = context.indexOf("[decision]");
+    assert.ok(goalIdx < decisionIdx, "goal should appear before decision");
+
+    // Team roster is shown
+    assert.match(context, /Team:/);
+    assert.match(context, /alice \(pm\)/);
+    assert.match(context, /bob \(tech-lead\)/);
+    assert.match(context, /charlie \(dev\)/);
+  });
+});
+
 test("renderContextBlock prioritizes durable memories ahead of raw worklogs", async () => {
   await withTempStore(async (dataHome) => {
     const cwd = process.cwd();

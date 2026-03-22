@@ -33,6 +33,7 @@ test("tool definitions expose the expected MCP surface", () => {
     "remember_decision",
     "remember_constraint",
     "remember_handoff",
+    "remember_goal",
   ]);
 });
 
@@ -64,6 +65,23 @@ test("store_memory persists a local explicit memory", async () => {
     });
 
     assert.match(recall.content[0].text, /shared deploy workflow/i);
+  });
+});
+
+test("remember_goal stores a durable goal memory", async () => {
+  await withTempStore(async () => {
+    await callTool("remember_goal", {
+      cwd: process.cwd(),
+      goal: "Ship v2 API with full backward compatibility by end of Q3.",
+      title: "Ship v2 API",
+    });
+
+    const goals = await callTool("list_recent_memories", {
+      cwd: process.cwd(),
+      memoryType: "goal",
+    });
+    assert.match(goals.content[0].text, /Type=goal/);
+    assert.match(goals.content[0].text, /Ship v2 API/);
   });
 });
 

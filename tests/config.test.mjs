@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getAgentId, getBackend, getTeamId } from "../plugin/scripts/lib/config.mjs";
+import { getAgentId, getBackend, getRole, getTeamId } from "../plugin/scripts/lib/config.mjs";
 
 function withEnv(patch, run) {
   const keys = Object.keys(patch);
@@ -43,6 +43,16 @@ test("Memory Mesh env vars are preferred over legacy aliases", () => {
       assert.equal(getTeamId(), "mesh-team");
     },
   );
+});
+
+test("getRole reads MEMORY_MESH_ROLE and falls back to empty string", () => {
+  withEnv({ MEMORY_MESH_ROLE: "pm" }, () => {
+    assert.equal(getRole(), "pm");
+  });
+  withEnv({ MEMORY_MESH_ROLE: undefined }, () => {
+    assert.equal(getRole(), "");
+  });
+  assert.equal(getRole({ role: "tech-lead" }), "tech-lead");
 });
 
 test("Legacy Claude Code env vars still work as fallback", () => {
