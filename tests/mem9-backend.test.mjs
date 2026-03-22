@@ -4,6 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { listRecentMemories, recordPrompt, storeMemory, summarizeSession } from "../plugin/scripts/lib/store.mjs";
+import { getProjectContext } from "../plugin/scripts/lib/project.mjs";
 
 async function withTempStore(run) {
   const dataHome = await mkdtemp(join(tmpdir(), "memory-mesh-mem9-"));
@@ -40,6 +41,7 @@ async function withTempStore(run) {
 
 test("mem9 backend stores summarized sessions into the shared tenant API", async () => {
   await withTempStore(async () => {
+    const expectedProjectKey = getProjectContext(process.cwd()).projectKey;
     const requests = [];
     const previousFetch = globalThis.fetch;
     globalThis.fetch = async (url, init = {}) => {
@@ -68,7 +70,7 @@ test("mem9 backend stores summarized sessions into the shared tenant API", async
       const body = JSON.parse(requests[0].init.body);
       assert.equal(body.agent_id, "codex");
       assert.match(body.content, /Share architecture decisions across agents/);
-      assert.ok(body.tags.includes("project:otto"));
+      assert.ok(body.tags.includes(`project:${expectedProjectKey}`));
       assert.equal(memory.remote.accepted, true);
     } finally {
       globalThis.fetch = previousFetch;
@@ -78,6 +80,7 @@ test("mem9 backend stores summarized sessions into the shared tenant API", async
 
 test("mem9 backend reads shared memories for the current project", async () => {
   await withTempStore(async () => {
+    const project = getProjectContext(process.cwd());
     const previousFetch = globalThis.fetch;
     globalThis.fetch = async () => ({
       ok: true,
@@ -88,12 +91,12 @@ test("mem9 backend reads shared memories for the current project", async () => {
             {
               id: "remote-1",
               content: "Codex fixed the build pipeline and standardized release tags.",
-              tags: ["project:otto", "team:platform", "kind:session-summary"],
+              tags: [`project:${project.projectKey}`, "team:platform", "kind:session-summary"],
               agent_id: "codex",
               metadata: {
-                projectKey: "otto",
-                projectLabel: "otto",
-                workspaceLabel: "otto-claude-code-memory-plugin",
+                projectKey: project.projectKey,
+                projectLabel: project.projectLabel,
+                workspaceLabel: project.workspaceLabel,
                 agentId: "codex",
                 title: "Build pipeline stabilized",
                 request: "Fix the build pipeline",
@@ -127,6 +130,7 @@ test("mem9 backend reads shared memories for the current project", async () => {
 
 test("mem9 backend preserves typed tags when storing explicit durable memory", async () => {
   await withTempStore(async () => {
+    const expectedProjectKey = getProjectContext(process.cwd()).projectKey;
     const requests = [];
     const previousFetch = globalThis.fetch;
     globalThis.fetch = async (url, init = {}) => {
@@ -154,7 +158,7 @@ test("mem9 backend preserves typed tags when storing explicit durable memory", a
       assert.equal(requests.length, 1);
       const body = JSON.parse(requests[0].init.body);
       assert.ok(body.tags.includes("kind:constraint"));
-      assert.ok(body.tags.includes("project:otto"));
+      assert.ok(body.tags.includes(`project:${expectedProjectKey}`));
       assert.ok(body.tags.includes("agent:codex"));
       assert.ok(body.tags.includes("area:git"));
       assert.equal(body.metadata.memoryType, "constraint");

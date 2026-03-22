@@ -22,27 +22,51 @@ function normalizePath(cwd, value) {
   return isAbsolute(value) ? value : resolve(cwd, value);
 }
 
+export function parseRemoteRepository(remoteUrl) {
+  const value = typeof remoteUrl === "string" ? remoteUrl.trim().replace(/\/+$/, "") : "";
+  if (!value) {
+    return null;
+  }
+
+  const match = value.match(/[:/]([^/:/]+)\/([^/]+?)(?:\.git)?$/);
+  if (!match) {
+    return null;
+  }
+
+  const [, owner, repo] = match;
+  return {
+    owner,
+    repo,
+    slug: `${owner}/${repo}`,
+  };
+}
+
 export function getProjectContext(cwd = process.cwd()) {
   const gitRoot = normalizePath(cwd, runGit(cwd, ["rev-parse", "--show-toplevel"]));
   const gitCommonDir = normalizePath(cwd, runGit(cwd, ["rev-parse", "--git-common-dir"]));
+  const remoteOriginUrl = runGit(cwd, ["config", "--get", "remote.origin.url"]);
+  const remoteRepository = parseRemoteRepository(remoteOriginUrl);
 
   let projectKey = basename(cwd);
-  if (gitCommonDir) {
+  if (remoteRepository?.repo) {
+    projectKey = remoteRepository.repo;
+  } else if (gitCommonDir) {
     projectKey = basename(gitCommonDir) === ".git" ? basename(dirname(gitCommonDir)) : basename(gitCommonDir);
   } else if (gitRoot) {
     projectKey = basename(gitRoot);
   }
 
   const workspaceLabel = basename(cwd);
-  const projectLabel = gitRoot ? basename(gitRoot) : workspaceLabel;
+  const projectLabel = remoteRepository?.repo || (gitRoot ? basename(gitRoot) : workspaceLabel);
 
   return {
     cwd,
     gitRoot,
     gitCommonDir,
+    remoteOriginUrl,
+    remoteRepository,
     projectKey,
     projectLabel,
     workspaceLabel,
   };
 }
-

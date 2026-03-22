@@ -4,6 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getMemoryById, listRecentMemories, recordPrompt, recordToolUse, renderContextBlock, searchMemories, storeMemory, summarizeSession } from "../plugin/scripts/lib/store.mjs";
+import { getProjectContext } from "../plugin/scripts/lib/project.mjs";
 
 async function withTempStore(run) {
   const dataHome = await mkdtemp(join(tmpdir(), "memory-mesh-"));
@@ -96,6 +97,7 @@ test("searchMemories returns relevant recent memories", async () => {
 test("local store keeps typed memories searchable and filterable", async () => {
   await withTempStore(async (dataHome) => {
     const cwd = process.cwd();
+    const expectedProjectKey = getProjectContext(cwd).projectKey;
 
     await storeMemory(
       {
@@ -121,7 +123,7 @@ test("local store keeps typed memories searchable and filterable", async () => {
     assert.equal(decisions.length, 1);
     assert.equal(decisions[0].id, "decision-1");
     assert.ok(decisions[0].tags.includes("kind:decision"));
-    assert.ok(decisions[0].tags.includes("project:otto"));
+    assert.ok(decisions[0].tags.includes(`project:${expectedProjectKey}`));
     assert.ok(decisions[0].tags.includes("agent:codex"));
     assert.ok(decisions[0].tags.includes("area:memory"));
 
