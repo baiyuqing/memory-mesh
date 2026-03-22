@@ -1,5 +1,10 @@
 # Memory Mesh
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green.svg)](https://nodejs.org)
+[![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](#)
+[![MCP](https://img.shields.io/badge/MCP-compatible-blueviolet.svg)](#)
+
 ![Memory Mesh hero](./assets/memory-mesh-hero.svg)
 
 `memory-mesh` is a Claude Code plugin marketplace repo for shared engineering memory across Claude Code and Codex.

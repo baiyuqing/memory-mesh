@@ -8,6 +8,18 @@
     "test": "node --test",
     "verify": "npm test"
   },
+  "keywords": [
+    "claude-code",
+    "codex",
+    "ai-agents",
+    "memory",
+    "mcp",
+    "plugin",
+    "multi-agent",
+    "shared-memory",
+    "llm",
+    "developer-tools"
+  ],
   "engines": {
     "node": ">=18.0.0"
   }
