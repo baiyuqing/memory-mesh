@@ -1,4 +1,4 @@
-.PHONY: help dev-up dev-down test test-unit test-standard lint seed logs build clean demo fmt fmt-check
+.PHONY: help dev-up dev-down test test-unit test-standard ci-smoke ci-unit ci-local lint seed logs build clean demo fmt fmt-check
 
 CLUSTER_NAME := ottoplus-dev
 K3D_CONFIG := deploy/k3d-config.yaml
@@ -59,6 +59,14 @@ test-standard: ## Run 4-block standard credential path tests only
 	go test ./deploy/examples/... ./src/core/compiler/... ./src/api/... ./src/operator/reconciler/... \
 		-run 'TestStandard|TestCompile_CredentialPath|TestValidateComposition_StandardPath|TestTopology_StandardPath|TestAutoWire_StandardPath|TestOperatorCompiler_StandardPath' \
 		-v -count=1
+
+# --- CI (local mirror of GitHub Actions) ---
+
+ci-smoke: build test-standard ## Local mirror of CI smoke workflow (build + standard path tests)
+
+ci-unit: test ## Local mirror of CI unit workflow (full unit tests)
+
+ci-local: ci-smoke ci-unit ## Run all CI checks locally in sequence
 
 # --- Code Quality ---
 
