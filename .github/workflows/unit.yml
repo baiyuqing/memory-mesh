@@ -1,4 +1,5 @@
 name: Unit Tests
+run-name: "Unit · ${{ github.ref_name }} · ${{ github.event_name }}"
 
 on:
   workflow_dispatch:

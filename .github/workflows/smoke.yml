@@ -1,4 +1,5 @@
 name: Standard Path Smoke
+run-name: "Smoke · ${{ github.ref_name }} · ${{ github.event_name }}"
 
 on:
   workflow_dispatch:
