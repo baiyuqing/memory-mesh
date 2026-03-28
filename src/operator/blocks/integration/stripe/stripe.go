@@ -29,7 +29,7 @@ func (b *Block) Descriptor() block.Descriptor {
 		Kind:        "integration.stripe",
 		Category:    block.CategoryIntegration,
 		Version:     "1.0.0",
-		Description: "Stripe payment API integration. Deploys a webhook receiver and provides billing event streams.",
+		Description: "Stripe payment API integration block. Deploys a webhook receiver and provides billing event streams.",
 		Ports: []block.Port{
 			{Name: "webhook-endpoint", PortType: "http-endpoint", Direction: block.PortOutput},
 			{Name: "billing-events", PortType: "event-stream", Direction: block.PortOutput},

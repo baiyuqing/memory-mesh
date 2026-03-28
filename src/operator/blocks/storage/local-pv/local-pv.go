@@ -19,7 +19,7 @@ func (b *Block) Descriptor() block.Descriptor {
 		Kind:        "storage.local-pv",
 		Category:    block.CategoryStorage,
 		Version:     "1.0.0",
-		Description: "Local PersistentVolume storage for database data.",
+		Description: "Local PersistentVolume storage for database data. Ephemeral — data does not survive node loss.",
 		Ports: []block.Port{
 			{Name: "pvc-spec", PortType: "pvc-spec", Direction: block.PortOutput},
 		},

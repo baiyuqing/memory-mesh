@@ -1,49 +1,14 @@
 package compiler
 
 import (
-	"context"
 	"testing"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
+	"github.com/baiyuqing/ottoplus/src/core/testfixture"
 )
 
-// testRegistry builds a registry with the Phase 1 block set.
-func testRegistry(t *testing.T) *block.Registry {
-	t.Helper()
-	r := block.NewRegistry()
-	for _, b := range []block.Block{
-		&fakeBlock{descriptor: block.Descriptor{
-			Kind:     "storage.local-pv",
-			Category: block.CategoryStorage,
-			Ports:    []block.Port{{Name: "pvc-spec", PortType: "pvc-spec", Direction: block.PortOutput}},
-		}},
-		&fakeBlock{descriptor: block.Descriptor{
-			Kind:     "datastore.postgresql",
-			Category: block.CategoryDatastore,
-			Ports: []block.Port{
-				{Name: "storage", PortType: "pvc-spec", Direction: block.PortInput, Required: true},
-				{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
-				{Name: "metrics", PortType: "metrics-endpoint", Direction: block.PortOutput},
-			},
-		}},
-		&fakeBlock{descriptor: block.Descriptor{
-			Kind:     "gateway.pgbouncer",
-			Category: block.CategoryGateway,
-			Ports: []block.Port{
-				{Name: "upstream-dsn", PortType: "dsn", Direction: block.PortInput, Required: true},
-				{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
-			},
-		}},
-	} {
-		if err := r.Register(b); err != nil {
-			t.Fatal(err)
-		}
-	}
-	return r
-}
-
 func TestCompile_Shorthand(t *testing.T) {
-	registry := testRegistry(t)
+	registry := testfixture.NewPhase1Registry()
 	spec := ClusterSpec{
 		Engine:   "postgresql",
 		Replicas: 3,
@@ -81,14 +46,10 @@ func TestCompile_Shorthand(t *testing.T) {
 }
 
 func TestCompile_ExplicitComposition(t *testing.T) {
-	registry := testRegistry(t)
+	registry := testfixture.NewPhase1Registry()
 	spec := ClusterSpec{
 		Blocks: &BlocksSpec{
-			Composition: []block.BlockRef{
-				{Kind: "storage.local-pv", Name: "storage", Parameters: map[string]string{"size": "5Gi"}},
-				{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{"storage": "storage/pvc-spec"}},
-				{Kind: "gateway.pgbouncer", Name: "pooler", Inputs: map[string]string{"upstream-dsn": "db/dsn"}},
-			},
+			Composition: testfixture.StandardComposition(),
 		},
 	}
 
@@ -125,13 +86,8 @@ func TestCompile_ExplicitComposition(t *testing.T) {
 func TestCompileComposition_MatchesCompile(t *testing.T) {
 	// Prove that CompileComposition and Compile produce identical results
 	// for the same explicit composition input.
-	registry := testRegistry(t)
-
-	blocks := []block.BlockRef{
-		{Kind: "storage.local-pv", Name: "storage"},
-		{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{"storage": "storage/pvc-spec"}},
-		{Kind: "gateway.pgbouncer", Name: "pooler", Inputs: map[string]string{"upstream-dsn": "db/dsn"}},
-	}
+	registry := testfixture.NewPhase1Registry()
+	blocks := testfixture.StandardComposition()
 
 	// Via Compile (ClusterSpec with explicit blocks).
 	specResult, specErrs := Compile(ClusterSpec{
@@ -167,7 +123,7 @@ func TestCompileComposition_MatchesCompile(t *testing.T) {
 }
 
 func TestCompile_InvalidKind(t *testing.T) {
-	registry := testRegistry(t)
+	registry := testfixture.NewPhase1Registry()
 	spec := ClusterSpec{
 		Blocks: &BlocksSpec{
 			Composition: []block.BlockRef{
@@ -186,7 +142,7 @@ func TestCompile_InvalidKind(t *testing.T) {
 }
 
 func TestCompile_MissingEngine(t *testing.T) {
-	registry := testRegistry(t)
+	registry := testfixture.NewPhase1Registry()
 	spec := ClusterSpec{
 		Replicas: 1,
 	}
@@ -199,10 +155,3 @@ func TestCompile_MissingEngine(t *testing.T) {
 		t.Error("expected error for missing engine")
 	}
 }
-
-type fakeBlock struct {
-	descriptor block.Descriptor
-}
-
-func (f *fakeBlock) Descriptor() block.Descriptor                                     { return f.descriptor }
-func (f *fakeBlock) ValidateParameters(_ context.Context, _ map[string]string) error { return nil }

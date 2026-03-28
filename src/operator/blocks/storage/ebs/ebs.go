@@ -25,7 +25,7 @@ func (b *Block) Descriptor() block.Descriptor {
 		Kind:        "storage.ebs",
 		Category:    block.CategoryStorage,
 		Version:     "1.0.0",
-		Description: "AWS EBS storage provisioner via StorageClass.",
+		Description: "AWS EBS storage provisioner. Uses StorageClass with EBS CSI driver (simulated via LocalStack for local dev).",
 		Ports: []block.Port{
 			{Name: "pvc-spec", PortType: "pvc-spec", Direction: block.PortOutput},
 		},

@@ -2,56 +2,20 @@ package api
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
+	"github.com/baiyuqing/ottoplus/src/core/testfixture"
 )
 
-// setupTestServer creates an API server with the Phase 1 block set
-// registered in a real Registry.
+// setupTestServer creates an API server with the canonical Phase 1
+// block set from testfixture.
 func setupTestServer(t *testing.T) *Server {
 	t.Helper()
-	registry := block.NewRegistry()
-
-	for _, b := range []block.Block{
-		&fakeBlock{descriptor: block.Descriptor{
-			Kind:     "storage.local-pv",
-			Category: block.CategoryStorage,
-			Version:  "1.0.0",
-			Ports:    []block.Port{{Name: "pvc-spec", PortType: "pvc-spec", Direction: block.PortOutput}},
-			Parameters: []block.ParameterSpec{
-				{Name: "size", Type: "string", Default: "1Gi"},
-			},
-		}},
-		&fakeBlock{descriptor: block.Descriptor{
-			Kind:     "datastore.postgresql",
-			Category: block.CategoryDatastore,
-			Version:  "1.0.0",
-			Ports: []block.Port{
-				{Name: "storage", PortType: "pvc-spec", Direction: block.PortInput, Required: true},
-				{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
-				{Name: "metrics", PortType: "metrics-endpoint", Direction: block.PortOutput},
-			},
-		}},
-		&fakeBlock{descriptor: block.Descriptor{
-			Kind:     "gateway.pgbouncer",
-			Category: block.CategoryGateway,
-			Version:  "1.0.0",
-			Ports: []block.Port{
-				{Name: "upstream-dsn", PortType: "dsn", Direction: block.PortInput, Required: true},
-				{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
-			},
-		}},
-	} {
-		if err := registry.Register(b); err != nil {
-			t.Fatal(err)
-		}
-	}
-	return NewServer(registry)
+	return NewServer(testfixture.NewPhase1Registry())
 }
 
 func TestHealthz(t *testing.T) {
@@ -135,13 +99,7 @@ func TestGetBlockNotFound(t *testing.T) {
 func TestValidateComposition_Valid(t *testing.T) {
 	srv := setupTestServer(t)
 
-	comp := block.Composition{
-		Blocks: []block.BlockRef{
-			{Kind: "storage.local-pv", Name: "storage"},
-			{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{"storage": "storage/pvc-spec"}},
-			{Kind: "gateway.pgbouncer", Name: "pooler", Inputs: map[string]string{"upstream-dsn": "db/dsn"}},
-		},
-	}
+	comp := block.Composition{Blocks: testfixture.StandardComposition()}
 	body, _ := json.Marshal(ValidateRequest{Composition: comp})
 	req := httptest.NewRequest("POST", "/v1/compositions/validate", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -183,6 +141,8 @@ func TestValidateComposition_InvalidKind(t *testing.T) {
 func TestTopology_CorrectOrder(t *testing.T) {
 	srv := setupTestServer(t)
 
+	// Use the standard composition but in a different order to prove
+	// topo sort works regardless of input order.
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
 			{Kind: "gateway.pgbouncer", Name: "pooler", Inputs: map[string]string{"upstream-dsn": "db/dsn"}},
@@ -217,11 +177,3 @@ func TestTopology_CorrectOrder(t *testing.T) {
 		t.Errorf("db (pos %d) should come before pooler (pos %d)", posMap["db"], posMap["pooler"])
 	}
 }
-
-// fakeBlock is a minimal Block implementation for API tests.
-type fakeBlock struct {
-	descriptor block.Descriptor
-}
-
-func (f *fakeBlock) Descriptor() block.Descriptor                                     { return f.descriptor }
-func (f *fakeBlock) ValidateParameters(_ context.Context, _ map[string]string) error { return nil }
