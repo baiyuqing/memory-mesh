@@ -1,4 +1,4 @@
-// Package slacknotifier implements the compute.slack-notifier block,
+// Package slacknotifier implements the integration.slack-notifier block,
 // deploying a Slack webhook notification relay for cluster events and alerts.
 package slacknotifier
 
@@ -23,8 +23,8 @@ type Block struct{}
 
 func (b *Block) Descriptor() block.Descriptor {
 	return block.Descriptor{
-		Kind:        "compute.slack-notifier",
-		Category:    block.CategoryCompute,
+		Kind:        "integration.slack-notifier",
+		Category:    block.CategoryIntegration,
 		Version:     "1.0.0",
 		Description: "Slack webhook notifier for cluster events and alerts.",
 		Ports: []block.Port{

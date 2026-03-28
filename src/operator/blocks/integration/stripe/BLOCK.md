@@ -1,6 +1,6 @@
 ---
-kind: compute.stripe
-category: compute
+kind: integration.stripe
+category: integration
 version: 1.0.0
 description: Stripe payment API integration block. Deploys a webhook receiver and provides billing event streams.
 ports:
@@ -41,7 +41,7 @@ provides:
   - event-stream
 ---
 
-# compute.stripe
+# integration.stripe
 
 Deploys a Stripe webhook receiver as a Kubernetes Deployment. Receives
 Stripe events, validates signatures, and stores them in the wired database

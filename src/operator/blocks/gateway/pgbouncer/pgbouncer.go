@@ -1,10 +1,11 @@
-// Package proxysql implements the compute.proxysql block, deploying a
-// ProxySQL connection pooler in front of a MySQL datastore block.
-package proxysql
+// Package pgbouncer implements the gateway.pgbouncer block, deploying a
+// PgBouncer connection pooler in front of a PostgreSQL datastore block.
+package pgbouncer
 
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
 	blocks "github.com/baiyuqing/ottoplus/src/operator/blocks"
@@ -18,78 +19,54 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Block implements BlockRuntime for ProxySQL.
+// Block implements BlockRuntime for PgBouncer.
 type Block struct{}
 
 func (b *Block) Descriptor() block.Descriptor {
 	return block.Descriptor{
-		Kind:        "compute.proxysql",
-		Category:    block.CategoryCompute,
+		Kind:        "gateway.pgbouncer",
+		Category:    block.CategoryGateway,
 		Version:     "1.0.0",
-		Description: "ProxySQL connection pooler and query router for MySQL.",
+		Description: "PgBouncer connection pooler for PostgreSQL.",
 		Ports: []block.Port{
 			{Name: "upstream-dsn", PortType: "dsn", Direction: block.PortInput, Required: true},
 			{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
 			{Name: "metrics", PortType: "metrics-endpoint", Direction: block.PortOutput},
 		},
 		Parameters: []block.ParameterSpec{
-			{Name: "maxConnections", Type: "int", Default: "1024", Description: "Maximum frontend connections."},
-			{Name: "defaultHostgroup", Type: "int", Default: "0", Description: "Default hostgroup for queries."},
-			{Name: "monitorUsername", Type: "string", Default: "monitor", Description: "Username for backend health checks."},
-			{Name: "multiplexing", Type: "string", Default: "true", Description: "Enable connection multiplexing."},
+			{Name: "poolMode", Type: "string", Default: "transaction", Description: "Pool mode: session, transaction, or statement."},
+			{Name: "maxClientConnections", Type: "int", Default: "500", Description: "Maximum client connections."},
+			{Name: "defaultPoolSize", Type: "int", Default: "20", Description: "Default pool size per user/database pair."},
 		},
-		Requires: []string{"datastore.mysql"},
+		Requires: []string{"datastore.postgresql"},
 		Provides: []string{"dsn", "metrics-endpoint"},
 	}
 }
 
-func (b *Block) ValidateParameters(_ context.Context, _ map[string]string) error {
+func (b *Block) ValidateParameters(_ context.Context, params map[string]string) error {
+	validModes := map[string]bool{"session": true, "transaction": true, "statement": true}
+	if mode, ok := params["poolMode"]; ok && !validModes[mode] {
+		return fmt.Errorf("invalid poolMode %q, must be session/transaction/statement", mode)
+	}
 	return nil
 }
 
 func (b *Block) Reconcile(ctx context.Context, c client.Client, req blocks.ReconcileRequest) (blocks.ReconcileResult, error) {
 	params := req.BlockRef.Parameters
-	maxConn := paramOrDefault(params, "maxConnections", "1024")
-	hostgroup := paramOrDefault(params, "defaultHostgroup", "0")
-	monUser := paramOrDefault(params, "monitorUsername", "monitor")
-	multiplex := paramOrDefault(params, "multiplexing", "true")
+	poolMode := paramOrDefault(params, "poolMode", "transaction")
+	maxClient := paramOrDefault(params, "maxClientConnections", "500")
+	poolSize := paramOrDefault(params, "defaultPoolSize", "20")
 	upstreamDSN := req.ResolvedInputs["upstream-dsn"]
 
 	fullName := fmt.Sprintf("%s-%s", req.ClusterName, req.BlockRef.Name)
 	labels := blockLabels(fullName, req.ClusterName, req.BlockRef.Name)
 
-	proxysqlCnf := fmt.Sprintf(`datadir="/var/lib/proxysql"
+	pgbouncerINI := fmt.Sprintf(
+		"[databases]\n* = %s\n\n[pgbouncer]\nlisten_addr = 0.0.0.0\nlisten_port = 6432\nauth_type = any\npool_mode = %s\nmax_client_conn = %s\ndefault_pool_size = %s\nadmin_users = pgbouncer\nstats_users = pgbouncer\n",
+		upstreamDSN, poolMode, maxClient, poolSize,
+	)
 
-admin_variables=
-{
-    admin_credentials="admin:admin"
-    mysql_ifaces="0.0.0.0:6032"
-}
-
-mysql_variables=
-{
-    threads=4
-    max_connections=%s
-    default_query_delay=0
-    default_query_timeout=36000000
-    interfaces="0.0.0.0:6033"
-    monitor_username="%s"
-    monitor_password="monitor"
-    multiplexing=%s
-}
-
-mysql_servers=
-(
-    { address="%s", port=3306, hostgroup=%s, max_connections=100 }
-)
-
-mysql_users=
-(
-    { username="root", password="", default_hostgroup=%s }
-)
-`, maxConn, monUser, multiplex, extractHost(upstreamDSN), hostgroup, hostgroup)
-
-	if err := reconcileConfigMap(ctx, c, req.ClusterNamespace, fullName, labels, map[string]string{"proxysql.cnf": proxysqlCnf}); err != nil {
+	if err := reconcileConfigMap(ctx, c, req.ClusterNamespace, fullName, labels, map[string]string{"pgbouncer.ini": pgbouncerINI}); err != nil {
 		return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
 	}
 
@@ -98,18 +75,18 @@ mysql_users=
 		return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
 	}
 
-	if err := reconcileClusterIPService(ctx, c, req.ClusterNamespace, fullName, labels, "proxysql", 6033); err != nil {
+	if err := reconcileClusterIPService(ctx, c, req.ClusterNamespace, fullName, labels, "pgbouncer", 6432); err != nil {
 		return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
 	}
 
-	dsn := fmt.Sprintf("mysql://root@%s.%s.svc:6033/mysql", fullName, req.ClusterNamespace)
+	dsn := fmt.Sprintf("postgresql://pgbouncer@%s.%s.svc:6432/postgres", fullName, req.ClusterNamespace)
 
 	return blocks.ReconcileResult{
 		Phase:   block.PhaseReady,
-		Message: "ProxySQL Deployment reconciled",
+		Message: "PgBouncer Deployment reconciled",
 		Outputs: map[string]string{
 			"dsn":     dsn,
-			"metrics": fmt.Sprintf("http://%s.%s.svc:6070/metrics", fullName, req.ClusterNamespace),
+			"metrics": fmt.Sprintf("http://%s.%s.svc:9127/metrics", fullName, req.ClusterNamespace),
 		},
 	}, nil
 }
@@ -147,32 +124,35 @@ func (b *Block) reconcileDeployment(ctx context.Context, c client.Client, namesp
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{{
-						Name:  "proxysql",
-						Image: "proxysql/proxysql:2.6.3",
-						Ports: []corev1.ContainerPort{
-							{Name: "mysql", ContainerPort: 6033, Protocol: corev1.ProtocolTCP},
-							{Name: "admin", ContainerPort: 6032, Protocol: corev1.ProtocolTCP},
-						},
-						VolumeMounts: []corev1.VolumeMount{
-							{Name: "config", MountPath: "/etc/proxysql.cnf", SubPath: "proxysql.cnf", ReadOnly: true},
-						},
-						ReadinessProbe: &corev1.Probe{
-							ProbeHandler: corev1.ProbeHandler{
-								TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(6033)},
+					Containers: []corev1.Container{
+						{
+							Name:  "pgbouncer",
+							Image: "bitnami/pgbouncer:1.22.0",
+							Ports: []corev1.ContainerPort{
+								{Name: "pgbouncer", ContainerPort: 6432, Protocol: corev1.ProtocolTCP},
 							},
-							InitialDelaySeconds: 5,
-							PeriodSeconds:       5,
-						},
-					}},
-					Volumes: []corev1.Volume{{
-						Name: "config",
-						VolumeSource: corev1.VolumeSource{
-							ConfigMap: &corev1.ConfigMapVolumeSource{
-								LocalObjectReference: corev1.LocalObjectReference{Name: name + "-config"},
+							VolumeMounts: []corev1.VolumeMount{
+								{Name: "config", MountPath: "/bitnami/pgbouncer/conf", ReadOnly: true},
+							},
+							ReadinessProbe: &corev1.Probe{
+								ProbeHandler: corev1.ProbeHandler{
+									TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(6432)},
+								},
+								InitialDelaySeconds: 5,
+								PeriodSeconds:       5,
 							},
 						},
-					}},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "config",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{Name: name + "-config"},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -191,9 +171,10 @@ func (b *Block) reconcileDeployment(ctx context.Context, c client.Client, namesp
 	return c.Update(ctx, existing)
 }
 
+// Shared helpers to reduce duplication across blocks.
+
 func blockLabels(fullName, clusterName, blockName string) map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/name":       "proxysql",
 		"app.kubernetes.io/instance":   fullName,
 		"app.kubernetes.io/part-of":    "ottoplus",
 		"app.kubernetes.io/managed-by": "ottoplus-operator",
@@ -242,39 +223,17 @@ func reconcileClusterIPService(ctx context.Context, c client.Client, namespace, 
 	return c.Update(ctx, existing)
 }
 
-func extractHost(dsn string) string {
-	// Parse mysql://user@host:port/db -> host
-	s := dsn
-	for _, prefix := range []string{"mysql://", "postgresql://"} {
-		if len(s) > len(prefix) && s[:len(prefix)] == prefix {
-			s = s[len(prefix):]
-			break
-		}
-	}
-	if idx := findByte(s, '@'); idx >= 0 {
-		s = s[idx+1:]
-	}
-	if idx := findByte(s, ':'); idx >= 0 {
-		return s[:idx]
-	}
-	if idx := findByte(s, '/'); idx >= 0 {
-		return s[:idx]
-	}
-	return s
-}
-
-func findByte(s string, b byte) int {
-	for i := range s {
-		if s[i] == b {
-			return i
-		}
-	}
-	return -1
-}
-
 func paramOrDefault(params map[string]string, key, defaultValue string) string {
 	if v, ok := params[key]; ok && v != "" {
 		return v
 	}
 	return defaultValue
+}
+
+func atoi(s string, fallback int) int {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return fallback
+	}
+	return n
 }

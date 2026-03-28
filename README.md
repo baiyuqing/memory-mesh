@@ -57,15 +57,16 @@ The `inputs` field makes the dependency graph readable inline — no need to cro
 ├──────────────────────────────────────────────────────┤
 │  Block Layer (composable, pluggable)                 │
 │                                                      │
-│  datastore    compute       observability             │
-│  postgresql   pgbouncer     metrics-exporter          │
-│  mysql        proxysql      log-aggregator            │
-│  redis        s3-backup     health-dashboard          │
-│               stripe                                  │
-│  storage      slack-notifier                          │
-│  local-pv                   security                  │
-│  ebs          networking    mtls                      │
-│               ingress       password-rotation         │
+│  datastore    gateway        observability             │
+│  postgresql   pgbouncer      metrics-exporter          │
+│  mysql        proxysql       log-aggregator            │
+│  redis                       health-dashboard          │
+│               integration                              │
+│  storage      s3-backup      security                  │
+│  local-pv     stripe         mtls                      │
+│  ebs          slack-notifier password-rotation         │
+│               networking                               │
+│               ingress                                  │
 ├──────────────────────────────────────────────────────┤
 │  Local Infrastructure                                │
 │  k3d (K8s) + LocalStack (S3, SQS, IAM)              │
@@ -96,11 +97,11 @@ Each block is a self-contained unit with:
 | datastore | `datastore.postgresql` | PostgreSQL StatefulSet + Services |
 | datastore | `datastore.mysql` | MySQL StatefulSet + Services |
 | datastore | `datastore.redis` | Redis with optional persistence |
-| compute | `compute.pgbouncer` | PostgreSQL connection pooler |
-| compute | `compute.proxysql` | MySQL connection pooler |
-| compute | `compute.s3-backup` | S3 backups via CronJob |
-| compute | `compute.stripe` | Stripe webhook receiver |
-| compute | `compute.slack-notifier` | Slack alert notifications |
+| gateway | `gateway.pgbouncer` | PostgreSQL connection pooler |
+| gateway | `gateway.proxysql` | MySQL connection pooler |
+| integration | `integration.s3-backup` | S3 backups via CronJob |
+| integration | `integration.stripe` | Stripe webhook receiver |
+| integration | `integration.slack-notifier` | Slack alert notifications |
 | storage | `storage.local-pv` | Local PersistentVolume |
 | storage | `storage.ebs` | AWS EBS StorageClass |
 | observability | `observability.metrics-exporter` | Prometheus scrape config |

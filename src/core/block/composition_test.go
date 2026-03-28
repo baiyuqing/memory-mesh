@@ -64,7 +64,7 @@ func TestCompositionValidatePortTypeMismatch(t *testing.T) {
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
 			{Kind: "storage.local-pv", Name: "storage"},
-			{Kind: "compute.pgbouncer", Name: "proxy"},
+			{Kind: "gateway.pgbouncer", Name: "proxy"},
 		},
 		Wires: []block.Wire{
 			{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "proxy", ToPort: "upstream-dsn"},
@@ -109,7 +109,7 @@ func TestAutoWireSimple(t *testing.T) {
 		Blocks: []block.BlockRef{
 			{Kind: "storage.local-pv", Name: "storage"},
 			{Kind: "datastore.postgresql", Name: "db"},
-			{Kind: "compute.pgbouncer", Name: "proxy"},
+			{Kind: "gateway.pgbouncer", Name: "proxy"},
 		},
 	}
 
@@ -133,7 +133,7 @@ func TestTopologicalSort(t *testing.T) {
 	r := setupRegistry()
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
-			{Kind: "compute.pgbouncer", Name: "proxy"},
+			{Kind: "gateway.pgbouncer", Name: "proxy"},
 			{Kind: "datastore.postgresql", Name: "db"},
 			{Kind: "storage.local-pv", Name: "storage"},
 		},
@@ -263,7 +263,7 @@ func TestNormalizeInputsWithValidate(t *testing.T) {
 			{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{
 				"storage": "storage/pvc-spec",
 			}},
-			{Kind: "compute.pgbouncer", Name: "proxy", Inputs: map[string]string{
+			{Kind: "gateway.pgbouncer", Name: "proxy", Inputs: map[string]string{
 				"upstream-dsn": "db/dsn",
 			}},
 		},
@@ -284,7 +284,7 @@ func TestNormalizeInputsTopologicalSort(t *testing.T) {
 	r := setupRegistry()
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
-			{Kind: "compute.pgbouncer", Name: "proxy", Inputs: map[string]string{
+			{Kind: "gateway.pgbouncer", Name: "proxy", Inputs: map[string]string{
 				"upstream-dsn": "db/dsn",
 			}},
 			{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{
@@ -322,7 +322,7 @@ func TestNormalizeInputsCoexistWithWires(t *testing.T) {
 			{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{
 				"storage": "storage/pvc-spec",
 			}},
-			{Kind: "compute.pgbouncer", Name: "proxy"},
+			{Kind: "gateway.pgbouncer", Name: "proxy"},
 		},
 		Wires: []block.Wire{
 			{FromBlock: "db", FromPort: "dsn", ToBlock: "proxy", ToPort: "upstream-dsn"},
