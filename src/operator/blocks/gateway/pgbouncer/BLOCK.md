@@ -8,6 +8,9 @@ ports:
     portType: dsn
     direction: input
     required: true
+  - name: upstream-credential
+    portType: credential
+    direction: input
   - name: dsn
     portType: dsn
     direction: output
