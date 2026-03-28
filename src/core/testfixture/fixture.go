@@ -42,6 +42,7 @@ func Phase1Blocks() []block.Block {
 			Ports: []block.Port{
 				{Name: "storage", PortType: "pvc-spec", Direction: block.PortInput, Required: true},
 				{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
+				{Name: "credential", PortType: "credential", Direction: block.PortOutput},
 				{Name: "metrics", PortType: "metrics-endpoint", Direction: block.PortOutput},
 			},
 		}},
