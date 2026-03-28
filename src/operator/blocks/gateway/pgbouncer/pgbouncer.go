@@ -30,6 +30,7 @@ func (b *Block) Descriptor() block.Descriptor {
 		Description: "PgBouncer connection pooler for PostgreSQL.",
 		Ports: []block.Port{
 			{Name: "upstream-dsn", PortType: "dsn", Direction: block.PortInput, Required: true},
+			{Name: "upstream-credential", PortType: "credential", Direction: block.PortInput},
 			{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
 			{Name: "metrics", PortType: "metrics-endpoint", Direction: block.PortOutput},
 		},
@@ -61,9 +62,54 @@ func (b *Block) Reconcile(ctx context.Context, c client.Client, req blocks.Recon
 	fullName := fmt.Sprintf("%s-%s", req.ClusterName, req.BlockRef.Name)
 	labels := blockLabels(fullName, req.ClusterName, req.BlockRef.Name)
 
+	// Determine auth mode based on whether upstream-credential is provided.
+	hasCredential := false
+	upstreamCredJSON := req.ResolvedInputs["upstream-credential"]
+	if upstreamCredJSON != "" {
+		credRef, err := block.DecodeCredentialRef(upstreamCredJSON)
+		if err != nil {
+			return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: fmt.Sprintf("upstream-credential decode failed: %v", err)}, err
+		}
+
+		// Read the upstream Secret to get actual credentials.
+		var upstreamSecret corev1.Secret
+		if err := c.Get(ctx, types.NamespacedName{Name: credRef.SecretName, Namespace: credRef.SecretNamespace}, &upstreamSecret); err != nil {
+			return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: fmt.Sprintf("upstream credential Secret not found: %v", err)}, err
+		}
+
+		usernameBytes, ok := upstreamSecret.Data[credRef.UsernameKey]
+		if !ok || len(usernameBytes) == 0 {
+			err := fmt.Errorf("upstream credential Secret %q missing key %q", credRef.SecretName, credRef.UsernameKey)
+			return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
+		}
+		passwordBytes, ok := upstreamSecret.Data[credRef.PasswordKey]
+		if !ok || len(passwordBytes) == 0 {
+			err := fmt.Errorf("upstream credential Secret %q missing key %q", credRef.SecretName, credRef.PasswordKey)
+			return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
+		}
+		username := string(usernameBytes)
+		password := string(passwordBytes)
+
+		// Create userlist Secret for PgBouncer auth_file.
+		userlistContent := fmt.Sprintf(`"%s" "%s"`, username, password)
+		userlistSecretName := fullName + "-userlist"
+		if err := reconcileUserlistSecret(ctx, c, req.ClusterNamespace, userlistSecretName, labels, userlistContent); err != nil {
+			return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
+		}
+
+		hasCredential = true
+	}
+
+	authType := "any" // DEV-ONLY fallback: no upstream credential provided
+	authFileLine := ""
+	if hasCredential {
+		authType = "plain"
+		authFileLine = "auth_file = /etc/pgbouncer/userlist.txt\n"
+	}
+
 	pgbouncerINI := fmt.Sprintf(
-		"[databases]\n* = %s\n\n[pgbouncer]\nlisten_addr = 0.0.0.0\nlisten_port = 6432\nauth_type = any\npool_mode = %s\nmax_client_conn = %s\ndefault_pool_size = %s\nadmin_users = pgbouncer\nstats_users = pgbouncer\n",
-		upstreamDSN, poolMode, maxClient, poolSize,
+		"[databases]\n* = %s\n\n[pgbouncer]\nlisten_addr = 0.0.0.0\nlisten_port = 6432\nauth_type = %s\n%spool_mode = %s\nmax_client_conn = %s\ndefault_pool_size = %s\nadmin_users = pgbouncer\nstats_users = pgbouncer\n",
+		upstreamDSN, authType, authFileLine, poolMode, maxClient, poolSize,
 	)
 
 	if err := reconcileConfigMap(ctx, c, req.ClusterNamespace, fullName, labels, map[string]string{"pgbouncer.ini": pgbouncerINI}); err != nil {
@@ -71,7 +117,7 @@ func (b *Block) Reconcile(ctx context.Context, c client.Client, req blocks.Recon
 	}
 
 	replicas := int32(2)
-	if err := b.reconcileDeployment(ctx, c, req.ClusterNamespace, fullName, labels, replicas); err != nil {
+	if err := b.reconcileDeployment(ctx, c, req.ClusterNamespace, fullName, labels, replicas, hasCredential); err != nil {
 		return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
 	}
 
@@ -97,6 +143,7 @@ func (b *Block) Delete(ctx context.Context, c client.Client, req blocks.Reconcil
 	_ = c.Delete(ctx, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: fullName, Namespace: ns}})
 	_ = c.Delete(ctx, &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: fullName, Namespace: ns}})
 	_ = c.Delete(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: fullName + "-config", Namespace: ns}})
+	_ = c.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: fullName + "-userlist", Namespace: ns}})
 	return nil
 }
 
@@ -115,7 +162,35 @@ func (b *Block) HealthCheck(ctx context.Context, c client.Client, req blocks.Rec
 	return block.PhaseProvisioning, nil
 }
 
-func (b *Block) reconcileDeployment(ctx context.Context, c client.Client, namespace, name string, labels map[string]string, replicas int32) error {
+func (b *Block) reconcileDeployment(ctx context.Context, c client.Client, namespace, name string, labels map[string]string, replicas int32, hasCredential bool) error {
+	volumeMounts := []corev1.VolumeMount{
+		{Name: "config", MountPath: "/bitnami/pgbouncer/conf", ReadOnly: true},
+	}
+	volumes := []corev1.Volume{
+		{
+			Name: "config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: name + "-config"},
+				},
+			},
+		},
+	}
+
+	if hasCredential {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name: "userlist", MountPath: "/etc/pgbouncer", ReadOnly: true,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: "userlist",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: name + "-userlist",
+				},
+			},
+		})
+	}
+
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Labels: labels},
 		Spec: appsv1.DeploymentSpec{
@@ -131,9 +206,7 @@ func (b *Block) reconcileDeployment(ctx context.Context, c client.Client, namesp
 							Ports: []corev1.ContainerPort{
 								{Name: "pgbouncer", ContainerPort: 6432, Protocol: corev1.ProtocolTCP},
 							},
-							VolumeMounts: []corev1.VolumeMount{
-								{Name: "config", MountPath: "/bitnami/pgbouncer/conf", ReadOnly: true},
-							},
+							VolumeMounts: volumeMounts,
 							ReadinessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
 									TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(6432)},
@@ -143,16 +216,7 @@ func (b *Block) reconcileDeployment(ctx context.Context, c client.Client, namesp
 							},
 						},
 					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "config",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{Name: name + "-config"},
-								},
-							},
-						},
-					},
+					Volumes: volumes,
 				},
 			},
 		},
@@ -220,6 +284,27 @@ func reconcileClusterIPService(ctx context.Context, c client.Client, namespace, 
 	}
 	existing.Spec.Ports = svc.Spec.Ports
 	existing.Spec.Selector = svc.Spec.Selector
+	return c.Update(ctx, existing)
+}
+
+func reconcileUserlistSecret(ctx context.Context, c client.Client, namespace, name string, labels map[string]string, userlistContent string) error {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Labels: labels},
+		Type:       corev1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			"userlist.txt": []byte(userlistContent),
+		},
+	}
+	existing := &corev1.Secret{}
+	err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, existing)
+	if errors.IsNotFound(err) {
+		return c.Create(ctx, secret)
+	}
+	if err != nil {
+		return err
+	}
+	existing.Data = secret.Data
+	existing.Labels = labels
 	return c.Update(ctx, existing)
 }
 
