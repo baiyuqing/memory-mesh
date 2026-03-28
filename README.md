@@ -1,62 +1,20 @@
 # ottoplus
 
-A Database-as-a-Service (DBaaS) platform with a Kubernetes-native control plane and composable "Lego block" architecture. Designed for AI-agent-friendly local development.
+A composable local development environment platform for AI agents. Uses Kubernetes-native orchestration and a "Lego block" architecture to let AI agents provision, wire, and manage complex infrastructure stacks locally.
 
-## Architecture
+## The Problem
 
-```
-┌──────────────────────────────────────────────────────┐
-│  Control Plane                                       │
-│  ┌──────────┐  ┌────────────────────────────────┐    │
-│  │ REST API │  │ K8s Operator                    │    │
-│  │ /v1/*    │  │ watches DatabaseCluster CRDs    │    │
-│  └──────────┘  │ reconciles blocks in topo order │    │
-│                └────────────────────────────────┘    │
-├──────────────────────────────────────────────────────┤
-│  Block Layer (composable, pluggable)                 │
-│                                                      │
-│  storage ─── engine ─── proxy ─── monitoring         │
-│  local-pv    postgresql  pgbouncer  metrics-exporter │
-│  ebs         mysql       proxysql   log-aggregator   │
-│              redis                  health-dashboard  │
-│                                                      │
-│  auth ────── backup ──── networking  integration     │
-│  mtls        s3-backup   ingress     stripe          │
-│  password-               service-    slack-notifier  │
-│  rotation                mesh                        │
-├──────────────────────────────────────────────────────┤
-│  Infrastructure                                      │
-│  k3d (local K8s) + LocalStack (S3, SQS, IAM)        │
-└──────────────────────────────────────────────────────┘
-```
+AI agents writing code need local infrastructure — databases, caches, message queues, monitoring, auth, networking. Setting up these environments is manual, fragile, and hard for agents to reason about. ottoplus makes it composable and machine-readable so agents can self-serve.
 
-## Quick Start
+## How It Works
 
-```bash
-# Prerequisites: docker, k3d, kubectl
-
-# Start local environment (k3d cluster + LocalStack)
-make dev-up
-
-# Seed test data
-make seed
-
-# Run unit tests
-make test
-
-# Tear down
-make dev-down
-```
-
-## Composable Block System
-
-Blocks are self-contained units that wire together via typed ports. A database cluster is a composition of blocks:
+Infrastructure components are **blocks** that connect through typed **ports**. An agent describes what it needs as a composition, and the operator reconciles the actual Kubernetes resources.
 
 ```yaml
 apiVersion: ottoplus.io/v1alpha1
-kind: DatabaseCluster
+kind: Cluster
 metadata:
-  name: my-app-db
+  name: my-app
 spec:
   blocks:
     composition:
@@ -71,74 +29,110 @@ spec:
           version: "16"
           replicas: "3"
         inputs:
-          storage: storage/pvc-spec         # inline dependency
+          storage: storage/pvc-spec
 
       - kind: proxy.pgbouncer
         name: pooler
-        parameters:
-          poolMode: transaction
         inputs:
-          upstream-dsn: db/dsn              # pooler depends on db
+          upstream-dsn: db/dsn
 
       - kind: monitoring.metrics-exporter
         name: metrics
         inputs:
-          metrics-input: db/metrics         # auto-scraped
+          metrics-input: db/metrics
 ```
 
-Or use the shorthand for common setups:
+The `inputs` field makes the dependency graph readable inline — no need to cross-reference a separate wiring section. Blocks auto-wire when port types match unambiguously.
 
-```yaml
-spec:
-  engine: postgresql
-  version: "16"
-  replicas: 3
-  storage: "10Gi"
-  backup:
-    enabled: true
-    schedule: "0 2 * * *"
-    destination: "s3://backups/my-app-db"
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────┐
+│  Control Plane                                       │
+│  ┌──────────┐  ┌────────────────────────────────┐    │
+│  │ REST API │  │ K8s Operator                    │    │
+│  │ /v1/*    │  │ watches Cluster CRDs            │    │
+│  └──────────┘  │ reconciles blocks in topo order │    │
+│                └────────────────────────────────┘    │
+├──────────────────────────────────────────────────────┤
+│  Block Layer (composable, pluggable)                 │
+│                                                      │
+│  storage     engine       proxy        monitoring    │
+│  local-pv    postgresql   pgbouncer    metrics       │
+│  ebs         mysql        proxysql     log-aggregator│
+│              redis                     dashboard     │
+│                                                      │
+│  auth        backup       networking   integration   │
+│  mtls        s3-backup    ingress      stripe        │
+│  password-                service-mesh slack-notifier │
+│  rotation                                            │
+├──────────────────────────────────────────────────────┤
+│  Local Infrastructure                                │
+│  k3d (K8s) + LocalStack (S3, SQS, IAM)              │
+└──────────────────────────────────────────────────────┘
 ```
 
-### Port Types
+## Quick Start
 
-Blocks connect through typed ports. A wire is valid only when port types match.
+```bash
+# Prerequisites: docker, k3d, kubectl
+make dev-up     # k3d cluster + LocalStack, one command
+make seed       # Seed example compositions
+make test       # Unit tests (no infra needed)
+make dev-down   # Tear down
+```
 
-| Port Type | Description |
-|-----------|-------------|
-| `dsn` | Database connection string |
-| `pvc-spec` | PersistentVolumeClaim specification |
-| `metrics-endpoint` | Prometheus-compatible metrics URL |
-| `http-endpoint` | HTTP service endpoint |
-| `event-stream` | Event stream URL |
-| `tls-cert` | TLS certificate bundle |
-| `credential` | Database credential reference |
-| `log-endpoint` | Log collection URL |
-| `ingress-url` | Externally-accessible URL |
-| `dashboard-url` | Web UI dashboard URL |
+## Blocks
 
-### Blocks (16)
+Each block is a self-contained unit with:
+- A `Descriptor` (kind, typed ports, parameters, requires/provides)
+- A `BLOCK.md` with YAML frontmatter (machine-readable) + markdown body (AI-readable)
+- A `BlockRuntime` that reconciles Kubernetes resources
 
-| Category | Block | Description |
-|----------|-------|-------------|
-| engine | `engine.postgresql` | PostgreSQL via StatefulSet |
-| engine | `engine.mysql` | MySQL via StatefulSet |
+### Available Blocks (16)
+
+| Category | Block | What It Provisions |
+|----------|-------|--------------------|
+| engine | `engine.postgresql` | PostgreSQL StatefulSet + Services |
+| engine | `engine.mysql` | MySQL StatefulSet + Services |
 | engine | `engine.redis` | Redis with optional persistence |
-| proxy | `proxy.pgbouncer` | Connection pooler for PostgreSQL |
-| proxy | `proxy.proxysql` | Connection pooler for MySQL |
+| proxy | `proxy.pgbouncer` | PostgreSQL connection pooler |
+| proxy | `proxy.proxysql` | MySQL connection pooler |
 | storage | `storage.local-pv` | Local PersistentVolume |
-| storage | `storage.ebs` | AWS EBS via StorageClass |
+| storage | `storage.ebs` | AWS EBS StorageClass |
 | backup | `backup.s3-backup` | S3 backups via CronJob |
 | monitoring | `monitoring.metrics-exporter` | Prometheus scrape config |
 | monitoring | `monitoring.log-aggregator` | Loki + Promtail |
 | monitoring | `monitoring.health-dashboard` | Status dashboard |
 | auth | `auth.mtls` | Self-signed mTLS certificates |
-| auth | `auth.password-rotation` | Credential rotation via CronJob |
+| auth | `auth.password-rotation` | Credential rotation CronJob |
 | networking | `networking.ingress` | K8s Ingress with optional TLS |
 | integration | `integration.stripe` | Stripe webhook receiver |
 | integration | `integration.slack-notifier` | Slack alert notifications |
 
-Each block has a `BLOCK.md` with YAML frontmatter (machine-readable descriptor) and markdown body (AI-readable context).
+### Port Types
+
+Blocks connect through typed ports. A wire is valid only when port types match.
+
+| Port Type | Meaning |
+|-----------|---------|
+| `dsn` | Connection string |
+| `pvc-spec` | Storage claim specification |
+| `metrics-endpoint` | Prometheus-compatible metrics URL |
+| `http-endpoint` | HTTP service endpoint |
+| `event-stream` | Event stream URL |
+| `tls-cert` | TLS certificate bundle |
+| `credential` | Credential reference |
+| `log-endpoint` | Log collection URL |
+| `ingress-url` | Externally-accessible URL |
+| `dashboard-url` | Web UI dashboard URL |
+
+### Adding a Block
+
+1. Create `src/operator/blocks/<category>/<name>/`
+2. Write `BLOCK.md` with YAML frontmatter descriptor
+3. Implement the `BlockRuntime` interface in Go
+4. Register in the operator startup
 
 ## API
 
@@ -148,21 +142,29 @@ Each block has a `BLOCK.md` with YAML frontmatter (machine-readable descriptor) 
 | GET | `/v1/blocks/{kind}` | Get block descriptor |
 | POST | `/v1/compositions/validate` | Validate a composition |
 | POST | `/v1/compositions/auto-wire` | Auto-wire unambiguous port matches |
-| POST | `/v1/compositions/topology` | Get topological sort + dependency graph |
+| POST | `/v1/compositions/topology` | Get dependency graph (for visual editors) |
 | GET | `/healthz` | Health check |
+
+## AI-Agent-Friendly Design
+
+- **Self-describing**: `CLAUDE.md` per module, `BLOCK.md` per block with machine-readable frontmatter
+- **Discoverable**: `make help`, REST API for block catalog, topology endpoint for dependency graphs
+- **Idempotent**: Every operation is safe to retry — API calls, reconciliation, scripts
+- **Fast feedback**: Unit tests run without infrastructure, integration tests under 60s
+- **Composable**: Agents describe what they need declaratively, the platform handles the rest
 
 ## Project Structure
 
 ```
 src/
-  core/           # Domain logic — no infra deps, pure Go
+  core/           # Domain logic — pure Go, no infra deps
     block/        # Block, Port, Composition, Registry, AutoWire
   api/            # REST API server
   operator/       # K8s operator + block runtime implementations
     blocks/       # 16 block implementations (each with BLOCK.md)
-    reconciler/   # Composition expansion (shorthand → explicit)
+    reconciler/   # Composition expansion
 deploy/
-  crds/           # DatabaseCluster CRD
+  crds/           # Cluster CRD
   k3d-config.yaml
   localstack/     # LocalStack K8s manifests
 scripts/          # dev-up, dev-down, seed, wait-ready
@@ -186,8 +188,8 @@ make fmt           # Format code
 | Orchestration | Kubernetes (k3d for local dev) |
 | Cloud Simulation | LocalStack (S3, SQS, IAM) |
 | Operator | controller-runtime v0.19.0 |
-| API | net/http with ServeMux |
-| CRD | `DatabaseCluster` (ottoplus.io/v1alpha1) |
+| API | net/http |
+| CRD | ottoplus.io/v1alpha1 |
 
 ## License
 

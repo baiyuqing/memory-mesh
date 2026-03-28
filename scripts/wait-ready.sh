@@ -23,7 +23,7 @@ echo " Ready (${ELAPSED}s)"
 
 # Verify CRD is installed
 echo -n "    CRD:        "
-if kubectl get crd databaseclusters.ottoplus.io >/dev/null 2>&1; then
+if kubectl get crd clusters.ottoplus.io >/dev/null 2>&1; then
   echo " Installed"
 else
   echo " MISSING"

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Core business logic for the DBaaS platform. This package defines domain models, validation rules, and business operations that are **independent of any infrastructure**.
+Core business logic for the ottoplus platform. This package defines domain models, validation rules, and business operations that are **independent of any infrastructure**.
 
 ## Rules
 
@@ -12,7 +12,7 @@ Core business logic for the DBaaS platform. This package defines domain models, 
 
 ## Key Concepts
 
-- `DatabaseCluster` — Domain model representing a managed database instance (engine, replicas, version, resources, config).
+- `Cluster` — Domain model representing a composable infrastructure environment (blocks, wires, parameters).
 - `Engine` — Pluggable interface for database engine types (PostgreSQL, MySQL, Redis, etc.).
 - Validation logic — Spec validation, resource limits, version compatibility checks.
 - State machine — Cluster lifecycle phases: Pending → Provisioning → Running → Updating → Failed → Deleting.
