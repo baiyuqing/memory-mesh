@@ -109,13 +109,19 @@ echo "Password rotation complete"
 		return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
 	}
 
-	credentialJSON := fmt.Sprintf(`{"secretName":"%s","secretNamespace":"%s","usernameKey":"username","passwordKey":"password"}`, secretName, req.ClusterNamespace)
+	credRef := block.CredentialRef{
+		SecretName:      secretName,
+		SecretNamespace: req.ClusterNamespace,
+		UsernameKey:     "username",
+		PasswordKey:     "password",
+	}
+	credJSON, _ := credRef.Encode()
 
 	return blocks.ReconcileResult{
 		Phase:   block.PhaseReady,
 		Message: fmt.Sprintf("Password rotation CronJob scheduled: %s", schedule),
 		Outputs: map[string]string{
-			"credential": credentialJSON,
+			"credential": credJSON,
 		},
 	}, nil
 }
@@ -209,9 +215,9 @@ func reconcileSecret(ctx context.Context, c client.Client, namespace, name strin
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Labels: labels},
 		Type:       corev1.SecretTypeOpaque,
-		StringData: map[string]string{
-			"username": "dbadmin",
-			"password": fmt.Sprintf("initial-%s-char-password", passwordLength),
+		Data: map[string][]byte{
+			"username": []byte("dbadmin"),
+			"password": []byte(fmt.Sprintf("initial-%s-char-password", passwordLength)),
 		},
 	}
 	existing := &corev1.Secret{}
