@@ -231,3 +231,36 @@ func TestTopology_StandardPath(t *testing.T) {
 		t.Errorf("rotator (pos %d) should come before pooler (pos %d)", posMap["rotator"], posMap["pooler"])
 	}
 }
+
+func TestAutoWire_StandardPath(t *testing.T) {
+	srv := setupTestServer(t)
+
+	comp := block.Composition{Blocks: testfixture.LoadStandardCompositionJSON(t)}
+	body, _ := json.Marshal(AutoWireRequest{Composition: comp})
+	req := httptest.NewRequest("POST", "/v1/compositions/auto-wire", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d; body: %s", w.Code, w.Body.String())
+	}
+	var resp AutoWireResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+
+	// Verify key wires exist.
+	wireSet := make(map[string]bool)
+	for _, wire := range resp.Composition.Wires {
+		key := wire.FromBlock + "/" + wire.FromPort + "->" + wire.ToBlock + "/" + wire.ToPort
+		wireSet[key] = true
+	}
+	expectedWires := []string{
+		"storage/pvc-spec->db/storage",
+		"db/dsn->rotator/upstream-dsn",
+		"rotator/credential->pooler/upstream-credential",
+	}
+	for _, ew := range expectedWires {
+		if !wireSet[ew] {
+			t.Errorf("expected wire %q not found in %v", ew, wireSet)
+		}
+	}
+}
