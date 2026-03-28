@@ -1,0 +1,36 @@
+# Standard 4-block credential path: the primary verification baseline.
+# local-pv -> postgresql -> password-rotation -> pgbouncer
+#
+# The 3-block sample-cluster.yaml is retained as an onboarding entry
+# point; this file is the authoritative standard path.
+apiVersion: ottoplus.io/v1alpha1
+kind: Cluster
+metadata:
+  name: demo-pg
+  namespace: ottoplus
+spec:
+  blocks:
+    composition:
+      - kind: storage.local-pv
+        name: storage
+        parameters:
+          size: "5Gi"
+
+      - kind: datastore.postgresql
+        name: db
+        parameters:
+          version: "16"
+          replicas: "3"
+        inputs:
+          storage: storage/pvc-spec
+
+      - kind: security.password-rotation
+        name: rotator
+        inputs:
+          upstream-dsn: db/dsn
+
+      - kind: gateway.pgbouncer
+        name: pooler
+        inputs:
+          upstream-dsn: db/dsn
+          upstream-credential: rotator/credential

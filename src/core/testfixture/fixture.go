@@ -93,8 +93,8 @@ func StandardComposition() []block.BlockRef {
 // pgbouncer explicitly wires both upstream-dsn and upstream-credential.
 func CredentialPathComposition() []block.BlockRef {
 	return []block.BlockRef{
-		{Kind: "storage.local-pv", Name: "storage"},
-		{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{"storage": "storage/pvc-spec"}},
+		{Kind: "storage.local-pv", Name: "storage", Parameters: map[string]string{"size": "5Gi"}},
+		{Kind: "datastore.postgresql", Name: "db", Parameters: map[string]string{"version": "16", "replicas": "3"}, Inputs: map[string]string{"storage": "storage/pvc-spec"}},
 		{Kind: "security.password-rotation", Name: "rotator", Inputs: map[string]string{"upstream-dsn": "db/dsn"}},
 		{Kind: "gateway.pgbouncer", Name: "pooler", Inputs: map[string]string{
 			"upstream-dsn":        "db/dsn",
