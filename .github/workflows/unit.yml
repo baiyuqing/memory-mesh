@@ -39,5 +39,5 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Unit tests
-        run: make test
+      - name: Unit check
+        run: make ci-unit

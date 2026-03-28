@@ -39,8 +39,5 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Build
-        run: make build
-
-      - name: Standard path smoke tests
-        run: make test-standard
+      - name: Smoke check
+        run: make ci-smoke
