@@ -1,14 +1,11 @@
 package reconciler
 
 import (
-	"os"
 	"testing"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
 	"github.com/baiyuqing/ottoplus/src/core/compiler"
 	"github.com/baiyuqing/ottoplus/src/core/testfixture"
-
-	"gopkg.in/yaml.v3"
 )
 
 // TestOperatorCompiler_ShorthandPostgreSQL proves that the operator's input (ClusterSpec)
@@ -149,32 +146,9 @@ func TestOperatorCompiler_WithBackup(t *testing.T) {
 	}
 }
 
-// clusterYAML mirrors the subset of the Cluster CRD needed to extract
-// the composition from the standard example file.
-type clusterYAML struct {
-	Spec struct {
-		Blocks struct {
-			Composition []block.BlockRef `yaml:"composition"`
-		} `yaml:"blocks"`
-	} `yaml:"spec"`
-}
-
-func loadStandardClusterFile(t *testing.T) []block.BlockRef {
-	t.Helper()
-	data, err := os.ReadFile("../../../deploy/examples/standard-cluster.yaml")
-	if err != nil {
-		t.Fatalf("read standard-cluster.yaml: %v", err)
-	}
-	var doc clusterYAML
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		t.Fatalf("parse standard-cluster.yaml: %v", err)
-	}
-	return doc.Spec.Blocks.Composition
-}
-
 func TestOperatorCompiler_StandardPath(t *testing.T) {
 	registry := testfixture.NewPhase1Registry()
-	blocks := loadStandardClusterFile(t)
+	blocks := testfixture.LoadStandardClusterYAML(t)
 
 	result, errs := compiler.Compile(compiler.ClusterSpec{
 		Blocks: &compiler.BlocksSpec{Composition: blocks},

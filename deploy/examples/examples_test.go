@@ -1,37 +1,17 @@
 package examples_test
 
 import (
-	"encoding/json"
-	"os"
 	"testing"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
 	"github.com/baiyuqing/ottoplus/src/core/compiler"
 	"github.com/baiyuqing/ottoplus/src/core/testfixture"
-
-	"gopkg.in/yaml.v3"
 )
-
-// clusterYAML mirrors the subset of the Cluster CRD we need to parse.
-type clusterYAML struct {
-	Spec struct {
-		Blocks struct {
-			Composition []block.BlockRef `yaml:"composition"`
-		} `yaml:"blocks"`
-	} `yaml:"spec"`
-}
-
-// compositionJSON mirrors the JSON composition file format.
-type compositionJSON struct {
-	Composition struct {
-		Blocks []block.BlockRef `json:"blocks"`
-	} `json:"composition"`
-}
 
 // TestStandardCompositionJSON_Compiles proves the 4-block JSON example
 // file passes the full compilation pipeline.
 func TestStandardCompositionJSON_Compiles(t *testing.T) {
-	blocks := loadCompositionJSON(t)
+	blocks := testfixture.LoadStandardCompositionJSON(t)
 	registry := testfixture.NewPhase1Registry()
 
 	result, errs := compiler.CompileComposition(block.Composition{Blocks: blocks}, registry)
@@ -49,7 +29,7 @@ func TestStandardCompositionJSON_Compiles(t *testing.T) {
 // TestStandardClusterYAML_Compiles proves the 4-block YAML example
 // file passes the full compilation pipeline.
 func TestStandardClusterYAML_Compiles(t *testing.T) {
-	blocks := loadClusterYAML(t)
+	blocks := testfixture.LoadStandardClusterYAML(t)
 	registry := testfixture.NewPhase1Registry()
 
 	result, errs := compiler.Compile(compiler.ClusterSpec{
@@ -69,7 +49,7 @@ func TestStandardClusterYAML_Compiles(t *testing.T) {
 // TestStandardCompositionJSON_TopoOrder verifies the dependency order
 // matches the standard credential path.
 func TestStandardCompositionJSON_TopoOrder(t *testing.T) {
-	blocks := loadCompositionJSON(t)
+	blocks := testfixture.LoadStandardCompositionJSON(t)
 	registry := testfixture.NewPhase1Registry()
 
 	result, _ := compiler.CompileComposition(block.Composition{Blocks: blocks}, registry)
@@ -83,7 +63,7 @@ func TestStandardCompositionJSON_TopoOrder(t *testing.T) {
 // TestStandardClusterYAML_TopoOrder verifies the dependency order
 // matches the standard credential path.
 func TestStandardClusterYAML_TopoOrder(t *testing.T) {
-	blocks := loadClusterYAML(t)
+	blocks := testfixture.LoadStandardClusterYAML(t)
 	registry := testfixture.NewPhase1Registry()
 
 	result, _ := compiler.Compile(compiler.ClusterSpec{
@@ -107,8 +87,8 @@ func TestStandardExamples_MatchCredentialPathFixture(t *testing.T) {
 		name   string
 		blocks []block.BlockRef
 	}{
-		{"json", loadCompositionJSON(t)},
-		{"yaml", loadClusterYAML(t)},
+		{"json", testfixture.LoadStandardCompositionJSON(t)},
+		{"yaml", testfixture.LoadStandardClusterYAML(t)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if len(tc.blocks) != len(canonical) {
@@ -148,32 +128,6 @@ func TestStandardExamples_MatchCredentialPathFixture(t *testing.T) {
 }
 
 // --- helpers ---
-
-func loadCompositionJSON(t *testing.T) []block.BlockRef {
-	t.Helper()
-	data, err := os.ReadFile("standard-composition.json")
-	if err != nil {
-		t.Fatalf("read standard-composition.json: %v", err)
-	}
-	var doc compositionJSON
-	if err := json.Unmarshal(data, &doc); err != nil {
-		t.Fatalf("parse standard-composition.json: %v", err)
-	}
-	return doc.Composition.Blocks
-}
-
-func loadClusterYAML(t *testing.T) []block.BlockRef {
-	t.Helper()
-	data, err := os.ReadFile("standard-cluster.yaml")
-	if err != nil {
-		t.Fatalf("read standard-cluster.yaml: %v", err)
-	}
-	var doc clusterYAML
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		t.Fatalf("parse standard-cluster.yaml: %v", err)
-	}
-	return doc.Spec.Blocks.Composition
-}
 
 func assertCredentialPathOrder(t *testing.T, sorted []block.BlockRef) {
 	t.Helper()
