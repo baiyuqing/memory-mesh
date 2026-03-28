@@ -1,4 +1,4 @@
-.PHONY: help dev-up dev-down test test-unit lint seed logs build clean demo fmt fmt-check
+.PHONY: help dev-up dev-down test test-unit test-standard lint seed logs build clean demo fmt fmt-check
 
 CLUSTER_NAME := ottoplus-dev
 K3D_CONFIG := deploy/k3d-config.yaml
@@ -54,6 +54,11 @@ test: test-unit ## Run all tests (default: unit only)
 
 test-unit: ## Run unit tests (no infra required)
 	go test ./src/core/... ./src/api/... ./src/operator/blocks/... ./src/operator/reconciler/... -v -count=1
+
+test-standard: ## Run 4-block standard credential path tests only
+	go test ./deploy/examples/... ./src/core/compiler/... ./src/api/... ./src/operator/reconciler/... \
+		-run 'TestStandard|TestCompile_CredentialPath|TestValidateComposition_StandardPath|TestTopology_StandardPath|TestAutoWire_StandardPath|TestOperatorCompiler_StandardPath' \
+		-v -count=1
 
 # --- Code Quality ---
 
