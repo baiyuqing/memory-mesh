@@ -3,8 +3,22 @@ name: Unit Tests
 on:
   push:
     branches: [main]
+    paths:
+      - '.github/workflows/**'
+      - 'Makefile'
+      - 'go.mod'
+      - 'go.sum'
+      - 'deploy/examples/**'
+      - 'src/**'
   pull_request:
     branches: [main]
+    paths:
+      - '.github/workflows/**'
+      - 'Makefile'
+      - 'go.mod'
+      - 'go.sum'
+      - 'deploy/examples/**'
+      - 'src/**'
 
 permissions:
   contents: read
