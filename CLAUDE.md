@@ -24,9 +24,25 @@
 - **Core Domain** (`src/core/`) — Pure business logic with zero infrastructure dependencies.
 - **Local Dev** — One-command setup via `make dev-up` (k3d + LocalStack). Ephemeral, data loss acceptable.
 
+### Composable Block Architecture ("Lego Blocks")
+
+The system is built from composable blocks that wire together via typed ports:
+
+- **Block** — Self-contained unit with `Descriptor` (kind, ports, parameters, requires, provides). Defined in `src/core/block/`.
+- **Port** — Typed connection point (input/output). Blocks connect when port types match (e.g. `dsn`, `pvc-spec`, `metrics-endpoint`).
+- **Wire** — Explicit connection from one block's output port to another's input port. Can be auto-wired when unambiguous.
+- **Composition** — A set of BlockRefs + Wires that form a complete database cluster.
+- **BlockRuntime** — Infrastructure-aware implementation (in `src/operator/blocks/`) that reconciles K8s resources.
+- **BLOCK.md** — Per-block manifest with YAML frontmatter (machine-readable) + markdown body (AI-readable).
+
+Block categories: `engine`, `proxy`, `backup`, `monitoring`, `auth`, `storage`, `networking`.
+
+The CRD supports both **shorthand** (flat `engine`/`replicas` fields, auto-expanded) and **explicit composition** (`spec.blocks` with composition + wires).
+
 ### AI-Agent-Friendly Design
 
 - `CLAUDE.md` per module for self-describing context.
+- `BLOCK.md` per block with YAML frontmatter for machine-readable descriptors.
 - `Makefile` as single entry point (`make help`).
 - Idempotent operations throughout (API, operator reconciliation, scripts).
 - Fast feedback loops: unit tests run without infra, integration tests under 60s.

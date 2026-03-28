@@ -23,9 +23,6 @@ spec:
           properties:
             spec:
               type: object
-              required:
-                - engine
-                - replicas
               properties:
                 engine:
                   type: string
@@ -73,6 +70,48 @@ spec:
                     destination:
                       type: string
                       description: "S3 bucket path for backups (e.g. s3://backups/dbc-name)."
+                blocks:
+                  type: object
+                  description: "Explicit block composition. If omitted, a default composition is derived from engine/replicas/version fields."
+                  properties:
+                    composition:
+                      type: array
+                      description: "List of block instances in this cluster."
+                      items:
+                        type: object
+                        required:
+                          - kind
+                          - name
+                        properties:
+                          kind:
+                            type: string
+                            description: "Block kind from registry (e.g. engine.postgresql, proxy.pgbouncer)."
+                          name:
+                            type: string
+                            description: "Instance name, unique within this cluster."
+                          parameters:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                            description: "Block-specific parameter overrides."
+                    wires:
+                      type: array
+                      description: "Explicit port wiring between blocks. Omit for auto-wiring."
+                      items:
+                        type: object
+                        required:
+                          - fromBlock
+                          - fromPort
+                          - toBlock
+                          - toPort
+                        properties:
+                          fromBlock:
+                            type: string
+                          fromPort:
+                            type: string
+                          toBlock:
+                            type: string
+                          toPort:
+                            type: string
             status:
               type: object
               properties:
@@ -95,6 +134,21 @@ spec:
                 message:
                   type: string
                   description: "Human-readable status message."
+                blocks:
+                  type: array
+                  description: "Per-block status."
+                  items:
+                    type: object
+                    properties:
+                      kind:
+                        type: string
+                      name:
+                        type: string
+                      phase:
+                        type: string
+                        enum: [Pending, Provisioning, Ready, Degraded, Failed, Deleting]
+                      message:
+                        type: string
       subresources:
         status: {}
       additionalPrinterColumns:
