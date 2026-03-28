@@ -57,7 +57,7 @@ func TestStandardCompositionJSON_TopoOrder(t *testing.T) {
 		t.Fatal("compilation failed")
 	}
 
-	assertCredentialPathOrder(t, result.Sorted)
+	testfixture.AssertCredentialPathOrder(t, result.Sorted)
 }
 
 // TestStandardClusterYAML_TopoOrder verifies the dependency order
@@ -73,7 +73,7 @@ func TestStandardClusterYAML_TopoOrder(t *testing.T) {
 		t.Fatal("compilation failed")
 	}
 
-	assertCredentialPathOrder(t, result.Sorted)
+	testfixture.AssertCredentialPathOrder(t, result.Sorted)
 }
 
 // TestStandardExamples_MatchCredentialPathFixture ensures the example
@@ -127,25 +127,3 @@ func TestStandardExamples_MatchCredentialPathFixture(t *testing.T) {
 	}
 }
 
-// --- helpers ---
-
-func assertCredentialPathOrder(t *testing.T, sorted []block.BlockRef) {
-	t.Helper()
-	expectedOrder := []string{"storage", "db", "rotator", "pooler"}
-	if len(sorted) != len(expectedOrder) {
-		t.Fatalf("expected %d sorted blocks, got %d", len(expectedOrder), len(sorted))
-	}
-	posMap := make(map[string]int)
-	for i, ref := range sorted {
-		posMap[ref.Name] = i
-	}
-	if posMap["storage"] >= posMap["db"] {
-		t.Error("storage should come before db")
-	}
-	if posMap["db"] >= posMap["rotator"] {
-		t.Error("db should come before rotator")
-	}
-	if posMap["rotator"] >= posMap["pooler"] {
-		t.Error("rotator should come before pooler")
-	}
-}

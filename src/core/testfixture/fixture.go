@@ -163,3 +163,46 @@ func LoadStandardClusterYAML(t *testing.T) []block.BlockRef {
 	}
 	return doc.Spec.Blocks.Composition
 }
+
+// AssertCredentialPathOrder verifies the 4-block standard credential
+// path topo order: storage -> db -> rotator -> pooler.
+func AssertCredentialPathOrder(t *testing.T, sorted []block.BlockRef) {
+	t.Helper()
+	if len(sorted) != 4 {
+		t.Fatalf("expected 4 sorted blocks, got %d", len(sorted))
+	}
+	posMap := make(map[string]int)
+	for i, ref := range sorted {
+		posMap[ref.Name] = i
+	}
+	if posMap["storage"] >= posMap["db"] {
+		t.Errorf("storage (pos %d) should come before db (pos %d)", posMap["storage"], posMap["db"])
+	}
+	if posMap["db"] >= posMap["rotator"] {
+		t.Errorf("db (pos %d) should come before rotator (pos %d)", posMap["db"], posMap["rotator"])
+	}
+	if posMap["rotator"] >= posMap["pooler"] {
+		t.Errorf("rotator (pos %d) should come before pooler (pos %d)", posMap["rotator"], posMap["pooler"])
+	}
+}
+
+// AssertCredentialPathWires verifies the 3 key wires of the standard
+// credential path exist: storage→db, db→rotator, rotator→pooler.
+func AssertCredentialPathWires(t *testing.T, wires []block.Wire) {
+	t.Helper()
+	wireSet := make(map[string]bool)
+	for _, w := range wires {
+		key := w.FromBlock + "/" + w.FromPort + "->" + w.ToBlock + "/" + w.ToPort
+		wireSet[key] = true
+	}
+	expectedWires := []string{
+		"storage/pvc-spec->db/storage",
+		"db/dsn->rotator/upstream-dsn",
+		"rotator/credential->pooler/upstream-credential",
+	}
+	for _, ew := range expectedWires {
+		if !wireSet[ew] {
+			t.Errorf("expected wire %q not found in %v", ew, wireSet)
+		}
+	}
+}
