@@ -29,7 +29,13 @@ Defines the fundamental composable unit ("Lego block") of the ottoplus platform.
 | `dsn` | Database connection string |
 | `pvc-spec` | PersistentVolumeClaim specification |
 | `metrics-endpoint` | Prometheus-compatible metrics URL |
-| `tls-cert` | TLS certificate bundle |
+| `http-endpoint` | HTTP service endpoint (JSON: host + port) |
+| `event-stream` | Event stream URL |
+| `tls-cert` | TLS certificate bundle (JSON with secret refs) |
+| `credential` | Database credential reference (JSON with secret refs) |
+| `log-endpoint` | Log collection URL (e.g. Loki push API) |
+| `ingress-url` | Externally-accessible URL via Ingress |
+| `dashboard-url` | Web UI dashboard URL |
 | `s3-path` | S3 bucket path |
 
 ## Rules

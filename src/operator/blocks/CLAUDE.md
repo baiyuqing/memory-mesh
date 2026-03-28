@@ -20,13 +20,19 @@ blocks/
     s3-backup/
   monitoring/
     metrics-exporter/
+    log-aggregator/
+    health-dashboard/
   auth/
     password-rotation/
     mtls/
   storage/
     local-pv/
     ebs/
+  integration/
+    stripe/
+    slack-notifier/
   networking/
+    ingress/
     service-mesh/
 ```
 
