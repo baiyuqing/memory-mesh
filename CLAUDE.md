@@ -4,7 +4,49 @@
 
 ## Project Overview
 
-**ottoplus** — Project type and tech stack are TBD. This harness defines general engineering standards that apply regardless of the specific technology chosen.
+**ottoplus** — A Database-as-a-Service (DBaaS) platform with a Kubernetes-native control plane and pluggable data plane. Designed for AI-agent-friendly local development.
+
+### Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Language | **Go** |
+| Orchestration | **Kubernetes** (k3d for local dev) |
+| Cloud Simulation | **LocalStack** (S3, SQS, IAM) |
+| Operator Framework | **controller-runtime** (sigs.k8s.io/controller-runtime) |
+| API | REST (net/http or chi) with OpenAPI |
+| CRD | `DatabaseCluster` (ottoplus.io/v1alpha1) |
+
+### Architecture
+
+- **Control Plane** (`src/api/`, `src/operator/`) — API server + K8s operator that watches `DatabaseCluster` CRDs and reconciles desired state.
+- **Data Plane** — Database instances managed as K8s StatefulSets. Engine-agnostic via pluggable interface.
+- **Core Domain** (`src/core/`) — Pure business logic with zero infrastructure dependencies.
+- **Local Dev** — One-command setup via `make dev-up` (k3d + LocalStack). Ephemeral, data loss acceptable.
+
+### Composable Block Architecture ("Lego Blocks")
+
+The system is built from composable blocks that wire together via typed ports:
+
+- **Block** — Self-contained unit with `Descriptor` (kind, ports, parameters, requires, provides). Defined in `src/core/block/`.
+- **Port** — Typed connection point (input/output). Blocks connect when port types match (e.g. `dsn`, `pvc-spec`, `metrics-endpoint`).
+- **Wire** — Explicit connection from one block's output port to another's input port. Can be auto-wired when unambiguous.
+- **Composition** — A set of BlockRefs + Wires that form a complete database cluster.
+- **BlockRuntime** — Infrastructure-aware implementation (in `src/operator/blocks/`) that reconciles K8s resources.
+- **BLOCK.md** — Per-block manifest with YAML frontmatter (machine-readable) + markdown body (AI-readable).
+
+Block categories: `engine`, `proxy`, `backup`, `monitoring`, `auth`, `storage`, `networking`.
+
+The CRD supports both **shorthand** (flat `engine`/`replicas` fields, auto-expanded) and **explicit composition** (`spec.blocks` with composition + wires).
+
+### AI-Agent-Friendly Design
+
+- `CLAUDE.md` per module for self-describing context.
+- `BLOCK.md` per block with YAML frontmatter for machine-readable descriptors.
+- `Makefile` as single entry point (`make help`).
+- Idempotent operations throughout (API, operator reconciliation, scripts).
+- Fast feedback loops: unit tests run without infra, integration tests under 60s.
+- Observable: structured JSON logs, health endpoints, OpenTelemetry traces.
 
 ## Code Conventions
 
@@ -20,30 +62,37 @@
 
 | Element       | Convention         | Example              |
 |---------------|--------------------|----------------------|
-| Files         | kebab-case         | `user-service.ts`    |
-| Directories   | kebab-case         | `api-handlers/`      |
-| Constants     | UPPER_SNAKE_CASE   | `MAX_RETRY_COUNT`    |
-| Functions     | camelCase or snake_case (match language idiom) | `getUserById` / `get_user_by_id` |
-| Types/Classes | PascalCase         | `UserProfile`        |
+| Files         | kebab-case         | `database-cluster.go` |
+| Directories   | kebab-case         | `api-handlers/`       |
+| Constants     | PascalCase (exported) or camelCase (unexported) | `MaxRetryCount` / `defaultTimeout` |
+| Functions     | camelCase (Go idiom) | `getUserByID`        |
+| Types/Structs | PascalCase         | `DatabaseCluster`     |
 | Booleans      | is/has/should prefix | `isActive`, `hasPermission` |
 
-### Directory Structure (general guidance)
+### Directory Structure
 
 ```
-src/           # Application source code
-  core/        # Core domain logic (no external dependencies)
-  infra/       # Infrastructure: DB, HTTP, messaging adapters
-  api/         # API layer: routes, handlers, middleware
-  shared/      # Shared utilities used across modules
-tests/         # Test files mirroring src/ structure
-docs/          # Project documentation
-scripts/       # Build, deploy, and dev scripts
+src/
+  core/        # Domain logic — no infra deps, pure Go, testable in isolation
+  api/         # Control plane API server (REST/gRPC handlers, middleware)
+  operator/    # K8s operator (reconciler for DatabaseCluster CRD)
+  shared/      # Shared utilities (logging, errors, config)
+deploy/
+  k3d-config.yaml          # Local K8s cluster config
+  localstack/               # LocalStack K8s manifests
+  crds/                     # Custom Resource Definitions
+tests/
+  unit/        # Fast tests, no infra needed
+  integration/ # Requires k3d + LocalStack
+  e2e/         # Full system tests
+scripts/       # dev-up, dev-down, seed, wait-ready
+docs/          # Architecture and local dev guides
 ```
 
 ### Comments & Documentation
 
 - Don't add comments for obvious code. Only comment *why*, not *what*.
-- Public APIs must have docstrings/JSDoc.
+- Exported functions and types must have Go doc comments (`// FuncName does...`).
 - Keep README and docs up to date when behavior changes.
 
 ## Git Workflow
@@ -116,7 +165,7 @@ Rules:
 
 - Write tests for business logic and edge cases. Don't test framework internals.
 - Tests should be deterministic — no flaky tests, no dependency on external services.
-- Test file naming: `<module>.test.<ext>` or `<module>_test.<ext>` (match language idiom).
+- Test file naming: `<module>_test.go`.
 - Use test fixtures and factories, not raw inline data in every test.
 
 ## Claude-Specific Instructions
