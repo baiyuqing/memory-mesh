@@ -45,8 +45,8 @@ func TestListBlocks(t *testing.T) {
 	}
 	var body BlockListResponse
 	json.NewDecoder(w.Body).Decode(&body)
-	if len(body.Blocks) != 3 {
-		t.Errorf("expected 3 blocks, got %d", len(body.Blocks))
+	if len(body.Blocks) != 4 {
+		t.Errorf("expected 4 blocks, got %d", len(body.Blocks))
 	}
 }
 

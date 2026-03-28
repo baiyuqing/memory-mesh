@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
@@ -77,9 +78,9 @@ func TestCompile_ExplicitComposition(t *testing.T) {
 		t.Errorf("db (pos %d) should come before pooler (pos %d)", posMap["db"], posMap["pooler"])
 	}
 
-	// Wires: inline inputs should have been normalized.
-	if len(result.Composition.Wires) != 2 {
-		t.Errorf("expected 2 wires from inline inputs, got %d", len(result.Composition.Wires))
+	// Wires: 2 inline inputs + 1 auto-wired credential (db→pooler).
+	if len(result.Composition.Wires) != 3 {
+		t.Errorf("expected 3 wires, got %d", len(result.Composition.Wires))
 	}
 }
 
@@ -153,5 +154,103 @@ func TestCompile_MissingEngine(t *testing.T) {
 	}
 	if len(errs) == 0 {
 		t.Error("expected error for missing engine")
+	}
+}
+
+func TestCompile_CredentialPath_ExplicitWire(t *testing.T) {
+	registry := testfixture.NewPhase1Registry()
+	spec := ClusterSpec{
+		Blocks: &BlocksSpec{
+			Composition: testfixture.CredentialPathComposition(),
+		},
+	}
+
+	result, errs := Compile(spec, registry)
+	if result == nil {
+		t.Fatalf("expected result, got errors: %v", errs)
+	}
+
+	if len(result.Composition.Blocks) != 4 {
+		t.Fatalf("expected 4 blocks, got %d", len(result.Composition.Blocks))
+	}
+
+	// Topo order: storage -> db -> rotator -> pooler.
+	posMap := make(map[string]int)
+	for i, ref := range result.Sorted {
+		posMap[ref.Name] = i
+	}
+	if posMap["storage"] >= posMap["db"] {
+		t.Errorf("storage should come before db")
+	}
+	if posMap["db"] >= posMap["rotator"] {
+		t.Errorf("db should come before rotator")
+	}
+	if posMap["rotator"] >= posMap["pooler"] {
+		t.Errorf("rotator should come before pooler")
+	}
+
+	// Verify credential wire exists.
+	foundCredWire := false
+	for _, w := range result.Composition.Wires {
+		if w.FromBlock == "rotator" && w.FromPort == "credential" && w.ToBlock == "pooler" && w.ToPort == "upstream-credential" {
+			foundCredWire = true
+			break
+		}
+	}
+	if !foundCredWire {
+		t.Error("expected explicit credential wire from rotator to pooler")
+	}
+}
+
+func TestCompile_CredentialAmbiguity_ReportsError(t *testing.T) {
+	registry := testfixture.NewPhase1Registry()
+
+	// 4-block composition WITHOUT explicit credential wire.
+	// Both db and rotator produce credential — pgbouncer's upstream-credential
+	// has 2 candidates and must report an error instead of silently skipping.
+	spec := ClusterSpec{
+		Blocks: &BlocksSpec{
+			Composition: []block.BlockRef{
+				{Kind: "storage.local-pv", Name: "storage"},
+				{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{"storage": "storage/pvc-spec"}},
+				{Kind: "security.password-rotation", Name: "rotator", Inputs: map[string]string{"upstream-dsn": "db/dsn"}},
+				{Kind: "gateway.pgbouncer", Name: "pooler", Inputs: map[string]string{"upstream-dsn": "db/dsn"}},
+			},
+		},
+	}
+
+	result, errs := Compile(spec, registry)
+	if result == nil && len(errs) == 0 {
+		t.Fatal("expected either result with errors or errors only")
+	}
+
+	// There should be an error about credential ambiguity.
+	foundAmbiguityError := false
+	for _, e := range errs {
+		if strings.Contains(e.Error(), "upstream-credential") && strings.Contains(e.Error(), "candidates") {
+			foundAmbiguityError = true
+			break
+		}
+	}
+	if !foundAmbiguityError {
+		t.Errorf("expected ambiguity error for upstream-credential, got errors: %v", errs)
+	}
+}
+
+func TestCompile_StandardPath_NoRegression(t *testing.T) {
+	// The existing 3-block path (no rotation) must still work.
+	registry := testfixture.NewPhase1Registry()
+	spec := ClusterSpec{
+		Blocks: &BlocksSpec{
+			Composition: testfixture.StandardComposition(),
+		},
+	}
+
+	result, errs := Compile(spec, registry)
+	if result == nil {
+		t.Fatalf("3-block path should still compile, got errors: %v", errs)
+	}
+	if len(result.Composition.Blocks) != 3 {
+		t.Fatalf("expected 3 blocks, got %d", len(result.Composition.Blocks))
 	}
 }

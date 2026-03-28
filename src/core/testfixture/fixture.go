@@ -52,7 +52,17 @@ func Phase1Blocks() []block.Block {
 			Version:  "1.0.0",
 			Ports: []block.Port{
 				{Name: "upstream-dsn", PortType: "dsn", Direction: block.PortInput, Required: true},
+				{Name: "upstream-credential", PortType: "credential", Direction: block.PortInput},
 				{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
+			},
+		}},
+		&FakeBlock{Desc: block.Descriptor{
+			Kind:     "security.password-rotation",
+			Category: block.CategorySecurity,
+			Version:  "1.0.0",
+			Ports: []block.Port{
+				{Name: "upstream-dsn", PortType: "dsn", Direction: block.PortInput, Required: true},
+				{Name: "credential", PortType: "credential", Direction: block.PortOutput},
 			},
 		}},
 	}
@@ -75,5 +85,20 @@ func StandardComposition() []block.BlockRef {
 		{Kind: "storage.local-pv", Name: "storage"},
 		{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{"storage": "storage/pvc-spec"}},
 		{Kind: "gateway.pgbouncer", Name: "pooler", Inputs: map[string]string{"upstream-dsn": "db/dsn"}},
+	}
+}
+
+// CredentialPathComposition returns the 4-block credential path:
+// local-pv -> postgresql -> password-rotation -> pgbouncer.
+// pgbouncer explicitly wires both upstream-dsn and upstream-credential.
+func CredentialPathComposition() []block.BlockRef {
+	return []block.BlockRef{
+		{Kind: "storage.local-pv", Name: "storage"},
+		{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{"storage": "storage/pvc-spec"}},
+		{Kind: "security.password-rotation", Name: "rotator", Inputs: map[string]string{"upstream-dsn": "db/dsn"}},
+		{Kind: "gateway.pgbouncer", Name: "pooler", Inputs: map[string]string{
+			"upstream-dsn":        "db/dsn",
+			"upstream-credential": "rotator/credential",
+		}},
 	}
 }
