@@ -1,4 +1,4 @@
-// Package stripe implements the compute.stripe block, deploying a
+// Package stripe implements the integration.stripe block, deploying a
 // Stripe webhook receiver that persists billing events to a database.
 package stripe
 
@@ -26,8 +26,8 @@ type Block struct{}
 
 func (b *Block) Descriptor() block.Descriptor {
 	return block.Descriptor{
-		Kind:        "compute.stripe",
-		Category:    block.CategoryCompute,
+		Kind:        "integration.stripe",
+		Category:    block.CategoryIntegration,
 		Version:     "1.0.0",
 		Description: "Stripe payment API integration. Deploys a webhook receiver and provides billing event streams.",
 		Ports: []block.Port{

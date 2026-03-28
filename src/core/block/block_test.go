@@ -47,10 +47,10 @@ func newDatastoreBlock() *stubBlock {
 	}}
 }
 
-func newComputeBlock() *stubBlock {
+func newGatewayBlock() *stubBlock {
 	return &stubBlock{desc: block.Descriptor{
-		Kind:     "compute.pgbouncer",
-		Category: block.CategoryCompute,
+		Kind:     "gateway.pgbouncer",
+		Category: block.CategoryGateway,
 		Version:  "1.0.0",
 		Ports: []block.Port{
 			{Name: "upstream-dsn", PortType: "dsn", Direction: block.PortInput, Required: true},
@@ -65,7 +65,7 @@ func setupRegistry() *block.Registry {
 	r := block.NewRegistry()
 	r.Register(newStorageBlock())
 	r.Register(newDatastoreBlock())
-	r.Register(newComputeBlock())
+	r.Register(newGatewayBlock())
 	return r
 }
 

@@ -1,6 +1,6 @@
 ---
-kind: compute.s3
-category: compute
+kind: integration.s3-backup
+category: integration
 version: 1.0.0
 description: Scheduled database backups to S3-compatible storage.
 ports:
@@ -31,7 +31,7 @@ requires:
 provides: []
 ---
 
-# compute.s3
+# integration.s3-backup
 
 Runs scheduled backups via a CronJob. Connects to the database using the
 wired DSN and streams backups to an S3-compatible bucket.

@@ -28,11 +28,12 @@ type Category string
 
 const (
 	CategoryDatastore     Category = "datastore"
-	CategoryCompute       Category = "compute"
+	CategoryGateway       Category = "gateway"
 	CategoryStorage       Category = "storage"
 	CategoryObservability Category = "observability"
 	CategorySecurity      Category = "security"
 	CategoryNetworking    Category = "networking"
+	CategoryIntegration   Category = "integration"
 )
 
 // ParameterSpec describes one configurable parameter of a block.

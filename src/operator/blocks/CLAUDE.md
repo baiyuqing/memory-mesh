@@ -13,12 +13,9 @@ blocks/
     postgresql/                  # BLOCK.md + Go implementation
     mysql/
     redis/
-  compute/
+  gateway/
     pgbouncer/
     proxysql/
-    s3-backup/
-    stripe/
-    slack-notifier/
   storage/
     local-pv/
     ebs/
@@ -32,6 +29,10 @@ blocks/
   networking/
     ingress/
     service-mesh/
+  integration/
+    s3-backup/
+    stripe/
+    slack-notifier/
 ```
 
 ## Categories
@@ -39,11 +40,12 @@ blocks/
 | Category | What belongs here |
 |----------|-------------------|
 | `datastore` | Stateful data services — databases, caches, message brokers, search engines |
-| `compute` | Stateless workloads — proxies, backup jobs, webhook receivers, API gateways |
+| `gateway` | Request-path middleware between clients and services — connection poolers, proxies |
 | `storage` | Persistent volume provisioning — PVCs, StorageClasses, CSI drivers |
 | `observability` | Metrics, logs, traces, dashboards, alerting |
 | `security` | Certificates, credentials, secrets management, policy enforcement |
 | `networking` | Ingress, service mesh, DNS, load balancing |
+| `integration` | Adapters to external services/APIs — backups, webhooks, notifications |
 
 ## Adding a New Block
 

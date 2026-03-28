@@ -35,7 +35,7 @@ The system is built from composable blocks that wire together via typed ports:
 - **BlockRuntime** — Infrastructure-aware implementation (in `src/operator/blocks/`) that reconciles K8s resources.
 - **BLOCK.md** — Per-block manifest with YAML frontmatter (machine-readable) + markdown body (AI-readable).
 
-Block categories: `datastore`, `compute`, `storage`, `observability`, `security`, `networking`.
+Block categories: `datastore`, `gateway`, `storage`, `observability`, `security`, `networking`, `integration`.
 
 The CRD supports both **shorthand** (flat `engine`/`replicas` fields, auto-expanded) and **explicit composition** (`spec.blocks` with composition + wires + inline inputs).
 

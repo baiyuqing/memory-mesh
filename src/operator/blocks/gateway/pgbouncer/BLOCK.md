@@ -1,6 +1,6 @@
 ---
-kind: compute.pgbouncer
-category: compute
+kind: gateway.pgbouncer
+category: gateway
 version: 1.0.0
 description: PgBouncer connection pooler for PostgreSQL.
 ports:
@@ -34,7 +34,7 @@ provides:
   - metrics-endpoint
 ---
 
-# compute.pgbouncer
+# gateway.pgbouncer
 
 Runs PgBouncer as a Deployment in front of a PostgreSQL engine block.
 Provides connection pooling to reduce backend connection pressure.

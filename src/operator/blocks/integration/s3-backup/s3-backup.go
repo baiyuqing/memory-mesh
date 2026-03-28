@@ -1,4 +1,4 @@
-// Package s3backup implements the compute.s3-backup block, deploying scheduled
+// Package s3backup implements the integration.s3-backup block, deploying scheduled
 // database backups to S3-compatible storage via CronJob.
 package s3backup
 
@@ -23,8 +23,8 @@ type Block struct{}
 
 func (b *Block) Descriptor() block.Descriptor {
 	return block.Descriptor{
-		Kind:        "compute.s3-backup",
-		Category:    block.CategoryCompute,
+		Kind:        "integration.s3-backup",
+		Category:    block.CategoryIntegration,
 		Version:     "1.0.0",
 		Description: "Scheduled database backups to S3-compatible storage.",
 		Ports: []block.Port{

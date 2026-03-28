@@ -1,6 +1,6 @@
 ---
-kind: compute.proxysql
-category: compute
+kind: gateway.proxysql
+category: gateway
 version: 1.0.0
 description: ProxySQL connection pooler and query router for MySQL.
 ports:
@@ -38,7 +38,7 @@ provides:
   - metrics-endpoint
 ---
 
-# compute.proxysql
+# gateway.proxysql
 
 Runs ProxySQL as a Deployment in front of a MySQL engine block. Provides
 connection pooling, query routing, and read/write splitting.

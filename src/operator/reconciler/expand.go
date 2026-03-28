@@ -92,7 +92,7 @@ func ExpandToComposition(spec ClusterSpec) (block.Composition, []error) {
 
 	if spec.Backup != nil && spec.Backup.Enabled {
 		comp.Blocks = append(comp.Blocks, block.BlockRef{
-			Kind: "compute.s3-backup",
+			Kind: "integration.s3-backup",
 			Name: "default-backup",
 			Parameters: map[string]string{
 				"schedule": spec.Backup.Schedule,

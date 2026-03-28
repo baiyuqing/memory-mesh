@@ -1,6 +1,6 @@
 ---
-kind: compute.slack-notifier
-category: compute
+kind: integration.slack-notifier
+category: integration
 version: 1.0.0
 description: Slack webhook notifier for cluster events and alerts.
 ports:
@@ -35,7 +35,7 @@ provides:
   - http-endpoint
 ---
 
-# compute.slack-notifier
+# integration.slack-notifier
 
 Deploys a lightweight notification relay that forwards cluster events and
 metric alerts to a Slack channel via webhook.
