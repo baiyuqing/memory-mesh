@@ -66,32 +66,13 @@ func (b *Block) Reconcile(ctx context.Context, c client.Client, req blocks.Recon
 	hasCredential := false
 	upstreamCredJSON := req.ResolvedInputs["upstream-credential"]
 	if upstreamCredJSON != "" {
-		credRef, err := block.DecodeCredentialRef(upstreamCredJSON)
+		resolved, err := blocks.ResolveCredential(ctx, c, upstreamCredJSON)
 		if err != nil {
-			return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: fmt.Sprintf("upstream-credential decode failed: %v", err)}, err
-		}
-
-		// Read the upstream Secret to get actual credentials.
-		var upstreamSecret corev1.Secret
-		if err := c.Get(ctx, types.NamespacedName{Name: credRef.SecretName, Namespace: credRef.SecretNamespace}, &upstreamSecret); err != nil {
-			return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: fmt.Sprintf("upstream credential Secret not found: %v", err)}, err
-		}
-
-		usernameBytes, ok := upstreamSecret.Data[credRef.UsernameKey]
-		if !ok || len(usernameBytes) == 0 {
-			err := fmt.Errorf("upstream credential Secret %q missing key %q", credRef.SecretName, credRef.UsernameKey)
 			return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
 		}
-		passwordBytes, ok := upstreamSecret.Data[credRef.PasswordKey]
-		if !ok || len(passwordBytes) == 0 {
-			err := fmt.Errorf("upstream credential Secret %q missing key %q", credRef.SecretName, credRef.PasswordKey)
-			return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
-		}
-		username := string(usernameBytes)
-		password := string(passwordBytes)
 
 		// Create userlist Secret for PgBouncer auth_file.
-		userlistContent := fmt.Sprintf(`"%s" "%s"`, username, password)
+		userlistContent := fmt.Sprintf(`"%s" "%s"`, resolved.Username, resolved.Password)
 		userlistSecretName := fullName + "-userlist"
 		if err := reconcileUserlistSecret(ctx, c, req.ClusterNamespace, userlistSecretName, labels, userlistContent); err != nil {
 			return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
