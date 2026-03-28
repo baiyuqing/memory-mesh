@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
+	"github.com/baiyuqing/ottoplus/src/core/compiler"
 )
 
 // ValidateRequest is the request body for POST /v1/compositions/validate.
@@ -17,7 +18,8 @@ type ValidateResponse struct {
 	Errors  []string `json:"errors,omitempty"`
 }
 
-// handleValidateComposition validates a composition against the registry.
+// handleValidateComposition validates a composition against the registry
+// using the unified compiler pipeline.
 //
 //	POST /v1/compositions/validate
 func (s *Server) handleValidateComposition(w http.ResponseWriter, r *http.Request) {
@@ -27,11 +29,9 @@ func (s *Server) handleValidateComposition(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	normErrs := req.Composition.NormalizeInputs()
-	errs := req.Composition.Validate(s.registry)
-	errs = append(normErrs, errs...)
+	result, errs := compiler.CompileComposition(req.Composition, s.registry)
 
-	resp := ValidateResponse{IsValid: len(errs) == 0}
+	resp := ValidateResponse{IsValid: result != nil && len(errs) == 0}
 	for _, e := range errs {
 		resp.Errors = append(resp.Errors, e.Error())
 	}
@@ -55,7 +55,7 @@ type AutoWireResponse struct {
 }
 
 // handleAutoWire auto-wires a composition and returns the result with
-// inferred wires filled in.
+// inferred wires filled in, using the unified compiler pipeline.
 //
 //	POST /v1/compositions/auto-wire
 func (s *Server) handleAutoWire(w http.ResponseWriter, r *http.Request) {
@@ -65,12 +65,14 @@ func (s *Server) handleAutoWire(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comp := req.Composition
-	normErrs := comp.NormalizeInputs()
-	errs := comp.AutoWire(s.registry)
-	errs = append(normErrs, errs...)
+	result, errs := compiler.CompileComposition(req.Composition, s.registry)
 
-	resp := AutoWireResponse{Composition: comp}
+	resp := AutoWireResponse{}
+	if result != nil {
+		resp.Composition = result.Composition
+	} else {
+		resp.Composition = req.Composition
+	}
 	for _, e := range errs {
 		resp.Warnings = append(resp.Warnings, e.Error())
 	}
@@ -80,9 +82,9 @@ func (s *Server) handleAutoWire(w http.ResponseWriter, r *http.Request) {
 
 // TopologyNode represents a block in the topologically sorted graph.
 type TopologyNode struct {
-	Name     string   `json:"name"`
-	Kind     string   `json:"kind"`
-	Category string   `json:"category"`
+	Name      string   `json:"name"`
+	Kind      string   `json:"kind"`
+	Category  string   `json:"category"`
 	DependsOn []string `json:"dependsOn"`
 }
 
@@ -94,7 +96,7 @@ type TopologyResponse struct {
 }
 
 // handleTopology returns the topological sort order and dependency graph
-// for a composition. This is the primary data source for visual editors.
+// for a composition, using the unified compiler pipeline.
 //
 //	POST /v1/compositions/topology
 func (s *Server) handleTopology(w http.ResponseWriter, r *http.Request) {
@@ -104,24 +106,23 @@ func (s *Server) handleTopology(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comp := req.Composition
-	comp.NormalizeInputs()
-	comp.AutoWire(s.registry)
-
-	sorted, err := comp.TopologicalSort()
-	if err != nil {
-		writeJSON(w, http.StatusUnprocessableEntity, TopologyResponse{Error: err.Error()})
+	result, errs := compiler.CompileComposition(req.Composition, s.registry)
+	if result == nil {
+		errMsgs := make([]string, len(errs))
+		for i, e := range errs {
+			errMsgs[i] = e.Error()
+		}
+		writeJSON(w, http.StatusUnprocessableEntity, TopologyResponse{Error: errMsgs[0]})
 		return
 	}
 
-	// Build dependency map from wires
 	deps := make(map[string][]string)
-	for _, w := range comp.Wires {
+	for _, w := range result.Composition.Wires {
 		deps[w.ToBlock] = append(deps[w.ToBlock], w.FromBlock)
 	}
 
-	nodes := make([]TopologyNode, 0, len(sorted))
-	for _, ref := range sorted {
+	nodes := make([]TopologyNode, 0, len(result.Sorted))
+	for _, ref := range result.Sorted {
 		category := ""
 		if b, ok := s.registry.Get(ref.Kind); ok {
 			category = string(b.Descriptor().Category)
@@ -136,6 +137,6 @@ func (s *Server) handleTopology(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, TopologyResponse{
 		Nodes: nodes,
-		Wires: comp.Wires,
+		Wires: result.Composition.Wires,
 	})
 }
