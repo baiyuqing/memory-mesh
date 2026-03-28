@@ -61,9 +61,9 @@ func TestOperatorCompiler_ExplicitWithInlineInputs(t *testing.T) {
 		t.Fatalf("expected result, got errors: %v", errs)
 	}
 
-	// Wires should have been created from inline inputs.
-	if len(result.Composition.Wires) != 2 {
-		t.Fatalf("expected 2 wires, got %d", len(result.Composition.Wires))
+	// Wires: 2 inline inputs + 1 auto-wired credential (db→pooler).
+	if len(result.Composition.Wires) != 3 {
+		t.Fatalf("expected 3 wires, got %d", len(result.Composition.Wires))
 	}
 
 	// Topo order must be: storage -> db -> pooler (regardless of input order).

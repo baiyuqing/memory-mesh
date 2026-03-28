@@ -225,7 +225,7 @@ func (c *Composition) AutoWire(registry *Registry) []error {
 					ToBlock:   ref.Name,
 					ToPort:    port.Name,
 				})
-			} else if len(candidates) > 1 && port.Required {
+			} else if len(candidates) > 1 && (port.Required || port.PortType == "credential") {
 				errs = append(errs, fmt.Errorf(
 					"block %q input port %q (type %s) has %d candidates, wire explicitly",
 					ref.Name, port.Name, port.PortType, len(candidates),
