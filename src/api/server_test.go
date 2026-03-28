@@ -247,20 +247,5 @@ func TestAutoWire_StandardPath(t *testing.T) {
 	var resp AutoWireResponse
 	json.NewDecoder(w.Body).Decode(&resp)
 
-	// Verify key wires exist.
-	wireSet := make(map[string]bool)
-	for _, wire := range resp.Composition.Wires {
-		key := wire.FromBlock + "/" + wire.FromPort + "->" + wire.ToBlock + "/" + wire.ToPort
-		wireSet[key] = true
-	}
-	expectedWires := []string{
-		"storage/pvc-spec->db/storage",
-		"db/dsn->rotator/upstream-dsn",
-		"rotator/credential->pooler/upstream-credential",
-	}
-	for _, ew := range expectedWires {
-		if !wireSet[ew] {
-			t.Errorf("expected wire %q not found in %v", ew, wireSet)
-		}
-	}
+	testfixture.AssertCredentialPathWires(t, resp.Composition.Wires)
 }

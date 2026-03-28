@@ -174,32 +174,8 @@ func TestCompile_CredentialPath_ExplicitWire(t *testing.T) {
 		t.Fatalf("expected 4 blocks, got %d", len(result.Composition.Blocks))
 	}
 
-	// Topo order: storage -> db -> rotator -> pooler.
-	posMap := make(map[string]int)
-	for i, ref := range result.Sorted {
-		posMap[ref.Name] = i
-	}
-	if posMap["storage"] >= posMap["db"] {
-		t.Errorf("storage should come before db")
-	}
-	if posMap["db"] >= posMap["rotator"] {
-		t.Errorf("db should come before rotator")
-	}
-	if posMap["rotator"] >= posMap["pooler"] {
-		t.Errorf("rotator should come before pooler")
-	}
-
-	// Verify credential wire exists.
-	foundCredWire := false
-	for _, w := range result.Composition.Wires {
-		if w.FromBlock == "rotator" && w.FromPort == "credential" && w.ToBlock == "pooler" && w.ToPort == "upstream-credential" {
-			foundCredWire = true
-			break
-		}
-	}
-	if !foundCredWire {
-		t.Error("expected explicit credential wire from rotator to pooler")
-	}
+	testfixture.AssertCredentialPathOrder(t, result.Sorted)
+	testfixture.AssertCredentialPathWires(t, result.Composition.Wires)
 }
 
 func TestCompile_CredentialAmbiguity_ReportsError(t *testing.T) {
