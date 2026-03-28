@@ -93,6 +93,10 @@ spec:
                             type: object
                             x-kubernetes-preserve-unknown-fields: true
                             description: "Block-specific parameter overrides."
+                          inputs:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                            description: "Inline input wiring. Key=input port name, value=blockName/portName."
                     wires:
                       type: array
                       description: "Explicit port wiring between blocks. Omit for auto-wiring."

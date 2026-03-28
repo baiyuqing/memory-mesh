@@ -39,12 +39,14 @@ type BlocksSpec struct {
 // ExpandToComposition converts a DatabaseClusterSpec into a Composition.
 // If spec.Blocks is set, it is used directly. Otherwise, a default
 // composition is synthesized from the shorthand fields.
-func ExpandToComposition(spec DatabaseClusterSpec) block.Composition {
+func ExpandToComposition(spec DatabaseClusterSpec) (block.Composition, []error) {
 	if spec.Blocks != nil {
-		return block.Composition{
+		comp := block.Composition{
 			Blocks: spec.Blocks.Composition,
 			Wires:  spec.Blocks.Wires,
 		}
+		errs := comp.NormalizeInputs()
+		return comp, errs
 	}
 
 	replicas := spec.Replicas
@@ -99,5 +101,5 @@ func ExpandToComposition(spec DatabaseClusterSpec) block.Composition {
 		})
 	}
 
-	return comp
+	return comp, nil
 }

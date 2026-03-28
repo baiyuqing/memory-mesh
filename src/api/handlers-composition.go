@@ -27,7 +27,9 @@ func (s *Server) handleValidateComposition(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	normErrs := req.Composition.NormalizeInputs()
 	errs := req.Composition.Validate(s.registry)
+	errs = append(normErrs, errs...)
 
 	resp := ValidateResponse{IsValid: len(errs) == 0}
 	for _, e := range errs {
@@ -64,7 +66,9 @@ func (s *Server) handleAutoWire(w http.ResponseWriter, r *http.Request) {
 	}
 
 	comp := req.Composition
+	normErrs := comp.NormalizeInputs()
 	errs := comp.AutoWire(s.registry)
+	errs = append(normErrs, errs...)
 
 	resp := AutoWireResponse{Composition: comp}
 	for _, e := range errs {
@@ -101,6 +105,7 @@ func (s *Server) handleTopology(w http.ResponseWriter, r *http.Request) {
 	}
 
 	comp := req.Composition
+	comp.NormalizeInputs()
 	comp.AutoWire(s.registry)
 
 	sorted, err := comp.TopologicalSort()

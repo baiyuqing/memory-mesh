@@ -163,6 +163,181 @@ func TestTopologicalSort(t *testing.T) {
 	}
 }
 
+func TestNormalizeInputsBasic(t *testing.T) {
+	comp := block.Composition{
+		Blocks: []block.BlockRef{
+			{Kind: "storage.local-pv", Name: "storage"},
+			{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+				"storage": "storage/pvc-spec",
+			}},
+		},
+	}
+
+	errs := comp.NormalizeInputs()
+	if len(errs) > 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if len(comp.Wires) != 1 {
+		t.Fatalf("expected 1 wire, got %d", len(comp.Wires))
+	}
+	w := comp.Wires[0]
+	if w.FromBlock != "storage" || w.FromPort != "pvc-spec" || w.ToBlock != "db" || w.ToPort != "storage" {
+		t.Fatalf("unexpected wire: %+v", w)
+	}
+}
+
+func TestNormalizeInputsMalformed(t *testing.T) {
+	cases := []struct {
+		name  string
+		value string
+	}{
+		{"no slash", "storage"},
+		{"empty block", "/pvc-spec"},
+		{"empty port", "storage/"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			comp := block.Composition{
+				Blocks: []block.BlockRef{
+					{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+						"storage": tc.value,
+					}},
+				},
+			}
+			errs := comp.NormalizeInputs()
+			if len(errs) == 0 {
+				t.Fatalf("expected error for malformed input %q", tc.value)
+			}
+		})
+	}
+}
+
+func TestNormalizeInputsConflict(t *testing.T) {
+	comp := block.Composition{
+		Blocks: []block.BlockRef{
+			{Kind: "storage.local-pv", Name: "s1"},
+			{Kind: "storage.local-pv", Name: "s2"},
+			{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+				"storage": "s2/pvc-spec",
+			}},
+		},
+		Wires: []block.Wire{
+			{FromBlock: "s1", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
+		},
+	}
+
+	errs := comp.NormalizeInputs()
+	if len(errs) == 0 {
+		t.Fatal("expected conflict error")
+	}
+}
+
+func TestNormalizeInputsHarmlessDuplicate(t *testing.T) {
+	comp := block.Composition{
+		Blocks: []block.BlockRef{
+			{Kind: "storage.local-pv", Name: "storage"},
+			{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+				"storage": "storage/pvc-spec",
+			}},
+		},
+		Wires: []block.Wire{
+			{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
+		},
+	}
+
+	errs := comp.NormalizeInputs()
+	if len(errs) > 0 {
+		t.Fatalf("expected no errors for identical duplicate, got: %v", errs)
+	}
+	if len(comp.Wires) != 1 {
+		t.Fatalf("expected 1 wire (deduped), got %d", len(comp.Wires))
+	}
+}
+
+func TestNormalizeInputsWithValidate(t *testing.T) {
+	r := setupRegistry()
+	comp := block.Composition{
+		Blocks: []block.BlockRef{
+			{Kind: "storage.local-pv", Name: "storage"},
+			{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+				"storage": "storage/pvc-spec",
+			}},
+			{Kind: "proxy.pgbouncer", Name: "proxy", Inputs: map[string]string{
+				"upstream-dsn": "db/dsn",
+			}},
+		},
+	}
+
+	normErrs := comp.NormalizeInputs()
+	if len(normErrs) > 0 {
+		t.Fatalf("normalize errors: %v", normErrs)
+	}
+
+	validErrs := comp.Validate(r)
+	if len(validErrs) > 0 {
+		t.Fatalf("validation errors: %v", validErrs)
+	}
+}
+
+func TestNormalizeInputsTopologicalSort(t *testing.T) {
+	r := setupRegistry()
+	comp := block.Composition{
+		Blocks: []block.BlockRef{
+			{Kind: "proxy.pgbouncer", Name: "proxy", Inputs: map[string]string{
+				"upstream-dsn": "db/dsn",
+			}},
+			{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+				"storage": "storage/pvc-spec",
+			}},
+			{Kind: "storage.local-pv", Name: "storage"},
+		},
+	}
+
+	comp.NormalizeInputs()
+	comp.AutoWire(r)
+
+	sorted, err := comp.TopologicalSort()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	nameOrder := make(map[string]int)
+	for i, ref := range sorted {
+		nameOrder[ref.Name] = i
+	}
+
+	if nameOrder["storage"] >= nameOrder["db"] {
+		t.Fatalf("storage should come before db, got: %v", nameOrder)
+	}
+	if nameOrder["db"] >= nameOrder["proxy"] {
+		t.Fatalf("db should come before proxy, got: %v", nameOrder)
+	}
+}
+
+func TestNormalizeInputsCoexistWithWires(t *testing.T) {
+	comp := block.Composition{
+		Blocks: []block.BlockRef{
+			{Kind: "storage.local-pv", Name: "storage"},
+			{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+				"storage": "storage/pvc-spec",
+			}},
+			{Kind: "proxy.pgbouncer", Name: "proxy"},
+		},
+		Wires: []block.Wire{
+			{FromBlock: "db", FromPort: "dsn", ToBlock: "proxy", ToPort: "upstream-dsn"},
+		},
+	}
+
+	errs := comp.NormalizeInputs()
+	if len(errs) > 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if len(comp.Wires) != 2 {
+		t.Fatalf("expected 2 wires (1 explicit + 1 from inputs), got %d", len(comp.Wires))
+	}
+}
+
 func TestTopologicalSortCircularDependency(t *testing.T) {
 	comp := block.Composition{
 		Blocks: []block.BlockRef{

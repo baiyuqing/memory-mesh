@@ -1,13 +1,17 @@
 package block
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // BlockRef is a reference to a specific block within a composition,
 // including its parameter overrides.
 type BlockRef struct {
 	Kind       string            `json:"kind"       yaml:"kind"`
 	Name       string            `json:"name"       yaml:"name"`
-	Parameters map[string]string `json:"parameters" yaml:"parameters"`
+	Parameters map[string]string `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Inputs     map[string]string `json:"inputs,omitempty"     yaml:"inputs,omitempty"`
 }
 
 // Wire connects an output port of one block instance to an input port
@@ -24,6 +28,57 @@ type Wire struct {
 type Composition struct {
 	Blocks []BlockRef `json:"blocks" yaml:"blocks"`
 	Wires  []Wire     `json:"wires"  yaml:"wires"`
+}
+
+// NormalizeInputs expands inline inputs on BlockRefs into Wire entries.
+// This allows users to declare dependencies directly on each block instead
+// of in a separate wires section. The format is: inputPort: "blockName/portName".
+func (c *Composition) NormalizeInputs() []error {
+	var errs []error
+
+	existingWires := make(map[string]Wire)
+	for _, w := range c.Wires {
+		key := w.ToBlock + ":" + w.ToPort
+		existingWires[key] = w
+	}
+
+	for _, ref := range c.Blocks {
+		for toPort, source := range ref.Inputs {
+			parts := strings.SplitN(source, "/", 2)
+			if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+				errs = append(errs, fmt.Errorf(
+					"block %q: invalid input %q: expected \"blockName/portName\", got %q",
+					ref.Name, toPort, source,
+				))
+				continue
+			}
+
+			newWire := Wire{
+				FromBlock: parts[0],
+				FromPort:  parts[1],
+				ToBlock:   ref.Name,
+				ToPort:    toPort,
+			}
+
+			key := ref.Name + ":" + toPort
+			if existing, ok := existingWires[key]; ok {
+				if existing.FromBlock != newWire.FromBlock || existing.FromPort != newWire.FromPort {
+					errs = append(errs, fmt.Errorf(
+						"block %q input port %q: conflict between inline input (%s/%s) and explicit wire (%s/%s)",
+						ref.Name, toPort,
+						newWire.FromBlock, newWire.FromPort,
+						existing.FromBlock, existing.FromPort,
+					))
+				}
+				continue
+			}
+
+			c.Wires = append(c.Wires, newWire)
+			existingWires[key] = newWire
+		}
+	}
+
+	return errs
 }
 
 // Validate checks that a composition is internally consistent:
