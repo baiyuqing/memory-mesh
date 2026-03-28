@@ -32,6 +32,7 @@ func (b *Block) Descriptor() block.Descriptor {
 		Description: "PostgreSQL database engine managed as a Kubernetes StatefulSet.",
 		Ports: []block.Port{
 			{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
+			{Name: "credential", PortType: "credential", Direction: block.PortOutput},
 			{Name: "metrics", PortType: "metrics-endpoint", Direction: block.PortOutput},
 			{Name: "storage", PortType: "pvc-spec", Direction: block.PortInput, Required: true},
 		},
@@ -42,7 +43,7 @@ func (b *Block) Descriptor() block.Descriptor {
 			{Name: "sharedBuffers", Type: "string", Default: "128MB", Description: "shared_buffers parameter."},
 		},
 		Requires: []string{"storage.*"},
-		Provides: []string{"dsn", "metrics-endpoint"},
+		Provides: []string{"dsn", "credential", "metrics-endpoint"},
 	}
 }
 
@@ -113,14 +114,33 @@ func (b *Block) Reconcile(ctx context.Context, c client.Client, req blocks.Recon
 		return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
 	}
 
+	credSecretName := fullName + "-credentials"
+	if err := b.reconcileCredentialSecret(ctx, c, req.ClusterNamespace, credSecretName, labels); err != nil {
+		return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
+	}
+
+	// DSN preserved for backward compatibility.
+	// TODO(dev-only): This DSN uses trust auth — no password. This is a
+	// dev-only compatibility path. Production use should consume the
+	// credential port instead.
 	dsn := fmt.Sprintf("postgresql://postgres@%s.%s.svc:5432/postgres", fullName, req.ClusterNamespace)
+
+	credRef := block.CredentialRef{
+		SecretName:      credSecretName,
+		SecretNamespace: req.ClusterNamespace,
+		UsernameKey:     "username",
+		PasswordKey:     "password",
+		DevOnly:         true, // trust auth — no real password enforcement yet
+	}
+	credJSON, _ := credRef.Encode()
 
 	return blocks.ReconcileResult{
 		Phase:   block.PhaseReady,
 		Message: "PostgreSQL StatefulSet reconciled",
 		Outputs: map[string]string{
-			"dsn":     dsn,
-			"metrics": fmt.Sprintf("http://%s.%s.svc:9187/metrics", fullName, req.ClusterNamespace),
+			"dsn":        dsn,
+			"credential": credJSON,
+			"metrics":    fmt.Sprintf("http://%s.%s.svc:9187/metrics", fullName, req.ClusterNamespace),
 		},
 	}, nil
 }
@@ -129,11 +149,12 @@ func (b *Block) Delete(ctx context.Context, c client.Client, req blocks.Reconcil
 	fullName := fmt.Sprintf("%s-%s", req.ClusterName, req.BlockRef.Name)
 	ns := req.ClusterNamespace
 
-	// Delete in reverse order: service, statefulset, configmap
+	// Delete in reverse order: service, statefulset, configmap, secret
 	_ = c.Delete(ctx, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: fullName, Namespace: ns}})
 	_ = c.Delete(ctx, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: fullName + "-headless", Namespace: ns}})
 	_ = c.Delete(ctx, &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: fullName, Namespace: ns}})
 	_ = c.Delete(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: fullName + "-config", Namespace: ns}})
+	_ = c.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: fullName + "-credentials", Namespace: ns}})
 	return nil
 }
 
@@ -207,6 +228,9 @@ func (b *Block) reconcileStatefulSet(ctx context.Context, c client.Client, names
 								{Name: "postgresql", ContainerPort: 5432, Protocol: corev1.ProtocolTCP},
 							},
 							Env: []corev1.EnvVar{
+								// DEV-ONLY: trust auth bypasses password checks.
+								// This will be replaced by Secret-backed auth
+								// once the credential model is fully wired.
 								{Name: "POSTGRES_HOST_AUTH_METHOD", Value: "trust"},
 								{Name: "PGDATA", Value: "/var/lib/postgresql/data/pgdata"},
 							},
@@ -330,6 +354,35 @@ func (b *Block) reconcileHeadlessService(ctx context.Context, c client.Client, n
 	existing.Spec.Ports = svc.Spec.Ports
 	existing.Spec.Selector = svc.Spec.Selector
 	return c.Update(ctx, existing)
+}
+
+// reconcileCredentialSecret creates or maintains a Secret holding the
+// database credentials. In the current dev-only mode this uses a
+// hardcoded default password. Future phases will integrate with the
+// password-rotation block for real credential management.
+func (b *Block) reconcileCredentialSecret(ctx context.Context, c client.Client, namespace, name string, labels map[string]string) error {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels:    labels,
+		},
+		Data: map[string][]byte{
+			// DEV-ONLY: hardcoded default credentials.
+			"username": []byte("postgres"),
+			"password": []byte("postgres-dev"),
+		},
+	}
+	existing := &corev1.Secret{}
+	err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, existing)
+	if errors.IsNotFound(err) {
+		return c.Create(ctx, secret)
+	}
+	if err != nil {
+		return err
+	}
+	// Do not overwrite existing credentials — they may have been rotated.
+	return nil
 }
 
 func paramOrDefault(params map[string]string, key, defaultValue string) string {

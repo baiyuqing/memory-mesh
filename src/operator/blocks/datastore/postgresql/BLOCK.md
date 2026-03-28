@@ -7,6 +7,9 @@ ports:
   - name: dsn
     portType: dsn
     direction: output
+  - name: credential
+    portType: credential
+    direction: output
   - name: metrics
     portType: metrics-endpoint
     direction: output
@@ -37,6 +40,7 @@ requires:
   - "storage.*"
 provides:
   - dsn
+  - credential
   - metrics-endpoint
 ---
 
