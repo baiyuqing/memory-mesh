@@ -27,14 +27,12 @@ type Port struct {
 type Category string
 
 const (
-	CategoryEngine     Category = "engine"
-	CategoryProxy      Category = "proxy"
-	CategoryBackup     Category = "backup"
-	CategoryMonitoring Category = "monitoring"
-	CategoryAuth        Category = "auth"
-	CategoryStorage     Category = "storage"
-	CategoryNetworking  Category = "networking"
-	CategoryIntegration Category = "integration"
+	CategoryDatastore     Category = "datastore"
+	CategoryCompute       Category = "compute"
+	CategoryStorage       Category = "storage"
+	CategoryObservability Category = "observability"
+	CategorySecurity      Category = "security"
+	CategoryNetworking    Category = "networking"
 )
 
 // ParameterSpec describes one configurable parameter of a block.

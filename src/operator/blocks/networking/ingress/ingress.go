@@ -37,7 +37,7 @@ func (b *Block) Descriptor() block.Descriptor {
 			{Name: "ingressClassName", Type: "string", Default: "nginx", Description: "Ingress class name."},
 			{Name: "tlsEnabled", Type: "string", Default: "false", Description: "Enable TLS termination."},
 		},
-		Requires: []string{"engine.*"},
+		Requires: []string{"datastore.*"},
 		Provides: []string{"ingress-url"},
 	}
 }

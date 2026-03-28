@@ -32,7 +32,7 @@ parameters:
     default: "false"
     description: Enable TLS termination.
 requires:
-  - "engine.*"
+  - "datastore.*"
 provides:
   - ingress-url
 ---
@@ -45,7 +45,7 @@ Supports optional TLS termination via the `tls-cert` input port.
 ## Composition Notes
 
 - **Must** wire `upstream-http` from a block providing `http-endpoint`.
-- **Optionally** wire `tls-cert` from `auth.mtls` for TLS termination.
+- **Optionally** wire `tls-cert` from `security.mtls` for TLS termination.
 - Outputs `ingress-url` with the externally-accessible URL.
 
 ## Kubernetes Resources Created

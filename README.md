@@ -23,7 +23,7 @@ spec:
         parameters:
           size: "10Gi"
 
-      - kind: engine.postgresql
+      - kind: datastore.postgresql
         name: db
         parameters:
           version: "16"
@@ -31,12 +31,12 @@ spec:
         inputs:
           storage: storage/pvc-spec
 
-      - kind: proxy.pgbouncer
+      - kind: compute.pgbouncer
         name: pooler
         inputs:
           upstream-dsn: db/dsn
 
-      - kind: monitoring.metrics-exporter
+      - kind: observability.metrics-exporter
         name: metrics
         inputs:
           metrics-input: db/metrics
@@ -57,15 +57,15 @@ The `inputs` field makes the dependency graph readable inline — no need to cro
 ├──────────────────────────────────────────────────────┤
 │  Block Layer (composable, pluggable)                 │
 │                                                      │
-│  storage     engine       proxy        monitoring    │
-│  local-pv    postgresql   pgbouncer    metrics       │
-│  ebs         mysql        proxysql     log-aggregator│
-│              redis                     dashboard     │
-│                                                      │
-│  auth        backup       networking   integration   │
-│  mtls        s3-backup    ingress      stripe        │
-│  password-                service-mesh slack-notifier │
-│  rotation                                            │
+│  datastore    compute       observability             │
+│  postgresql   pgbouncer     metrics-exporter          │
+│  mysql        proxysql      log-aggregator            │
+│  redis        s3-backup     health-dashboard          │
+│               stripe                                  │
+│  storage      slack-notifier                          │
+│  local-pv                   security                  │
+│  ebs          networking    mtls                      │
+│               ingress       password-rotation         │
 ├──────────────────────────────────────────────────────┤
 │  Local Infrastructure                                │
 │  k3d (K8s) + LocalStack (S3, SQS, IAM)              │
@@ -93,22 +93,22 @@ Each block is a self-contained unit with:
 
 | Category | Block | What It Provisions |
 |----------|-------|--------------------|
-| engine | `engine.postgresql` | PostgreSQL StatefulSet + Services |
-| engine | `engine.mysql` | MySQL StatefulSet + Services |
-| engine | `engine.redis` | Redis with optional persistence |
-| proxy | `proxy.pgbouncer` | PostgreSQL connection pooler |
-| proxy | `proxy.proxysql` | MySQL connection pooler |
+| datastore | `datastore.postgresql` | PostgreSQL StatefulSet + Services |
+| datastore | `datastore.mysql` | MySQL StatefulSet + Services |
+| datastore | `datastore.redis` | Redis with optional persistence |
+| compute | `compute.pgbouncer` | PostgreSQL connection pooler |
+| compute | `compute.proxysql` | MySQL connection pooler |
+| compute | `compute.s3-backup` | S3 backups via CronJob |
+| compute | `compute.stripe` | Stripe webhook receiver |
+| compute | `compute.slack-notifier` | Slack alert notifications |
 | storage | `storage.local-pv` | Local PersistentVolume |
 | storage | `storage.ebs` | AWS EBS StorageClass |
-| backup | `backup.s3-backup` | S3 backups via CronJob |
-| monitoring | `monitoring.metrics-exporter` | Prometheus scrape config |
-| monitoring | `monitoring.log-aggregator` | Loki + Promtail |
-| monitoring | `monitoring.health-dashboard` | Status dashboard |
-| auth | `auth.mtls` | Self-signed mTLS certificates |
-| auth | `auth.password-rotation` | Credential rotation CronJob |
+| observability | `observability.metrics-exporter` | Prometheus scrape config |
+| observability | `observability.log-aggregator` | Loki + Promtail |
+| observability | `observability.health-dashboard` | Status dashboard |
+| security | `security.mtls` | Self-signed mTLS certificates |
+| security | `security.password-rotation` | Credential rotation CronJob |
 | networking | `networking.ingress` | K8s Ingress with optional TLS |
-| integration | `integration.stripe` | Stripe webhook receiver |
-| integration | `integration.slack-notifier` | Slack alert notifications |
 
 ### Port Types
 
