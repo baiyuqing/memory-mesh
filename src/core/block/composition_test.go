@@ -11,7 +11,7 @@ func TestCompositionValidateValid(t *testing.T) {
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
 			{Kind: "storage.local-pv", Name: "storage"},
-			{Kind: "engine.postgresql", Name: "db"},
+			{Kind: "datastore.postgresql", Name: "db"},
 		},
 		Wires: []block.Wire{
 			{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
@@ -28,7 +28,7 @@ func TestCompositionValidateUnknownBlock(t *testing.T) {
 	r := setupRegistry()
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
-			{Kind: "engine.oracle", Name: "db"},
+			{Kind: "datastore.oracle", Name: "db"},
 		},
 	}
 
@@ -43,7 +43,7 @@ func TestCompositionValidateDuplicateName(t *testing.T) {
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
 			{Kind: "storage.local-pv", Name: "same"},
-			{Kind: "engine.postgresql", Name: "same"},
+			{Kind: "datastore.postgresql", Name: "same"},
 		},
 	}
 
@@ -64,7 +64,7 @@ func TestCompositionValidatePortTypeMismatch(t *testing.T) {
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
 			{Kind: "storage.local-pv", Name: "storage"},
-			{Kind: "proxy.pgbouncer", Name: "proxy"},
+			{Kind: "compute.pgbouncer", Name: "proxy"},
 		},
 		Wires: []block.Wire{
 			{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "proxy", ToPort: "upstream-dsn"},
@@ -87,7 +87,7 @@ func TestCompositionValidateRequiredPortNotWired(t *testing.T) {
 	r := setupRegistry()
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
-			{Kind: "engine.postgresql", Name: "db"},
+			{Kind: "datastore.postgresql", Name: "db"},
 		},
 	}
 
@@ -108,8 +108,8 @@ func TestAutoWireSimple(t *testing.T) {
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
 			{Kind: "storage.local-pv", Name: "storage"},
-			{Kind: "engine.postgresql", Name: "db"},
-			{Kind: "proxy.pgbouncer", Name: "proxy"},
+			{Kind: "datastore.postgresql", Name: "db"},
+			{Kind: "compute.pgbouncer", Name: "proxy"},
 		},
 	}
 
@@ -133,8 +133,8 @@ func TestTopologicalSort(t *testing.T) {
 	r := setupRegistry()
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
-			{Kind: "proxy.pgbouncer", Name: "proxy"},
-			{Kind: "engine.postgresql", Name: "db"},
+			{Kind: "compute.pgbouncer", Name: "proxy"},
+			{Kind: "datastore.postgresql", Name: "db"},
 			{Kind: "storage.local-pv", Name: "storage"},
 		},
 	}
@@ -167,7 +167,7 @@ func TestNormalizeInputsBasic(t *testing.T) {
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
 			{Kind: "storage.local-pv", Name: "storage"},
-			{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+			{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{
 				"storage": "storage/pvc-spec",
 			}},
 		},
@@ -200,7 +200,7 @@ func TestNormalizeInputsMalformed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			comp := block.Composition{
 				Blocks: []block.BlockRef{
-					{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+					{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{
 						"storage": tc.value,
 					}},
 				},
@@ -218,7 +218,7 @@ func TestNormalizeInputsConflict(t *testing.T) {
 		Blocks: []block.BlockRef{
 			{Kind: "storage.local-pv", Name: "s1"},
 			{Kind: "storage.local-pv", Name: "s2"},
-			{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+			{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{
 				"storage": "s2/pvc-spec",
 			}},
 		},
@@ -237,7 +237,7 @@ func TestNormalizeInputsHarmlessDuplicate(t *testing.T) {
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
 			{Kind: "storage.local-pv", Name: "storage"},
-			{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+			{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{
 				"storage": "storage/pvc-spec",
 			}},
 		},
@@ -260,10 +260,10 @@ func TestNormalizeInputsWithValidate(t *testing.T) {
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
 			{Kind: "storage.local-pv", Name: "storage"},
-			{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+			{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{
 				"storage": "storage/pvc-spec",
 			}},
-			{Kind: "proxy.pgbouncer", Name: "proxy", Inputs: map[string]string{
+			{Kind: "compute.pgbouncer", Name: "proxy", Inputs: map[string]string{
 				"upstream-dsn": "db/dsn",
 			}},
 		},
@@ -284,10 +284,10 @@ func TestNormalizeInputsTopologicalSort(t *testing.T) {
 	r := setupRegistry()
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
-			{Kind: "proxy.pgbouncer", Name: "proxy", Inputs: map[string]string{
+			{Kind: "compute.pgbouncer", Name: "proxy", Inputs: map[string]string{
 				"upstream-dsn": "db/dsn",
 			}},
-			{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+			{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{
 				"storage": "storage/pvc-spec",
 			}},
 			{Kind: "storage.local-pv", Name: "storage"},
@@ -319,10 +319,10 @@ func TestNormalizeInputsCoexistWithWires(t *testing.T) {
 	comp := block.Composition{
 		Blocks: []block.BlockRef{
 			{Kind: "storage.local-pv", Name: "storage"},
-			{Kind: "engine.postgresql", Name: "db", Inputs: map[string]string{
+			{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{
 				"storage": "storage/pvc-spec",
 			}},
-			{Kind: "proxy.pgbouncer", Name: "proxy"},
+			{Kind: "compute.pgbouncer", Name: "proxy"},
 		},
 		Wires: []block.Wire{
 			{FromBlock: "db", FromPort: "dsn", ToBlock: "proxy", ToPort: "upstream-dsn"},

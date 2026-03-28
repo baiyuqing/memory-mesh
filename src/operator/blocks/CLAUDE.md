@@ -9,32 +9,41 @@ Contains `BlockRuntime` implementations that bridge domain-level block definitio
 ```
 blocks/
   runtime.go                     # BlockRuntime interface + RuntimeRegistry
-  engine/
+  datastore/
     postgresql/                  # BLOCK.md + Go implementation
     mysql/
     redis/
-  proxy/
+  compute/
     pgbouncer/
     proxysql/
-  backup/
     s3-backup/
-  monitoring/
-    metrics-exporter/
-    log-aggregator/
-    health-dashboard/
-  auth/
-    password-rotation/
-    mtls/
+    stripe/
+    slack-notifier/
   storage/
     local-pv/
     ebs/
-  integration/
-    stripe/
-    slack-notifier/
+  observability/
+    metrics-exporter/
+    log-aggregator/
+    health-dashboard/
+  security/
+    mtls/
+    password-rotation/
   networking/
     ingress/
     service-mesh/
 ```
+
+## Categories
+
+| Category | What belongs here |
+|----------|-------------------|
+| `datastore` | Stateful data services — databases, caches, message brokers, search engines |
+| `compute` | Stateless workloads — proxies, backup jobs, webhook receivers, API gateways |
+| `storage` | Persistent volume provisioning — PVCs, StorageClasses, CSI drivers |
+| `observability` | Metrics, logs, traces, dashboards, alerting |
+| `security` | Certificates, credentials, secrets management, policy enforcement |
+| `networking` | Ingress, service mesh, DNS, load balancing |
 
 ## Adding a New Block
 

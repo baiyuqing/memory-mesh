@@ -32,10 +32,10 @@ func newStorageBlock() *stubBlock {
 	}}
 }
 
-func newEngineBlock() *stubBlock {
+func newDatastoreBlock() *stubBlock {
 	return &stubBlock{desc: block.Descriptor{
-		Kind:     "engine.postgresql",
-		Category: block.CategoryEngine,
+		Kind:     "datastore.postgresql",
+		Category: block.CategoryDatastore,
 		Version:  "1.0.0",
 		Ports: []block.Port{
 			{Name: "storage", PortType: "pvc-spec", Direction: block.PortInput, Required: true},
@@ -47,16 +47,16 @@ func newEngineBlock() *stubBlock {
 	}}
 }
 
-func newProxyBlock() *stubBlock {
+func newComputeBlock() *stubBlock {
 	return &stubBlock{desc: block.Descriptor{
-		Kind:     "proxy.pgbouncer",
-		Category: block.CategoryProxy,
+		Kind:     "compute.pgbouncer",
+		Category: block.CategoryCompute,
 		Version:  "1.0.0",
 		Ports: []block.Port{
 			{Name: "upstream-dsn", PortType: "dsn", Direction: block.PortInput, Required: true},
 			{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
 		},
-		Requires: []string{"engine.*"},
+		Requires: []string{"datastore.*"},
 		Provides: []string{"dsn"},
 	}}
 }
@@ -64,8 +64,8 @@ func newProxyBlock() *stubBlock {
 func setupRegistry() *block.Registry {
 	r := block.NewRegistry()
 	r.Register(newStorageBlock())
-	r.Register(newEngineBlock())
-	r.Register(newProxyBlock())
+	r.Register(newDatastoreBlock())
+	r.Register(newComputeBlock())
 	return r
 }
 
@@ -98,11 +98,11 @@ func TestRegistryDuplicateRegister(t *testing.T) {
 func TestRegistryListByCategory(t *testing.T) {
 	r := setupRegistry()
 
-	engines := r.ListByCategory(block.CategoryEngine)
-	if len(engines) != 1 {
-		t.Fatalf("expected 1 engine, got %d", len(engines))
+	datastores := r.ListByCategory(block.CategoryDatastore)
+	if len(datastores) != 1 {
+		t.Fatalf("expected 1 datastore, got %d", len(datastores))
 	}
-	if engines[0].Kind != "engine.postgresql" {
-		t.Fatalf("expected engine.postgresql, got %s", engines[0].Kind)
+	if datastores[0].Kind != "datastore.postgresql" {
+		t.Fatalf("expected datastore.postgresql, got %s", datastores[0].Kind)
 	}
 }
