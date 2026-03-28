@@ -324,7 +324,12 @@ func (b *Block) reconcileHeadlessService(ctx context.Context, c client.Client, n
 	if errors.IsNotFound(err) {
 		return c.Create(ctx, svc)
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	existing.Spec.Ports = svc.Spec.Ports
+	existing.Spec.Selector = svc.Spec.Selector
+	return c.Update(ctx, existing)
 }
 
 func paramOrDefault(params map[string]string, key, defaultValue string) string {
