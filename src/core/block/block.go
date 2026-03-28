@@ -1,6 +1,6 @@
 // Package block defines the fundamental composable unit of the ottoplus
-// DBaaS platform. Blocks are self-describing, independently testable
-// building blocks that can be wired together to form database clusters.
+// platform. Blocks are self-describing, independently testable
+// building blocks that can be wired together to form infrastructure stacks.
 package block
 
 import "context"

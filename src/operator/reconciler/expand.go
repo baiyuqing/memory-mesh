@@ -1,5 +1,5 @@
 // Package reconciler implements the top-level composition reconciler
-// that orchestrates block reconciliation for DatabaseCluster CRs.
+// that orchestrates block reconciliation for Cluster CRs.
 package reconciler
 
 import (
@@ -8,9 +8,9 @@ import (
 	"github.com/baiyuqing/ottoplus/src/core/block"
 )
 
-// DatabaseClusterSpec mirrors the CRD spec fields needed for expansion.
+// ClusterSpec mirrors the CRD spec fields needed for expansion.
 // This avoids importing generated CRD types during early development.
-type DatabaseClusterSpec struct {
+type ClusterSpec struct {
 	// Shorthand fields
 	Engine   string            `json:"engine,omitempty"`
 	Replicas int               `json:"replicas,omitempty"`
@@ -36,10 +36,10 @@ type BlocksSpec struct {
 	Wires       []block.Wire     `json:"wires,omitempty"`
 }
 
-// ExpandToComposition converts a DatabaseClusterSpec into a Composition.
+// ExpandToComposition converts a ClusterSpec into a Composition.
 // If spec.Blocks is set, it is used directly. Otherwise, a default
 // composition is synthesized from the shorthand fields.
-func ExpandToComposition(spec DatabaseClusterSpec) (block.Composition, []error) {
+func ExpandToComposition(spec ClusterSpec) (block.Composition, []error) {
 	if spec.Blocks != nil {
 		comp := block.Composition{
 			Blocks: spec.Blocks.Composition,

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-REST/gRPC API server for the DBaaS control plane. Handles user-facing requests for database provisioning, scaling, and lifecycle management.
+REST/gRPC API server for the control plane. Handles user-facing requests for environment provisioning, block management, and composition lifecycle.
 
 ## Rules
 
@@ -22,7 +22,7 @@ REST/gRPC API server for the DBaaS control plane. Handles user-facing requests f
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST   | /v1/clusters | Create a new database cluster |
+| POST   | /v1/clusters | Create a new cluster |
 | GET    | /v1/clusters | List clusters |
 | GET    | /v1/clusters/:id | Get cluster details |
 | PATCH  | /v1/clusters/:id | Update cluster (scale, config) |

@@ -3,10 +3,10 @@ set -euo pipefail
 
 echo "==> Seeding test data..."
 
-# Create a sample DatabaseCluster resource
+# Create a sample Cluster resource
 kubectl apply -f - <<EOF
 apiVersion: ottoplus.io/v1alpha1
-kind: DatabaseCluster
+kind: Cluster
 metadata:
   name: seed-pg
   namespace: ottoplus
@@ -20,7 +20,7 @@ spec:
     storage: "1Gi"
 ---
 apiVersion: ottoplus.io/v1alpha1
-kind: DatabaseCluster
+kind: Cluster
 metadata:
   name: seed-mysql
   namespace: ottoplus
@@ -35,4 +35,4 @@ spec:
 EOF
 
 echo "==> Seed data created."
-echo "    kubectl get dbc -n ottoplus"
+echo "    kubectl get oc -n ottoplus"

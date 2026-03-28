@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Kubernetes operator that watches `DatabaseCluster` CRDs and reconciles the desired state with actual infrastructure. This is the core automation engine of the data plane.
+Kubernetes operator that watches `Cluster` CRDs and reconciles the desired state with actual infrastructure. This is the core automation engine of the data plane.
 
 ## Rules
 
@@ -20,12 +20,12 @@ Kubernetes operator that watches `DatabaseCluster` CRDs and reconciles the desir
 ## Reconciliation Flow
 
 ```
-Watch DatabaseCluster CR
+Watch Cluster CR
   → Validate spec (delegate to core/)
   → Determine desired state (StatefulSet, Service, ConfigMap)
   → Compare with actual state in cluster
   → Create/Update/Delete K8s resources as needed
-  → Update DatabaseCluster status
+  → Update Cluster status
 ```
 
 ## Conventions

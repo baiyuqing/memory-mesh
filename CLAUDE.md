@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-**ottoplus** — A Database-as-a-Service (DBaaS) platform with a Kubernetes-native control plane and pluggable data plane. Designed for AI-agent-friendly local development.
+**ottoplus** — A composable local development environment platform for AI agents. Kubernetes-native control plane with a pluggable block architecture. AI agents describe what infrastructure they need, and the platform provisions and wires it together.
 
 ### Tech Stack
 
@@ -15,12 +15,12 @@
 | Cloud Simulation | **LocalStack** (S3, SQS, IAM) |
 | Operator Framework | **controller-runtime** (sigs.k8s.io/controller-runtime) |
 | API | REST (net/http or chi) with OpenAPI |
-| CRD | `DatabaseCluster` (ottoplus.io/v1alpha1) |
+| CRD | `Cluster` (ottoplus.io/v1alpha1) |
 
 ### Architecture
 
-- **Control Plane** (`src/api/`, `src/operator/`) — API server + K8s operator that watches `DatabaseCluster` CRDs and reconciles desired state.
-- **Data Plane** — Database instances managed as K8s StatefulSets. Engine-agnostic via pluggable interface.
+- **Control Plane** (`src/api/`, `src/operator/`) — API server + K8s operator that watches `Cluster` CRDs and reconciles desired state.
+- **Block Layer** (`src/operator/blocks/`) — Pluggable infrastructure components (engines, proxies, storage, monitoring, auth, networking, integrations).
 - **Core Domain** (`src/core/`) — Pure business logic with zero infrastructure dependencies.
 - **Local Dev** — One-command setup via `make dev-up` (k3d + LocalStack). Ephemeral, data loss acceptable.
 
@@ -31,13 +31,13 @@ The system is built from composable blocks that wire together via typed ports:
 - **Block** — Self-contained unit with `Descriptor` (kind, ports, parameters, requires, provides). Defined in `src/core/block/`.
 - **Port** — Typed connection point (input/output). Blocks connect when port types match (e.g. `dsn`, `pvc-spec`, `metrics-endpoint`).
 - **Wire** — Explicit connection from one block's output port to another's input port. Can be auto-wired when unambiguous.
-- **Composition** — A set of BlockRefs + Wires that form a complete database cluster.
+- **Composition** — A set of BlockRefs + Wires that form a complete environment stack.
 - **BlockRuntime** — Infrastructure-aware implementation (in `src/operator/blocks/`) that reconciles K8s resources.
 - **BLOCK.md** — Per-block manifest with YAML frontmatter (machine-readable) + markdown body (AI-readable).
 
-Block categories: `engine`, `proxy`, `backup`, `monitoring`, `auth`, `storage`, `networking`.
+Block categories: `engine`, `proxy`, `backup`, `monitoring`, `auth`, `storage`, `networking`, `integration`.
 
-The CRD supports both **shorthand** (flat `engine`/`replicas` fields, auto-expanded) and **explicit composition** (`spec.blocks` with composition + wires).
+The CRD supports both **shorthand** (flat `engine`/`replicas` fields, auto-expanded) and **explicit composition** (`spec.blocks` with composition + wires + inline inputs).
 
 ### AI-Agent-Friendly Design
 
@@ -66,7 +66,7 @@ The CRD supports both **shorthand** (flat `engine`/`replicas` fields, auto-expan
 | Directories   | kebab-case         | `api-handlers/`       |
 | Constants     | PascalCase (exported) or camelCase (unexported) | `MaxRetryCount` / `defaultTimeout` |
 | Functions     | camelCase (Go idiom) | `getUserByID`        |
-| Types/Structs | PascalCase         | `DatabaseCluster`     |
+| Types/Structs | PascalCase         | `Cluster`             |
 | Booleans      | is/has/should prefix | `isActive`, `hasPermission` |
 
 ### Directory Structure
@@ -75,7 +75,7 @@ The CRD supports both **shorthand** (flat `engine`/`replicas` fields, auto-expan
 src/
   core/        # Domain logic — no infra deps, pure Go, testable in isolation
   api/         # Control plane API server (REST/gRPC handlers, middleware)
-  operator/    # K8s operator (reconciler for DatabaseCluster CRD)
+  operator/    # K8s operator (reconciler for Cluster CRD)
   shared/      # Shared utilities (logging, errors, config)
 deploy/
   k3d-config.yaml          # Local K8s cluster config
