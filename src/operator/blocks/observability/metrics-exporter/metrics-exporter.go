@@ -24,7 +24,7 @@ func (b *Block) Descriptor() block.Descriptor {
 		Kind:        "observability.metrics-exporter",
 		Category:    block.CategoryObservability,
 		Version:     "1.0.0",
-		Description: "Prometheus metrics exporter configuration for database engines.",
+		Description: "Prometheus metrics exporter sidecar for database engines.",
 		Ports: []block.Port{
 			{Name: "scrape-target", PortType: "metrics-endpoint", Direction: block.PortInput, Required: true},
 		},

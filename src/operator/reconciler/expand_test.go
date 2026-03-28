@@ -1,19 +1,19 @@
 package reconciler
 
 import (
-	"context"
 	"testing"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
 	"github.com/baiyuqing/ottoplus/src/core/compiler"
+	"github.com/baiyuqing/ottoplus/src/core/testfixture"
 )
 
-// TestOperatorUsesCompiler proves that the operator's input (ClusterSpec)
+// TestOperatorCompiler_ShorthandPostgreSQL proves that the operator's input (ClusterSpec)
 // processed through the unified compiler produces valid, predictable
 // results. This is the consistency proof required by Phase 2.
 
 func TestOperatorCompiler_ShorthandPostgreSQL(t *testing.T) {
-	registry := testRegistry(t)
+	registry := testfixture.NewPhase1Registry()
 	spec := compiler.ClusterSpec{
 		Engine:   "postgresql",
 		Replicas: 3,
@@ -49,14 +49,10 @@ func TestOperatorCompiler_ShorthandPostgreSQL(t *testing.T) {
 }
 
 func TestOperatorCompiler_ExplicitWithInlineInputs(t *testing.T) {
-	registry := testRegistry(t)
+	registry := testfixture.NewPhase1Registry()
 	spec := compiler.ClusterSpec{
 		Blocks: &compiler.BlocksSpec{
-			Composition: []block.BlockRef{
-				{Kind: "gateway.pgbouncer", Name: "pooler", Inputs: map[string]string{"upstream-dsn": "db/dsn"}},
-				{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{"storage": "storage/pvc-spec"}},
-				{Kind: "storage.local-pv", Name: "storage"},
-			},
+			Composition: testfixture.StandardComposition(),
 		},
 	}
 
@@ -88,13 +84,8 @@ func TestOperatorAndAPIGetSameResult(t *testing.T) {
 	// the operator path (Compile with ClusterSpec) and the API path
 	// (CompileComposition with bare Composition) produce identical
 	// wires and topo order.
-	registry := testRegistry(t)
-
-	blocks := []block.BlockRef{
-		{Kind: "storage.local-pv", Name: "storage"},
-		{Kind: "datastore.postgresql", Name: "db", Inputs: map[string]string{"storage": "storage/pvc-spec"}},
-		{Kind: "gateway.pgbouncer", Name: "pooler", Inputs: map[string]string{"upstream-dsn": "db/dsn"}},
-	}
+	registry := testfixture.NewPhase1Registry()
+	blocks := testfixture.StandardComposition()
 
 	// Operator path.
 	operatorResult, _ := compiler.Compile(compiler.ClusterSpec{
@@ -124,9 +115,9 @@ func TestOperatorAndAPIGetSameResult(t *testing.T) {
 }
 
 func TestOperatorCompiler_WithBackup(t *testing.T) {
-	registry := testRegistry(t)
+	registry := testfixture.NewPhase1Registry()
 	// Register s3-backup so the shorthand path can reference it.
-	registry.Register(&fakeBlock{descriptor: block.Descriptor{
+	registry.Register(&testfixture.FakeBlock{Desc: block.Descriptor{
 		Kind:     "integration.s3-backup",
 		Category: block.CategoryIntegration,
 		Ports: []block.Port{
@@ -154,45 +145,3 @@ func TestOperatorCompiler_WithBackup(t *testing.T) {
 		t.Errorf("expected backup block, got %s", result.Composition.Blocks[2].Kind)
 	}
 }
-
-// testRegistry builds the Phase 1 block set for testing.
-func testRegistry(t *testing.T) *block.Registry {
-	t.Helper()
-	r := block.NewRegistry()
-	for _, b := range []block.Block{
-		&fakeBlock{descriptor: block.Descriptor{
-			Kind:     "storage.local-pv",
-			Category: block.CategoryStorage,
-			Ports:    []block.Port{{Name: "pvc-spec", PortType: "pvc-spec", Direction: block.PortOutput}},
-		}},
-		&fakeBlock{descriptor: block.Descriptor{
-			Kind:     "datastore.postgresql",
-			Category: block.CategoryDatastore,
-			Ports: []block.Port{
-				{Name: "storage", PortType: "pvc-spec", Direction: block.PortInput, Required: true},
-				{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
-				{Name: "metrics", PortType: "metrics-endpoint", Direction: block.PortOutput},
-			},
-		}},
-		&fakeBlock{descriptor: block.Descriptor{
-			Kind:     "gateway.pgbouncer",
-			Category: block.CategoryGateway,
-			Ports: []block.Port{
-				{Name: "upstream-dsn", PortType: "dsn", Direction: block.PortInput, Required: true},
-				{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
-			},
-		}},
-	} {
-		if err := r.Register(b); err != nil {
-			t.Fatal(err)
-		}
-	}
-	return r
-}
-
-type fakeBlock struct {
-	descriptor block.Descriptor
-}
-
-func (f *fakeBlock) Descriptor() block.Descriptor                                     { return f.descriptor }
-func (f *fakeBlock) ValidateParameters(_ context.Context, _ map[string]string) error { return nil }

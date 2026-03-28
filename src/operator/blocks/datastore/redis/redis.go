@@ -29,7 +29,7 @@ func (b *Block) Descriptor() block.Descriptor {
 		Kind:        "datastore.redis",
 		Category:    block.CategoryDatastore,
 		Version:     "1.0.0",
-		Description: "Redis in-memory data store managed as a Kubernetes StatefulSet.",
+		Description: "Redis in-memory data store managed as a Kubernetes StatefulSet. Supports standalone and replica modes.",
 		Ports: []block.Port{
 			{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
 			{Name: "metrics", PortType: "metrics-endpoint", Direction: block.PortOutput},

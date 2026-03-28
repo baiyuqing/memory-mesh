@@ -53,7 +53,7 @@ demo: build ## Run the API server locally (no K8s needed) and print sample curl 
 test: test-unit ## Run all tests (default: unit only)
 
 test-unit: ## Run unit tests (no infra required)
-	go test ./src/core/... ./src/api/... ./src/operator/reconciler/... -v -count=1
+	go test ./src/core/... ./src/api/... ./src/operator/blocks/... ./src/operator/reconciler/... -v -count=1
 
 # --- Code Quality ---
 
