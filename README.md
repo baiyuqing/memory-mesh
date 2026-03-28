@@ -2,47 +2,78 @@
 
 A composable local development environment platform for AI agents. Uses Kubernetes-native orchestration and a "Lego block" architecture to let AI agents provision, wire, and manage complex infrastructure stacks locally.
 
-## The Problem
+## Current Status
 
-AI agents writing code need local infrastructure — databases, caches, message queues, monitoring, auth, networking. Setting up these environments is manual, fragile, and hard for agents to reason about. ottoplus makes it composable and machine-readable so agents can self-serve.
+**Phase 1: Minimum Viable Loop.** The project has a working API server, a Kubernetes operator, and three registered blocks. The system can validate compositions, auto-wire blocks, and reconcile a Cluster CR end-to-end.
 
-## How It Works
+### What Works Today
 
-Infrastructure components are **blocks** that connect through typed **ports**. An agent describes what it needs as a composition, and the operator reconciles the actual Kubernetes resources.
+| Component | Status |
+|-----------|--------|
+| API server (`cmd/api`) | Builds and runs. Serves block catalog, composition validation, auto-wiring, topology. |
+| Operator (`cmd/operator`) | Builds. Watches `Cluster` CRDs, expands shorthand to compositions, reconciles blocks in dependency order. |
+| Block: `storage.local-pv` | Outputs PVC spec for engine blocks. No-op reconciliation. |
+| Block: `datastore.postgresql` | Creates StatefulSet, ConfigMap, Service, headless Service. |
+| Block: `gateway.pgbouncer` | Creates Deployment, ConfigMap, Service. |
+| Unit tests | `src/core/block/`, `src/api/`, `src/operator/reconciler/` |
 
-```yaml
-apiVersion: ottoplus.io/v1alpha1
-kind: Cluster
-metadata:
-  name: my-app
-spec:
-  blocks:
-    composition:
-      - kind: storage.local-pv
-        name: storage
-        parameters:
-          size: "10Gi"
+### What Does NOT Work Yet
 
-      - kind: datastore.postgresql
-        name: db
-        parameters:
-          version: "16"
-          replicas: "3"
-        inputs:
-          storage: storage/pvc-spec
+- The remaining 13 blocks are implemented but **not registered** in the operator. They compile but are not wired into the startup path.
+- No integration or e2e tests. The `tests/` directory does not exist yet.
+- `src/shared/` directory does not exist yet.
+- The operator requires a running k3d cluster with the CRD installed to actually reconcile. Without K8s it will fail to start.
+- Dev-only insecure defaults: `POSTGRES_HOST_AUTH_METHOD=trust`, PgBouncer `auth_type=any`. These are intentional for local development but must not be used in any other context.
 
-      - kind: compute.pgbouncer
-        name: pooler
-        inputs:
-          upstream-dsn: db/dsn
+## Quick Start
 
-      - kind: observability.metrics-exporter
-        name: metrics
-        inputs:
-          metrics-input: db/metrics
+### API server only (no Kubernetes required)
+
+```bash
+make demo
 ```
 
-The `inputs` field makes the dependency graph readable inline — no need to cross-reference a separate wiring section. Blocks auto-wire when port types match unambiguously.
+This builds and starts the API server on `:8080`. In another terminal, verify:
+
+```bash
+# Health check — expect {"status":"ok"}
+curl -s http://localhost:8080/healthz | jq .
+
+# List registered blocks — expect 3 blocks
+curl -s http://localhost:8080/v1/blocks | jq '.blocks | length'
+
+# Validate the sample composition — expect {"isValid":true}
+curl -s -X POST http://localhost:8080/v1/compositions/validate \
+  -H 'Content-Type: application/json' \
+  -d @deploy/examples/sample-composition.json | jq .
+
+# Get topology order — expect nodes: [storage, db, pooler]
+curl -s -X POST http://localhost:8080/v1/compositions/topology \
+  -H 'Content-Type: application/json' \
+  -d @deploy/examples/sample-composition.json | jq '.nodes[].name'
+```
+
+**Success criteria:**
+- `/healthz` returns `{"status":"ok"}`
+- `/v1/blocks` returns exactly 3 blocks: `storage.local-pv`, `datastore.postgresql`, `gateway.pgbouncer`
+- `/v1/compositions/validate` returns `{"isValid":true}` for the sample composition
+- `/v1/compositions/topology` returns nodes in order: `storage`, `db`, `pooler`
+
+### Full stack (requires Docker + k3d + kubectl)
+
+```bash
+make dev-up                                       # k3d cluster + LocalStack + CRD
+make build                                        # Build api-server and operator binaries
+kubectl apply -f deploy/examples/sample-cluster.yaml  # Create sample Cluster CR
+./bin/operator                                     # Run operator (separate terminal)
+kubectl get clusters.ottoplus.io -n ottoplus       # Check status
+```
+
+**Success criteria:**
+- `kubectl get clusters.ottoplus.io -n ottoplus` shows `demo-pg` with Phase=Running
+- `kubectl get statefulsets -n ottoplus` shows `demo-pg-db`
+- `kubectl get deployments -n ottoplus` shows `demo-pg-pooler`
+- `kubectl get svc -n ottoplus` shows `demo-pg-db`, `demo-pg-db-headless`, `demo-pg-pooler`
 
 ## Architecture
 
@@ -55,137 +86,56 @@ The `inputs` field makes the dependency graph readable inline — no need to cro
 │  └──────────┘  │ reconciles blocks in topo order │    │
 │                └────────────────────────────────┘    │
 ├──────────────────────────────────────────────────────┤
-│  Block Layer (composable, pluggable)                 │
+│  Block Layer (Phase 1: 3 blocks registered)          │
 │                                                      │
-│  datastore    gateway        observability             │
-│  postgresql   pgbouncer      metrics-exporter          │
-│  mysql        proxysql       log-aggregator            │
-│  redis                       health-dashboard          │
-│               integration                              │
-│  storage      s3-backup      security                  │
-│  local-pv     stripe         mtls                      │
-│  ebs          slack-notifier password-rotation         │
-│               networking                               │
-│               ingress                                  │
+│  storage.local-pv                                    │
+│  datastore.postgresql                                │
+│  gateway.pgbouncer                                   │
 ├──────────────────────────────────────────────────────┤
 │  Local Infrastructure                                │
 │  k3d (K8s) + LocalStack (S3, SQS, IAM)              │
 └──────────────────────────────────────────────────────┘
 ```
 
-## Quick Start
-
-```bash
-# Prerequisites: docker, k3d, kubectl
-make dev-up     # k3d cluster + LocalStack, one command
-make seed       # Seed example compositions
-make test       # Unit tests (no infra needed)
-make dev-down   # Tear down
-```
-
-## Blocks
-
-Each block is a self-contained unit with:
-- A `Descriptor` (kind, typed ports, parameters, requires/provides)
-- A `BLOCK.md` with YAML frontmatter (machine-readable) + markdown body (AI-readable)
-- A `BlockRuntime` that reconciles Kubernetes resources
-
-### Available Blocks (16)
-
-| Category | Block | What It Provisions |
-|----------|-------|--------------------|
-| datastore | `datastore.postgresql` | PostgreSQL StatefulSet + Services |
-| datastore | `datastore.mysql` | MySQL StatefulSet + Services |
-| datastore | `datastore.redis` | Redis with optional persistence |
-| gateway | `gateway.pgbouncer` | PostgreSQL connection pooler |
-| gateway | `gateway.proxysql` | MySQL connection pooler |
-| integration | `integration.s3-backup` | S3 backups via CronJob |
-| integration | `integration.stripe` | Stripe webhook receiver |
-| integration | `integration.slack-notifier` | Slack alert notifications |
-| storage | `storage.local-pv` | Local PersistentVolume |
-| storage | `storage.ebs` | AWS EBS StorageClass |
-| observability | `observability.metrics-exporter` | Prometheus scrape config |
-| observability | `observability.log-aggregator` | Loki + Promtail |
-| observability | `observability.health-dashboard` | Status dashboard |
-| security | `security.mtls` | Self-signed mTLS certificates |
-| security | `security.password-rotation` | Credential rotation CronJob |
-| networking | `networking.ingress` | K8s Ingress with optional TLS |
-
-### Port Types
-
-Blocks connect through typed ports. A wire is valid only when port types match.
-
-| Port Type | Meaning |
-|-----------|---------|
-| `dsn` | Connection string |
-| `pvc-spec` | Storage claim specification |
-| `metrics-endpoint` | Prometheus-compatible metrics URL |
-| `http-endpoint` | HTTP service endpoint |
-| `event-stream` | Event stream URL |
-| `tls-cert` | TLS certificate bundle |
-| `credential` | Credential reference |
-| `log-endpoint` | Log collection URL |
-| `ingress-url` | Externally-accessible URL |
-| `dashboard-url` | Web UI dashboard URL |
-
-### Adding a Block
-
-1. Create `src/operator/blocks/<category>/<name>/`
-2. Write `BLOCK.md` with YAML frontmatter descriptor
-3. Implement the `BlockRuntime` interface in Go
-4. Register in the operator startup
-
-## API
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/v1/blocks` | List all registered blocks |
-| GET | `/v1/blocks/{kind}` | Get block descriptor |
-| POST | `/v1/compositions/validate` | Validate a composition |
-| POST | `/v1/compositions/auto-wire` | Auto-wire unambiguous port matches |
-| POST | `/v1/compositions/topology` | Get dependency graph (for visual editors) |
-| GET | `/healthz` | Health check |
-
-## AI-Agent-Friendly Design
-
-- **Self-describing**: `CLAUDE.md` per module, `BLOCK.md` per block with machine-readable frontmatter
-- **Discoverable**: `make help`, REST API for block catalog, topology endpoint for dependency graphs
-- **Idempotent**: Every operation is safe to retry — API calls, reconciliation, scripts
-- **Fast feedback**: Unit tests run without infrastructure, integration tests under 60s
-- **Composable**: Agents describe what they need declaratively, the platform handles the rest
-
 ## Project Structure
 
 ```
+cmd/
+  api/             # API server entry point
+  operator/        # Operator entry point
 src/
-  core/           # Domain logic — pure Go, no infra deps
-    block/        # Block, Port, Composition, Registry, AutoWire
-  api/            # REST API server
-  operator/       # K8s operator + block runtime implementations
-    blocks/       # 16 block implementations (each with BLOCK.md)
-    reconciler/   # Composition expansion
+  core/            # Domain logic — pure Go, no infra deps
+    block/         # Block, Port, Composition, Registry, AutoWire
+  api/             # REST API server (handlers, middleware)
+  operator/        # K8s operator
+    blocks/        # Block runtime implementations
+    reconciler/    # Shorthand expansion to Composition
 deploy/
-  crds/           # Cluster CRD
+  crds/            # Cluster CRD (v1alpha1)
+  examples/        # Sample Cluster CR and composition JSON
   k3d-config.yaml
-  localstack/     # LocalStack K8s manifests
-scripts/          # dev-up, dev-down, seed, wait-ready
+  localstack/      # LocalStack K8s manifests
+scripts/           # dev-up, dev-down, seed, wait-ready
 ```
 
 ## Development
 
 ```bash
 make help          # Show all targets
-make test          # Unit tests (no infra needed)
+make build         # Build api-server and operator binaries
+make test          # Unit tests (core + api + reconciler)
+make demo          # Build and run API server locally
 make lint          # go vet + golangci-lint
-make build         # Build binaries
 make fmt           # Format code
+make dev-up        # Create k3d cluster + LocalStack
+make dev-down      # Tear down
 ```
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Language | Go |
+| Language | Go 1.24 |
 | Orchestration | Kubernetes (k3d for local dev) |
 | Cloud Simulation | LocalStack (S3, SQS, IAM) |
 | Operator | controller-runtime v0.19.0 |

@@ -1,0 +1,22 @@
+{
+  "composition": {
+    "blocks": [
+      {
+        "kind": "storage.local-pv",
+        "name": "storage",
+        "parameters": { "size": "5Gi" }
+      },
+      {
+        "kind": "datastore.postgresql",
+        "name": "db",
+        "parameters": { "version": "16", "replicas": "3" },
+        "inputs": { "storage": "storage/pvc-spec" }
+      },
+      {
+        "kind": "gateway.pgbouncer",
+        "name": "pooler",
+        "inputs": { "upstream-dsn": "db/dsn" }
+      }
+    ]
+  }
+}
