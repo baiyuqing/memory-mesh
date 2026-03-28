@@ -31,9 +31,10 @@ const (
 	CategoryProxy      Category = "proxy"
 	CategoryBackup     Category = "backup"
 	CategoryMonitoring Category = "monitoring"
-	CategoryAuth       Category = "auth"
-	CategoryStorage    Category = "storage"
-	CategoryNetworking Category = "networking"
+	CategoryAuth        Category = "auth"
+	CategoryStorage     Category = "storage"
+	CategoryNetworking  Category = "networking"
+	CategoryIntegration Category = "integration"
 )
 
 // ParameterSpec describes one configurable parameter of a block.
