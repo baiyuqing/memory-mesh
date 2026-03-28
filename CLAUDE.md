@@ -121,6 +121,12 @@ Rules:
 
 ## Claude-Specific Instructions
 
+### Memory & Knowledge Persistence
+
+- At the end of each development session, persist any new learnings, decisions, or context to this file (or sub-directory CLAUDE.md files) and commit them to the repo.
+- Examples of what to persist: architecture decisions, user preferences, tech stack choices, gotchas discovered, patterns adopted.
+- Keep memory entries concise and actionable — not a diary, but a reference.
+
 ### When Working in This Repo
 
 - Always read relevant files before making changes.
