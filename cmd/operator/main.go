@@ -17,11 +17,11 @@ import (
 	"os"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
+	"github.com/baiyuqing/ottoplus/src/core/compiler"
 	blocks "github.com/baiyuqing/ottoplus/src/operator/blocks"
 	"github.com/baiyuqing/ottoplus/src/operator/blocks/datastore/postgresql"
 	"github.com/baiyuqing/ottoplus/src/operator/blocks/gateway/pgbouncer"
 	localpv "github.com/baiyuqing/ottoplus/src/operator/blocks/storage/local-pv"
-	"github.com/baiyuqing/ottoplus/src/operator/reconciler"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -121,30 +121,20 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req runtimereconcile.
 	if err != nil {
 		return runtimereconcile.Result{}, fmt.Errorf("marshal spec: %w", err)
 	}
-	var spec reconciler.ClusterSpec
+	var spec compiler.ClusterSpec
 	if err := json.Unmarshal(specJSON, &spec); err != nil {
 		return runtimereconcile.Result{}, fmt.Errorf("unmarshal spec: %w", err)
 	}
 
-	// Expand shorthand to Composition.
-	comp, expandErrs := reconciler.ExpandToComposition(spec)
-	if len(expandErrs) > 0 {
-		logger.Error(expandErrs[0], "expand composition", "allErrors", expandErrs)
-		return runtimereconcile.Result{}, expandErrs[0]
+	// Run the unified compilation pipeline.
+	compiled, errs := compiler.Compile(spec, r.domainRegistry)
+	if compiled == nil || len(errs) > 0 {
+		logger.Error(errs[0], "compile composition", "allErrors", errs)
+		return runtimereconcile.Result{}, errs[0]
 	}
 
-	// Auto-wire and validate.
-	comp.AutoWire(r.domainRegistry)
-	if validationErrs := comp.Validate(r.domainRegistry); len(validationErrs) > 0 {
-		logger.Error(validationErrs[0], "validate composition", "allErrors", validationErrs)
-		return runtimereconcile.Result{}, validationErrs[0]
-	}
-
-	// Topological sort.
-	sorted, err := comp.TopologicalSort()
-	if err != nil {
-		return runtimereconcile.Result{}, fmt.Errorf("topological sort: %w", err)
-	}
+	comp := compiled.Composition
+	sorted := compiled.Sorted
 
 	// Reconcile each block in dependency order.
 	outputs := make(map[string]map[string]string) // blockName -> portName -> value
