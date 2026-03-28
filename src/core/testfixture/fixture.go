@@ -8,8 +8,15 @@ package testfixture
 
 import (
 	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"runtime"
+	"testing"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
+
+	"gopkg.in/yaml.v3"
 )
 
 // FakeBlock is a minimal Block implementation for tests. It carries
@@ -101,4 +108,58 @@ func CredentialPathComposition() []block.BlockRef {
 			"upstream-credential": "rotator/credential",
 		}},
 	}
+}
+
+// examplesDir returns the absolute path to deploy/examples/ relative
+// to this source file's location.
+func examplesDir() string {
+	_, thisFile, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "deploy", "examples")
+}
+
+// clusterYAML mirrors the subset of the Cluster CRD needed to extract
+// the composition from the standard example file.
+type clusterYAML struct {
+	Spec struct {
+		Blocks struct {
+			Composition []block.BlockRef `yaml:"composition"`
+		} `yaml:"blocks"`
+	} `yaml:"spec"`
+}
+
+// compositionJSON mirrors the JSON composition file format.
+type compositionJSON struct {
+	Composition struct {
+		Blocks []block.BlockRef `json:"blocks"`
+	} `json:"composition"`
+}
+
+// LoadStandardCompositionJSON reads deploy/examples/standard-composition.json
+// and returns the 4-block standard path blocks.
+func LoadStandardCompositionJSON(t *testing.T) []block.BlockRef {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(examplesDir(), "standard-composition.json"))
+	if err != nil {
+		t.Fatalf("read standard-composition.json: %v", err)
+	}
+	var doc compositionJSON
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("parse standard-composition.json: %v", err)
+	}
+	return doc.Composition.Blocks
+}
+
+// LoadStandardClusterYAML reads deploy/examples/standard-cluster.yaml
+// and returns the 4-block standard path blocks.
+func LoadStandardClusterYAML(t *testing.T) []block.BlockRef {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(examplesDir(), "standard-cluster.yaml"))
+	if err != nil {
+		t.Fatalf("read standard-cluster.yaml: %v", err)
+	}
+	var doc clusterYAML
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("parse standard-cluster.yaml: %v", err)
+	}
+	return doc.Spec.Blocks.Composition
 }

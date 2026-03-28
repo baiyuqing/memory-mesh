@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
@@ -179,29 +178,10 @@ func TestTopology_CorrectOrder(t *testing.T) {
 	}
 }
 
-// loadStandardCompositionFile reads the 4-block standard example file
-// and returns the blocks for use in API tests.
-func loadStandardCompositionFile(t *testing.T) []block.BlockRef {
-	t.Helper()
-	data, err := os.ReadFile("../../deploy/examples/standard-composition.json")
-	if err != nil {
-		t.Fatalf("read standard-composition.json: %v", err)
-	}
-	var doc struct {
-		Composition struct {
-			Blocks []block.BlockRef `json:"blocks"`
-		} `json:"composition"`
-	}
-	if err := json.Unmarshal(data, &doc); err != nil {
-		t.Fatalf("parse standard-composition.json: %v", err)
-	}
-	return doc.Composition.Blocks
-}
-
 func TestValidateComposition_StandardPath(t *testing.T) {
 	srv := setupTestServer(t)
 
-	comp := block.Composition{Blocks: loadStandardCompositionFile(t)}
+	comp := block.Composition{Blocks: testfixture.LoadStandardCompositionJSON(t)}
 	body, _ := json.Marshal(ValidateRequest{Composition: comp})
 	req := httptest.NewRequest("POST", "/v1/compositions/validate", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -220,7 +200,7 @@ func TestValidateComposition_StandardPath(t *testing.T) {
 func TestTopology_StandardPath(t *testing.T) {
 	srv := setupTestServer(t)
 
-	comp := block.Composition{Blocks: loadStandardCompositionFile(t)}
+	comp := block.Composition{Blocks: testfixture.LoadStandardCompositionJSON(t)}
 	body, _ := json.Marshal(AutoWireRequest{Composition: comp})
 	req := httptest.NewRequest("POST", "/v1/compositions/topology", bytes.NewReader(body))
 	w := httptest.NewRecorder()
