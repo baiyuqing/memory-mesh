@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: unit-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   unit:
     name: Unit Check
