@@ -1,146 +1,113 @@
 # ottoplus
 
-A composable local development environment platform for AI agents. Uses Kubernetes-native orchestration and a "Lego block" architecture to let AI agents provision, wire, and manage complex infrastructure stacks locally.
+A composable local infrastructure workbench for AI agents. Define your stack as blocks, wire them together, and see the result instantly — no hand-stitching YAML, no guessing dependency order.
 
-## Current Status
+![ottoplus workbench](docs/images/workbench-hero.png)
 
-**Phase 1: Minimum Viable Loop.** The project has a working API server, a Kubernetes operator, and three registered blocks. The system can validate compositions, auto-wire blocks, and reconcile a Cluster CR end-to-end.
+## What You Can Do Today
 
-### What Works Today
+- **Workbench** — open the browser, see the 3-block onboarding path, edit parameters, delete/restore blocks, and watch generated output, validation, and topology update in real time.
+- **API** — `POST` a composition JSON to get validation, auto-wiring, and topological ordering via the REST API on `:8080`.
+- **CLI** — run `ottoplus compose validate`, `auto-wire`, or `topology` against any composition file from the terminal.
 
-| Component | Status |
-|-----------|--------|
-| API server (`cmd/api`) | Builds and runs. Serves block catalog, composition validation, auto-wiring, topology. |
-| Operator (`cmd/operator`) | Builds. Watches `Cluster` CRDs, expands shorthand to compositions, reconciles blocks in dependency order. |
-| Block: `storage.local-pv` | Outputs PVC spec for engine blocks. No-op reconciliation. |
-| Block: `datastore.postgresql` | Creates StatefulSet, ConfigMap, Service, headless Service. |
-| Block: `gateway.pgbouncer` | Creates Deployment, ConfigMap, Service. |
-| Unit tests | `src/core/block/`, `src/api/`, `src/operator/reconciler/` |
+## Start Here
 
-### What Does NOT Work Yet
+### Browser (recommended)
 
-- The remaining 13 blocks are implemented but **not registered** in the operator. They compile but are not wired into the startup path.
-- No integration or e2e tests. The `tests/` directory does not exist yet.
-- `src/shared/` directory does not exist yet.
-- The operator requires a running k3d cluster with the CRD installed to actually reconcile. Without K8s it will fail to start.
-- Dev-only insecure defaults: `POSTGRES_HOST_AUTH_METHOD=trust`, PgBouncer `auth_type=any`. These are intentional for local development but must not be used in any other context.
+```bash
+cd web && npm install && npm start
+```
 
-## Quick Start
+Open [http://localhost:5173](http://localhost:5173). The workbench loads the onboarding sample automatically.
 
-### API server only (no Kubernetes required)
+### API server
 
 ```bash
 make demo
 ```
 
-This builds and starts the API server on `:8080`. In another terminal, verify:
+Starts the API on `:8080`. Verify with:
 
 ```bash
-# Health check — expect {"status":"ok"}
 curl -s http://localhost:8080/healthz | jq .
-
-# List registered blocks — expect 3 blocks
-curl -s http://localhost:8080/v1/blocks | jq '.blocks | length'
-
-# Validate the sample composition — expect {"isValid":true}
 curl -s -X POST http://localhost:8080/v1/compositions/validate \
   -H 'Content-Type: application/json' \
   -d @deploy/examples/sample-composition.json | jq .
-
-# Get topology order — expect nodes: [storage, db, pooler]
-curl -s -X POST http://localhost:8080/v1/compositions/topology \
-  -H 'Content-Type: application/json' \
-  -d @deploy/examples/sample-composition.json | jq '.nodes[].name'
 ```
 
-**Success criteria:**
-- `/healthz` returns `{"status":"ok"}`
-- `/v1/blocks` returns exactly 3 blocks: `storage.local-pv`, `datastore.postgresql`, `gateway.pgbouncer`
-- `/v1/compositions/validate` returns `{"isValid":true}` for the sample composition
-- `/v1/compositions/topology` returns nodes in order: `storage`, `db`, `pooler`
-
-### Full stack (requires Docker + k3d + kubectl)
+### CLI
 
 ```bash
-make dev-up                                       # k3d cluster + LocalStack + CRD
-make build                                        # Build api-server and operator binaries
-kubectl apply -f deploy/examples/sample-cluster.yaml  # Create sample Cluster CR
-./bin/operator                                     # Run operator (separate terminal)
-kubectl get clusters.ottoplus.io -n ottoplus       # Check status
+go run ./cmd/ottoplus blocks list
+go run ./cmd/ottoplus compose validate --file deploy/examples/sample-composition.json
+go run ./cmd/ottoplus compose auto-wire --file deploy/examples/sample-composition.json
+go run ./cmd/ottoplus compose topology --file deploy/examples/sample-composition.json
 ```
 
-**Success criteria:**
-- `kubectl get clusters.ottoplus.io -n ottoplus` shows `demo-pg` with Phase=Running
-- `kubectl get statefulsets -n ottoplus` shows `demo-pg-db`
-- `kubectl get deployments -n ottoplus` shows `demo-pg-pooler`
-- `kubectl get svc -n ottoplus` shows `demo-pg-db`, `demo-pg-db-headless`, `demo-pg-pooler`
+## Onboarding Sample
 
-## Architecture
+The default composition lives at `deploy/examples/sample-composition.json` and wires three blocks:
 
 ```
-┌──────────────────────────────────────────────────────┐
-│  Control Plane                                       │
-│  ┌──────────┐  ┌────────────────────────────────┐    │
-│  │ REST API │  │ K8s Operator                    │    │
-│  │ /v1/*    │  │ watches Cluster CRDs            │    │
-│  └──────────┘  │ reconciles blocks in topo order │    │
-│                └────────────────────────────────┘    │
-├──────────────────────────────────────────────────────┤
-│  Block Layer (Phase 1: 3 blocks registered)          │
-│                                                      │
-│  storage.local-pv                                    │
-│  datastore.postgresql                                │
-│  gateway.pgbouncer                                   │
-├──────────────────────────────────────────────────────┤
-│  Local Infrastructure                                │
-│  k3d (K8s) + LocalStack (S3, SQS, IAM)              │
-└──────────────────────────────────────────────────────┘
+local-pv  →  postgresql  →  pgbouncer
+(storage)    (db)            (pooler)
 ```
 
-## Project Structure
+![Onboarding flow](docs/images/onboarding-flow.png)
+
+This is the single source of truth: the workbench, frontend tests, and CLI all read from this file directly. A 4-block standard path (`+ password-rotation`) is available at `deploy/examples/standard-composition.json` for CI and regression tests.
+
+## How It Is Structured
 
 ```
-cmd/
-  api/             # API server entry point
-  operator/        # Operator entry point
-src/
-  core/            # Domain logic — pure Go, no infra deps
-    block/         # Block, Port, Composition, Registry, AutoWire
-  api/             # REST API server (handlers, middleware)
-  operator/        # K8s operator
-    blocks/        # Block runtime implementations
-    reconciler/    # Shorthand expansion to Composition
-deploy/
-  crds/            # Cluster CRD (v1alpha1)
-  examples/        # Sample Cluster CR and composition JSON
-  k3d-config.yaml
-  localstack/      # LocalStack K8s manifests
-scripts/           # dev-up, dev-down, seed, wait-ready
+                  ┌─────────────────────────────────┐
+                  │  sample-composition.json         │
+                  │  (defines blocks + wiring)       │
+                  └──────────┬──────────────────────┘
+                             │
+            ┌────────────────┼────────────────┐
+            ▼                ▼                ▼
+      ┌──────────┐    ┌──────────┐    ┌──────────────┐
+      │Workbench │    │ REST API │    │   Operator    │
+      │ (browser)│    │  :8080   │    │  (k8s CRDs)  │
+      └──────────┘    └──────────┘    └──────────────┘
+            │                │                │
+            │                └───────┬────────┘
+            │                        ▼
+            │              ┌──────────────────┐
+            │              │ Shared Compiler   │
+            │              │ (validate, wire,  │
+            │              │  topo-sort)       │
+            │              └──────────────────┘
+            │                        │
+            └────────────────────────┘
+                    same block definitions
 ```
 
-## Development
+- **Workbench** (`web/`) — Vite + React + TypeScript browser UI. Imports the sample composition at build time via a Vite alias.
+- **API** (`cmd/api`) — REST endpoints for block catalog, validation, auto-wiring, and topology.
+- **Operator** (`cmd/operator`) — Kubernetes controller that watches `Cluster` CRDs and reconciles blocks in dependency order.
+- **Shared Compiler** (`src/core/compiler`) — pure Go logic used by both API and operator. Single path for shorthand expansion, explicit wiring, and compilation.
+
+## Developer Links
+
+| Resource | Path |
+|----------|------|
+| Workbench quickstart | [`web/QUICKSTART.md`](web/QUICKSTART.md) |
+| Workbench developer guide | [`web/DEVELOPER.md`](web/DEVELOPER.md) |
+| Sample composition (3-block) | [`deploy/examples/sample-composition.json`](deploy/examples/sample-composition.json) |
+| Standard composition (4-block) | [`deploy/examples/standard-composition.json`](deploy/examples/standard-composition.json) |
+| CRD definition | [`deploy/crds/`](deploy/crds/) |
 
 ```bash
 make help          # Show all targets
 make build         # Build api-server and operator binaries
-make test          # Unit tests (core + api + reconciler)
+make test          # Unit tests
 make demo          # Build and run API server locally
-make lint          # go vet + golangci-lint
-make fmt           # Format code
+make ci-local      # Smoke + unit CI checks
 make dev-up        # Create k3d cluster + LocalStack
 make dev-down      # Tear down
 ```
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Language | Go 1.24 |
-| Orchestration | Kubernetes (k3d for local dev) |
-| Cloud Simulation | LocalStack (S3, SQS, IAM) |
-| Operator | controller-runtime v0.19.0 |
-| API | net/http |
-| CRD | ottoplus.io/v1alpha1 |
 
 ## License
 
