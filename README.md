@@ -55,39 +55,34 @@ local-pv  →  postgresql  →  pgbouncer
 
 ![Onboarding flow](docs/images/onboarding-flow.png)
 
-This is the single source of truth: the workbench, frontend tests, and CLI all read from this file directly. A 4-block standard path (`+ password-rotation`) is available at `deploy/examples/standard-composition.json` for CI and regression tests.
+The workbench imports this file directly and loads it on startup. The CLI and API examples in this README use it as a demo input, but they accept any composition file — they are not bound to this one. A 4-block standard path (`+ password-rotation`) is available at `deploy/examples/standard-composition.json` for CI and regression tests.
 
 ## How It Is Structured
 
 ```
-                  ┌─────────────────────────────────┐
-                  │  sample-composition.json         │
-                  │  (defines blocks + wiring)       │
-                  └──────────┬──────────────────────┘
-                             │
-            ┌────────────────┼────────────────┐
-            ▼                ▼                ▼
       ┌──────────┐    ┌──────────┐    ┌──────────────┐
       │Workbench │    │ REST API │    │   Operator    │
       │ (browser)│    │  :8080   │    │  (k8s CRDs)  │
-      └──────────┘    └──────────┘    └──────────────┘
-            │                │                │
-            │                └───────┬────────┘
-            │                        ▼
-            │              ┌──────────────────┐
-            │              │ Shared Compiler   │
-            │              │ (validate, wire,  │
-            │              │  topo-sort)       │
-            │              └──────────────────┘
-            │                        │
-            └────────────────────────┘
-                    same block definitions
+      └────┬─────┘    └────┬─────┘    └──────┬───────┘
+           │               │                 │
+           │               └────────┬────────┘
+           │                        ▼
+           │              ┌──────────────────┐
+           │              │ Shared Compiler   │
+           │              │ + Block Registry  │
+           │              │ (validate, wire,  │
+           │              │  topo-sort)       │
+           │              └──────────────────┘
+           │
+           ▼
+  sample-composition.json
+  (default demo input)
 ```
 
-- **Workbench** (`web/`) — Vite + React + TypeScript browser UI. Imports the sample composition at build time via a Vite alias.
-- **API** (`cmd/api`) — REST endpoints for block catalog, validation, auto-wiring, and topology.
+- **Workbench** (`web/`) — Vite + React + TypeScript browser UI. Imports `sample-composition.json` directly at build time as the default demo input.
+- **API** (`cmd/api`) — REST endpoints for block catalog, validation, auto-wiring, and topology. Accepts any composition JSON via POST.
 - **Operator** (`cmd/operator`) — Kubernetes controller that watches `Cluster` CRDs and reconciles blocks in dependency order.
-- **Shared Compiler** (`src/core/compiler`) — pure Go logic used by both API and operator. Single path for shorthand expansion, explicit wiring, and compilation.
+- **Shared Compiler + Block Registry** (`src/core/`) — pure Go logic used by API, operator, and CLI. Single path for shorthand expansion, explicit wiring, and compilation.
 
 ## Developer Links
 
