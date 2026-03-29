@@ -325,6 +325,23 @@ func TestComposeNoArgs(t *testing.T) {
 	}
 }
 
+func TestComposeSubcommandHelp(t *testing.T) {
+	for _, sub := range []string{"validate", "auto-wire", "topology"} {
+		var buf bytes.Buffer
+		err := run([]string{"compose", sub, "--help"}, &buf)
+		if err != nil {
+			t.Fatalf("compose %s --help returned error: %v", sub, err)
+		}
+		out := buf.String()
+		if !strings.Contains(out, "--file") {
+			t.Errorf("compose %s --help missing --file flag", sub)
+		}
+		if !strings.Contains(out, sub) {
+			t.Errorf("compose %s --help missing subcommand name", sub)
+		}
+	}
+}
+
 func TestComposeMissingFile(t *testing.T) {
 	for _, sub := range []string{"validate", "auto-wire", "topology"} {
 		var buf bytes.Buffer

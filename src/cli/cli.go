@@ -107,6 +107,15 @@ func runCompose(args []string, w io.Writer) error {
 		return fmt.Errorf("unknown compose subcommand %q — available: validate, auto-wire, topology", sub)
 	}
 
+	// Intercept --help/-h before flag.Parse to avoid flag.ErrHelp error path.
+	for _, a := range args[1:] {
+		if a == "--help" || a == "-h" || a == "-help" {
+			fmt.Fprintf(w, "Usage: ottoplus compose %s --file <path>\n\n", sub)
+			fmt.Fprintf(w, "Flags:\n  --file <path>    Path to a composition JSON file (required)\n")
+			return nil
+		}
+	}
+
 	fs := flag.NewFlagSet("ottoplus compose "+sub, flag.ContinueOnError)
 	fs.SetOutput(w)
 	filePath := fs.String("file", "", "Path to composition JSON file (required)")
