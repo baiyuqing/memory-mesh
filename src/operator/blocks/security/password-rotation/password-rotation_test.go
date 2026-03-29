@@ -2,6 +2,7 @@ package passwordrotation
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
@@ -119,6 +120,54 @@ func TestReconcile_CustomSecretName(t *testing.T) {
 	}
 	if cred.SecretName != "my-custom-secret" {
 		t.Errorf("credential.secretName: got %q, want %q", cred.SecretName, "my-custom-secret")
+	}
+}
+
+func TestReconcile_StubMessageIsHonest(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(scheme)
+	_ = batchv1.AddToScheme(scheme)
+	_ = rbacv1.AddToScheme(scheme)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).Build()
+	b := &Block{}
+
+	result, err := b.Reconcile(context.Background(), c, blocks.ReconcileRequest{
+		ClusterName:      "test-cluster",
+		ClusterNamespace: "default",
+		BlockRef: block.BlockRef{
+			Kind: "security.password-rotation",
+			Name: "rotator",
+		},
+		ResolvedInputs: map[string]string{},
+	})
+	if err != nil {
+		t.Fatalf("Reconcile failed: %v", err)
+	}
+
+	// Reconcile message must not claim rotation is fully functional.
+	if !strings.Contains(result.Message, "stub") {
+		t.Errorf("reconcile message should mention stub status, got: %s", result.Message)
+	}
+
+	// Verify the rotation script in the ConfigMap is honest.
+	var cm corev1.ConfigMap
+	err = c.Get(context.Background(), types.NamespacedName{
+		Name:      "test-cluster-rotator-config",
+		Namespace: "default",
+	}, &cm)
+	if err != nil {
+		t.Fatalf("expected ConfigMap to exist: %v", err)
+	}
+	script := cm.Data["rotate.sh"]
+	if strings.Contains(script, "Password rotation complete") {
+		t.Error("rotation script should not claim 'Password rotation complete' — it is a stub")
+	}
+	if strings.Contains(script, "TODO") {
+		t.Error("rotation script should not contain TODO comments")
+	}
+	if !strings.Contains(script, "stub") {
+		t.Error("rotation script should mention stub status")
 	}
 }
 

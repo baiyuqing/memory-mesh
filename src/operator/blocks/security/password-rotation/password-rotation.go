@@ -27,7 +27,7 @@ func (b *Block) Descriptor() block.Descriptor {
 		Kind:        "security.password-rotation",
 		Category:    block.CategorySecurity,
 		Version:     "1.0.0",
-		Description: "Automated database credential rotation via CronJob.",
+		Description: "Credential rotation scaffold via CronJob (stub — generates and stores passwords in Secret, does not yet execute ALTER USER on upstream DB).",
 		Ports: []block.Port{
 			{Name: "upstream-dsn", PortType: "dsn", Direction: block.PortInput, Required: true},
 			{Name: "credential", PortType: "credential", Direction: block.PortOutput},
@@ -81,11 +81,10 @@ func (b *Block) Reconcile(ctx context.Context, c client.Client, req blocks.Recon
 
 	rotationScript := fmt.Sprintf(`#!/bin/sh
 set -e
-echo "Starting password rotation"
+echo "Starting credential scaffold (stub — does not execute ALTER USER on upstream DB)"
 NEW_PASS=$(cat /dev/urandom | tr -dc 'A-Za-z0-9!@#$%%^&*' | head -c %s)
 echo "Generated new password of length %s"
-# TODO: execute ALTER USER via upstream DSN
-echo "Password rotation complete"
+echo "Stub: new password written to Secret only; upstream DB credentials unchanged"
 `, passwordLength, passwordLength)
 
 	if err := reconcileConfigMap(ctx, c, req.ClusterNamespace, fullName, labels, map[string]string{"rotate.sh": rotationScript}); err != nil {
@@ -119,7 +118,7 @@ echo "Password rotation complete"
 
 	return blocks.ReconcileResult{
 		Phase:   block.PhaseReady,
-		Message: fmt.Sprintf("Password rotation CronJob scheduled: %s", schedule),
+		Message: fmt.Sprintf("Password rotation CronJob scheduled (stub — Secret scaffold only, upstream ALTER USER not yet implemented): %s", schedule),
 		Outputs: map[string]string{
 			"credential": credJSON,
 		},
