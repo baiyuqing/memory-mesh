@@ -127,6 +127,118 @@ func TestComposeValidate_MissingFile(t *testing.T) {
 	}
 }
 
+func TestComposeAutoWire_StandardComposition(t *testing.T) {
+	path := standardCompositionPath(t)
+	var buf bytes.Buffer
+	err := run([]string{"compose", "auto-wire", "--file", path}, &buf)
+	if err != nil {
+		t.Fatalf("compose auto-wire: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "ok") {
+		t.Errorf("expected ok output, got: %s", out)
+	}
+	// Must contain wire table headers
+	for _, header := range []string{"FROM BLOCK", "PORT", "TO BLOCK"} {
+		if !strings.Contains(out, header) {
+			t.Errorf("output missing %s header", header)
+		}
+	}
+	// Must report 4 wires for standard composition
+	if !strings.Contains(out, "4 wires") {
+		t.Errorf("expected 4 wires, got: %s", out)
+	}
+}
+
+func TestComposeAutoWire_SampleComposition(t *testing.T) {
+	path := sampleCompositionPath(t)
+	var buf bytes.Buffer
+	err := run([]string{"compose", "auto-wire", "--file", path}, &buf)
+	if err != nil {
+		t.Fatalf("compose auto-wire: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "ok") {
+		t.Errorf("expected ok output, got: %s", out)
+	}
+	if !strings.Contains(out, "3 wires") {
+		t.Errorf("expected 3 wires, got: %s", out)
+	}
+}
+
+func TestComposeTopology_StandardComposition(t *testing.T) {
+	path := standardCompositionPath(t)
+	var buf bytes.Buffer
+	err := run([]string{"compose", "topology", "--file", path}, &buf)
+	if err != nil {
+		t.Fatalf("compose topology: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "ok") {
+		t.Errorf("expected ok output, got: %s", out)
+	}
+	if !strings.Contains(out, "Topological order") {
+		t.Errorf("expected topological order section, got: %s", out)
+	}
+	// storage must come before db in topological order
+	storageIdx := strings.Index(out, "storage (storage.local-pv)")
+	dbIdx := strings.Index(out, "db (datastore.postgresql)")
+	if storageIdx < 0 || dbIdx < 0 {
+		t.Errorf("missing expected blocks in output: %s", out)
+	} else if storageIdx > dbIdx {
+		t.Errorf("storage should come before db in topological order")
+	}
+}
+
+func TestComposeTopology_SampleComposition(t *testing.T) {
+	path := sampleCompositionPath(t)
+	var buf bytes.Buffer
+	err := run([]string{"compose", "topology", "--file", path}, &buf)
+	if err != nil {
+		t.Fatalf("compose topology: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "ok") {
+		t.Errorf("expected ok output, got: %s", out)
+	}
+	if !strings.Contains(out, "3 blocks") {
+		t.Errorf("expected 3 blocks, got: %s", out)
+	}
+}
+
+func TestComposeAutoWire_FileNotFound(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"compose", "auto-wire", "--file", "/nonexistent/path.json"}, &buf)
+	if err == nil {
+		t.Fatal("expected error for missing file")
+	}
+	if !strings.Contains(err.Error(), "cannot read file") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestComposeTopology_FileNotFound(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"compose", "topology", "--file", "/nonexistent/path.json"}, &buf)
+	if err == nil {
+		t.Fatal("expected error for missing file")
+	}
+	if !strings.Contains(err.Error(), "cannot read file") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestComposeUnknownSubcommand(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"compose", "foobar", "--file", "x.json"}, &buf)
+	if err == nil {
+		t.Fatal("expected error for unknown subcommand")
+	}
+	if !strings.Contains(err.Error(), "unknown compose subcommand") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
 func TestUnknownCommand(t *testing.T) {
 	var buf bytes.Buffer
 	err := run([]string{"foobar"}, &buf)
