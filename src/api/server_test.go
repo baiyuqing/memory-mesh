@@ -69,13 +69,13 @@ func TestListBlocks_CatalogDescriptions(t *testing.T) {
 	}
 
 	// postgresql: standard description, no dev-only caveat in catalog.
-	wantPG := "PostgreSQL database engine managed as a Kubernetes StatefulSet."
+	wantPG := testfixture.BlockDescription(t, "datastore.postgresql")
 	if got := descMap["datastore.postgresql"]; got != wantPG {
 		t.Errorf("datastore.postgresql description:\n  got:  %q\n  want: %q", got, wantPG)
 	}
 
 	// password-rotation: must reflect stub status.
-	wantPR := "Credential rotation scaffold via CronJob (stub — generates and stores passwords in Secret, does not yet execute ALTER USER on upstream DB)."
+	wantPR := testfixture.BlockDescription(t, "security.password-rotation")
 	if got := descMap["security.password-rotation"]; got != wantPR {
 		t.Errorf("security.password-rotation description:\n  got:  %q\n  want: %q", got, wantPR)
 	}
@@ -123,8 +123,8 @@ func TestGetBlock_DescriptionAccuracy(t *testing.T) {
 		kind string
 		want string
 	}{
-		{"datastore.postgresql", "PostgreSQL database engine managed as a Kubernetes StatefulSet."},
-		{"security.password-rotation", "Credential rotation scaffold via CronJob (stub — generates and stores passwords in Secret, does not yet execute ALTER USER on upstream DB)."},
+		{"datastore.postgresql", testfixture.BlockDescription(t, "datastore.postgresql")},
+		{"security.password-rotation", testfixture.BlockDescription(t, "security.password-rotation")},
 	}
 	for _, tt := range tests {
 		req := httptest.NewRequest("GET", "/v1/blocks/"+tt.kind, nil)

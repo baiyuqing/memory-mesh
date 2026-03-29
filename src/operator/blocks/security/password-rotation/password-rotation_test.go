@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
+	"github.com/baiyuqing/ottoplus/src/core/testfixture"
 	blocks "github.com/baiyuqing/ottoplus/src/operator/blocks"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -146,13 +147,13 @@ func TestReconcile_StubMessageIsHonest(t *testing.T) {
 	}
 
 	// Reconcile message must not claim rotation is fully functional.
-	for _, keyword := range []string{"stub", "Secret scaffold only", "ALTER USER not yet implemented"} {
+	for _, keyword := range testfixture.PasswordRotationStubKeywords {
 		if !strings.Contains(result.Message, keyword) {
 			t.Errorf("reconcile message missing %q keyword, got: %s", keyword, result.Message)
 		}
 	}
 	// Message must not claim full production readiness.
-	for _, banned := range []string{"rotation complete", "fully operational", "production ready"} {
+	for _, banned := range testfixture.ProductionReadyBannedPhrases {
 		if strings.Contains(strings.ToLower(result.Message), banned) {
 			t.Errorf("reconcile message should not claim %q, got: %s", banned, result.Message)
 		}

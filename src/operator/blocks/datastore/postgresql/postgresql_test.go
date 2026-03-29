@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
+	"github.com/baiyuqing/ottoplus/src/core/testfixture"
 	blocks "github.com/baiyuqing/ottoplus/src/operator/blocks"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -142,7 +143,7 @@ func TestReconcile_DevOnlyDSN(t *testing.T) {
 	}
 
 	// Reconcile message must mention dev-only status with specific keywords.
-	for _, keyword := range []string{"dev-only", "trust auth", "no password enforcement", "credential port"} {
+	for _, keyword := range testfixture.PostgreSQLDevOnlyKeywords {
 		if !strings.Contains(result.Message, keyword) {
 			t.Errorf("reconcile message missing %q keyword, got: %s", keyword, result.Message)
 		}
