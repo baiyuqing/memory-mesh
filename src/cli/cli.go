@@ -36,7 +36,7 @@ Flags:
   --format <table|json>    Output format (default: table)
 `
 
-const composeUsage = `Usage: ottoplus compose <subcommand> --file <path>
+const composeUsage = `Usage: ottoplus compose <subcommand> --file <path> [--format <table|json>]
 
 Subcommands:
   validate    Validate a composition file against the block registry
@@ -44,7 +44,8 @@ Subcommands:
   topology    Show topological block order and wires
 
 Flags:
-  --file <path>    Path to a composition JSON file (required)
+  --file <path>              Path to a composition JSON file (required)
+  --format <table|json>      Output format (default: table)
 `
 
 // Run dispatches to the appropriate subcommand based on args.
@@ -137,8 +138,8 @@ func runCompose(args []string, w io.Writer) error {
 	// Intercept --help/-h before flag.Parse to avoid flag.ErrHelp error path.
 	for _, a := range args[1:] {
 		if a == "--help" || a == "-h" || a == "-help" {
-			fmt.Fprintf(w, "Usage: ottoplus compose %s --file <path>\n\n", sub)
-			fmt.Fprintf(w, "Flags:\n  --file <path>    Path to a composition JSON file (required)\n")
+			fmt.Fprintf(w, "Usage: ottoplus compose %s --file <path> [--format <table|json>]\n\n", sub)
+			fmt.Fprintf(w, "Flags:\n  --file <path>              Path to a composition JSON file (required)\n  --format <table|json>      Output format (default: table)\n")
 			return nil
 		}
 	}
@@ -146,6 +147,7 @@ func runCompose(args []string, w io.Writer) error {
 	fs := flag.NewFlagSet("ottoplus compose "+sub, flag.ContinueOnError)
 	fs.SetOutput(w)
 	filePath := fs.String("file", "", "Path to composition JSON file (required)")
+	format := fs.String("format", "table", "Output format: table or json")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -154,15 +156,27 @@ func runCompose(args []string, w io.Writer) error {
 		fmt.Fprintf(w, "Usage: ottoplus compose %s --file <path>\n", sub)
 		return fmt.Errorf("--file is required")
 	}
+	if *format != "table" && *format != "json" {
+		return fmt.Errorf("unsupported format %q — available: table, json", *format)
+	}
 
 	registry := newRegistry()
 
 	switch sub {
 	case "validate":
+		if *format == "json" {
+			return composeValidateJSON(registry, *filePath, w)
+		}
 		return composeValidate(registry, *filePath, w)
 	case "auto-wire":
+		if *format == "json" {
+			return composeAutoWireJSON(registry, *filePath, w)
+		}
 		return composeAutoWire(registry, *filePath, w)
 	case "topology":
+		if *format == "json" {
+			return composeTopologyJSON(registry, *filePath, w)
+		}
 		return composeTopology(registry, *filePath, w)
 	default:
 		return fmt.Errorf("unknown compose subcommand %q", sub)
@@ -354,6 +368,153 @@ func composeTopology(registry *block.Registry, filePath string, w io.Writer) err
 		}
 	}
 	return nil
+}
+
+type validateResult struct {
+	File       string `json:"file"`
+	Valid      bool   `json:"valid"`
+	BlockCount int    `json:"blockCount"`
+}
+
+func composeValidateJSON(registry *block.Registry, filePath string, w io.Writer) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("cannot read file: %w", err)
+	}
+
+	var doc compositionFile
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return fmt.Errorf("invalid JSON: %w", err)
+	}
+
+	comp := block.Composition{Blocks: doc.Composition.Blocks}
+
+	if errs := comp.NormalizeInputs(); len(errs) > 0 {
+		return reportErrors(w, filePath, errs)
+	}
+
+	if errs := comp.Validate(registry); len(errs) > 0 {
+		return reportErrors(w, filePath, errs)
+	}
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(validateResult{
+		File:       filePath,
+		Valid:      true,
+		BlockCount: len(comp.Blocks),
+	})
+}
+
+type wireEntry struct {
+	FromBlock string `json:"fromBlock"`
+	FromPort  string `json:"fromPort"`
+	ToBlock   string `json:"toBlock"`
+	ToPort    string `json:"toPort"`
+}
+
+type autoWireResult struct {
+	File       string      `json:"file"`
+	BlockCount int         `json:"blockCount"`
+	WireCount  int         `json:"wireCount"`
+	Wires      []wireEntry `json:"wires"`
+}
+
+func composeAutoWireJSON(registry *block.Registry, filePath string, w io.Writer) error {
+	comp, err := loadComposition(filePath)
+	if err != nil {
+		return err
+	}
+
+	if errs := comp.NormalizeInputs(); len(errs) > 0 {
+		return reportErrors(w, filePath, errs)
+	}
+
+	if errs := comp.AutoWire(registry); len(errs) > 0 {
+		return reportErrors(w, filePath, errs)
+	}
+
+	wires := make([]wireEntry, len(comp.Wires))
+	for i, wire := range comp.Wires {
+		wires[i] = wireEntry{
+			FromBlock: wire.FromBlock,
+			FromPort:  wire.FromPort,
+			ToBlock:   wire.ToBlock,
+			ToPort:    wire.ToPort,
+		}
+	}
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(autoWireResult{
+		File:       filePath,
+		BlockCount: len(comp.Blocks),
+		WireCount:  len(comp.Wires),
+		Wires:      wires,
+	})
+}
+
+type topoBlockEntry struct {
+	Index int    `json:"index"`
+	Name  string `json:"name"`
+	Kind  string `json:"kind"`
+}
+
+type topologyResult struct {
+	File       string           `json:"file"`
+	BlockCount int              `json:"blockCount"`
+	Order      []topoBlockEntry `json:"order"`
+	WireCount  int              `json:"wireCount"`
+	Wires      []wireEntry      `json:"wires"`
+}
+
+func composeTopologyJSON(registry *block.Registry, filePath string, w io.Writer) error {
+	comp, err := loadComposition(filePath)
+	if err != nil {
+		return err
+	}
+
+	if errs := comp.NormalizeInputs(); len(errs) > 0 {
+		return reportErrors(w, filePath, errs)
+	}
+
+	if errs := comp.AutoWire(registry); len(errs) > 0 {
+		return reportErrors(w, filePath, errs)
+	}
+
+	sorted, err := comp.TopologicalSort()
+	if err != nil {
+		return fmt.Errorf("topology: %w", err)
+	}
+
+	order := make([]topoBlockEntry, len(sorted))
+	for i, ref := range sorted {
+		order[i] = topoBlockEntry{
+			Index: i + 1,
+			Name:  ref.Name,
+			Kind:  ref.Kind,
+		}
+	}
+
+	wires := make([]wireEntry, len(comp.Wires))
+	for i, wire := range comp.Wires {
+		wires[i] = wireEntry{
+			FromBlock: wire.FromBlock,
+			FromPort:  wire.FromPort,
+			ToBlock:   wire.ToBlock,
+			ToPort:    wire.ToPort,
+		}
+	}
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(topologyResult{
+		File:       filePath,
+		BlockCount: len(sorted),
+		Order:      order,
+		WireCount:  len(comp.Wires),
+		Wires:      wires,
+	})
 }
 
 func loadComposition(filePath string) (*block.Composition, error) {
