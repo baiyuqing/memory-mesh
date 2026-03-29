@@ -218,8 +218,8 @@ func TestTopology_CorrectOrder(t *testing.T) {
 	var resp TopologyResponse
 	json.NewDecoder(w.Body).Decode(&resp)
 
-	if len(resp.Nodes) != 3 {
-		t.Fatalf("expected 3 nodes, got %d", len(resp.Nodes))
+	if len(resp.Nodes) != testfixture.SampleBlockCount {
+		t.Fatalf("expected %d nodes, got %d", testfixture.SampleBlockCount, len(resp.Nodes))
 	}
 
 	// Verify topological order: storage before db, db before pooler.
@@ -227,11 +227,12 @@ func TestTopology_CorrectOrder(t *testing.T) {
 	for i, n := range resp.Nodes {
 		posMap[n.Name] = i
 	}
-	if posMap["storage"] >= posMap["db"] {
-		t.Errorf("storage (pos %d) should come before db (pos %d)", posMap["storage"], posMap["db"])
-	}
-	if posMap["db"] >= posMap["pooler"] {
-		t.Errorf("db (pos %d) should come before pooler (pos %d)", posMap["db"], posMap["pooler"])
+	order := testfixture.SampleTopoOrder
+	for i := 0; i < len(order)-1; i++ {
+		a, b := order[i], order[i+1]
+		if posMap[a] >= posMap[b] {
+			t.Errorf("%s (pos %d) should come before %s (pos %d)", a, posMap[a], b, posMap[b])
+		}
 	}
 }
 
