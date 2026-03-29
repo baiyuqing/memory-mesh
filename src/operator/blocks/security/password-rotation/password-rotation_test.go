@@ -146,8 +146,16 @@ func TestReconcile_StubMessageIsHonest(t *testing.T) {
 	}
 
 	// Reconcile message must not claim rotation is fully functional.
-	if !strings.Contains(result.Message, "stub") {
-		t.Errorf("reconcile message should mention stub status, got: %s", result.Message)
+	for _, keyword := range []string{"stub", "Secret scaffold only", "ALTER USER not yet implemented"} {
+		if !strings.Contains(result.Message, keyword) {
+			t.Errorf("reconcile message missing %q keyword, got: %s", keyword, result.Message)
+		}
+	}
+	// Message must not claim full production readiness.
+	for _, banned := range []string{"rotation complete", "fully operational", "production ready"} {
+		if strings.Contains(strings.ToLower(result.Message), banned) {
+			t.Errorf("reconcile message should not claim %q, got: %s", banned, result.Message)
+		}
 	}
 
 	// Verify the rotation script in the ConfigMap is honest.
