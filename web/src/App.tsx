@@ -109,6 +109,35 @@ const categories = [
   { name: 'Integration', blocks: [{ kind: 'integration.s3-backup', label: 'S3 Backup' }] },
 ]
 
+// Per-block-kind field metadata for the 3 onboarding blocks
+interface FieldMeta {
+  key: string
+  label: string
+  type: 'text' | 'number' | 'select'
+  group: string
+  options?: string[]
+}
+
+const blockFieldMeta: Record<string, { title: string; fields: FieldMeta[] }> = {
+  'storage.local-pv': {
+    title: 'Local Persistent Volume',
+    fields: [
+      { key: 'size', label: 'Volume Size', type: 'text', group: 'Storage' },
+    ],
+  },
+  'datastore.postgresql': {
+    title: 'PostgreSQL Database',
+    fields: [
+      { key: 'version', label: 'Version', type: 'select', group: 'Engine', options: ['14', '15', '16', '17'] },
+      { key: 'replicas', label: 'Replicas', type: 'number', group: 'Scaling' },
+    ],
+  },
+  'gateway.pgbouncer': {
+    title: 'PgBouncer Connection Pooler',
+    fields: [],
+  },
+}
+
 type OutputFormat = 'json' | 'yaml'
 
 function App() {
@@ -262,49 +291,104 @@ function App() {
       {/* Right: Block details */}
       <aside className="params">
         <div className="params-title">Block Details</div>
-        {selectedBlock ? (
-          <div className={`params-block ${isSelectedDeleted ? 'params-block-deleted' : ''}`}>
-            <div className="params-block-header">
-              <div className="params-block-name">{selectedBlock.name}</div>
-              <button
-                className={`params-block-toggle ${isSelectedDeleted ? 'restore' : 'delete'}`}
-                onClick={() => toggleDelete(selectedBlock.name)}
-              >
-                {isSelectedDeleted ? 'Restore' : 'Remove'}
-              </button>
+        {selectedBlock ? (() => {
+          const meta = blockFieldMeta[selectedBlock.kind]
+          const groups = meta
+            ? Array.from(new Set(meta.fields.map(f => f.group)))
+            : []
+
+          return (
+            <div className={`params-block ${isSelectedDeleted ? 'params-block-deleted' : ''}`}>
+              <div className="params-block-header">
+                <div className="params-block-name">{selectedBlock.name}</div>
+                <button
+                  className={`params-block-toggle ${isSelectedDeleted ? 'restore' : 'delete'}`}
+                  onClick={() => toggleDelete(selectedBlock.name)}
+                >
+                  {isSelectedDeleted ? 'Restore' : 'Remove'}
+                </button>
+              </div>
+              <div className="params-block-kind">{selectedBlock.kind}</div>
+              {meta && <div className="params-block-desc">{meta.title}</div>}
+              {isSelectedDeleted && (
+                <div className="params-deleted-badge">Removed from composition</div>
+              )}
+              {!isSelectedDeleted && meta && meta.fields.length > 0 && (
+                <>
+                  {groups.map(group => (
+                    <div className="params-group" key={group}>
+                      <div className="params-group-title">{group}</div>
+                      {meta.fields.filter(f => f.group === group).map(field => {
+                        const val = selectedBlock.parameters?.[field.key] ?? ''
+                        return (
+                          <div className="params-field" key={field.key}>
+                            <label className="params-field-label">{field.label}</label>
+                            {field.type === 'select' ? (
+                              <select
+                                className="params-select"
+                                value={val}
+                                onChange={(e) => updateParam(selectedBlock.name, field.key, e.target.value)}
+                              >
+                                {field.options?.map(opt => (
+                                  <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                              </select>
+                            ) : field.type === 'number' ? (
+                              <input
+                                className="params-input"
+                                type="number"
+                                min="1"
+                                value={val}
+                                onChange={(e) => updateParam(selectedBlock.name, field.key, e.target.value)}
+                              />
+                            ) : (
+                              <input
+                                className="params-input"
+                                value={val}
+                                onChange={(e) => updateParam(selectedBlock.name, field.key, e.target.value)}
+                              />
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </>
+              )}
+              {!isSelectedDeleted && meta && meta.fields.length === 0 && (
+                <div className="params-no-params">
+                  No configurable parameters. This block is configured automatically via its inputs.
+                </div>
+              )}
+              {!isSelectedDeleted && !meta && selectedBlock.parameters && (
+                <>
+                  <div className="params-group-title">Parameters</div>
+                  {Object.entries(selectedBlock.parameters).map(([k, v]) => (
+                    <div className="params-field" key={k}>
+                      <label className="params-field-label">{k}</label>
+                      <input
+                        className="params-input"
+                        value={v}
+                        onChange={(e) => updateParam(selectedBlock.name, k, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </>
+              )}
+              {selectedBlock.inputs && !isSelectedDeleted && (
+                <div className="params-group">
+                  <div className="params-group-title">Inputs</div>
+                  {Object.entries(selectedBlock.inputs).map(([k, v]) => (
+                    <div className="params-field" key={k}>
+                      <label className="params-field-label">{k}</label>
+                      <span className="params-val">{v}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="params-block-kind">{selectedBlock.kind}</div>
-            {isSelectedDeleted && (
-              <div className="params-deleted-badge">Removed from composition</div>
-            )}
-            {selectedBlock.parameters && !isSelectedDeleted && (
-              <>
-                <div className="params-inputs-title">Parameters</div>
-                {Object.entries(selectedBlock.parameters).map(([k, v]) => (
-                  <div className="params-row" key={k}>
-                    <span className="params-key">{k}</span>
-                    <input
-                      className="params-input"
-                      value={v}
-                      onChange={(e) => updateParam(selectedBlock.name, k, e.target.value)}
-                    />
-                  </div>
-                ))}
-              </>
-            )}
-            {selectedBlock.inputs && !isSelectedDeleted && (
-              <>
-                <div className="params-inputs-title">Inputs</div>
-                {Object.entries(selectedBlock.inputs).map(([k, v]) => (
-                  <div className="params-row" key={k}>
-                    <span className="params-key">{k}</span>
-                    <span className="params-val">{v}</span>
-                  </div>
-                ))}
-              </>
-            )}
-          </div>
-        ) : (
+          )
+        })() : (
           <div className="params-empty">Select a block to view details</div>
         )}
       </aside>
