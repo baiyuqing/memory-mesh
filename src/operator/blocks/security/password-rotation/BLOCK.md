@@ -2,7 +2,7 @@
 kind: security.password-rotation
 category: security
 version: 1.0.0
-description: Automated database credential rotation via CronJob.
+description: "Credential rotation scaffold via CronJob (stub — generates and stores passwords in Secret, does not yet execute ALTER USER on upstream DB)."
 ports:
   - name: upstream-dsn
     portType: dsn
@@ -33,14 +33,17 @@ provides:
 
 # security.password-rotation
 
-Runs a CronJob that periodically rotates database credentials. Stores the
-current credentials in a Kubernetes Secret.
+Credential rotation scaffold. Deploys a CronJob that generates new passwords
+and stores them in a Kubernetes Secret. **Stub**: does not yet execute
+`ALTER USER` on the upstream database — the Secret is updated but the actual
+DB credentials remain unchanged.
 
 ## Composition Notes
 
 - **Must** wire `upstream-dsn` from a database engine block.
 - Outputs `credential` for downstream consumers needing DB access.
-- Uses a CronJob with a lightweight container to execute rotation.
+- Uses a CronJob with a lightweight container to generate passwords.
+- **Current limitation**: rotation script updates the Secret only; upstream DB password is not changed.
 
 ## Kubernetes Resources Created
 

@@ -390,7 +390,7 @@ func TestBlocksListFormatJSON(t *testing.T) {
 	wantOrder := []blockEntry{
 		{Category: "datastore", Name: "PostgreSQL", Kind: "datastore.postgresql", Description: "PostgreSQL database engine managed as a Kubernetes StatefulSet."},
 		{Category: "gateway", Name: "PgBouncer", Kind: "gateway.pgbouncer", Description: "PgBouncer connection pooler for PostgreSQL."},
-		{Category: "security", Name: "Password Rotation", Kind: "security.password-rotation", Description: "Automated database credential rotation via CronJob."},
+		{Category: "security", Name: "Password Rotation", Kind: "security.password-rotation", Description: "Credential rotation scaffold via CronJob (stub — generates and stores passwords in Secret, does not yet execute ALTER USER on upstream DB)."},
 		{Category: "storage", Name: "Local PV", Kind: "storage.local-pv", Description: "Local PersistentVolume storage for database data. Ephemeral — data does not survive node loss."},
 	}
 	for i, want := range wantOrder {
@@ -595,7 +595,7 @@ func TestGolden_BlocksList(t *testing.T) {
 		"CATEGORY        NAME                    KIND                        DESCRIPTION\n" +
 		"datastore       PostgreSQL              datastore.postgresql        PostgreSQL database engine managed as...\n" +
 		"gateway         PgBouncer               gateway.pgbouncer           PgBouncer connection pooler for Postg...\n" +
-		"security        Password Rotation       security.password-rotation  Automated database credential rotatio...\n" +
+		"security        Password Rotation       security.password-rotation  Credential rotation scaffold via Cron...\n" +
 		"storage         Local PV                storage.local-pv            Local PersistentVolume storage for da...\n"
 	if got := buf.String(); got != want {
 		t.Errorf("blocks list output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
@@ -624,7 +624,7 @@ func TestGolden_BlocksListJSON(t *testing.T) {
     "category": "security",
     "name": "Password Rotation",
     "kind": "security.password-rotation",
-    "description": "Automated database credential rotation via CronJob."
+    "description": "Credential rotation scaffold via CronJob (stub — generates and stores passwords in Secret, does not yet execute ALTER USER on upstream DB)."
   },
   {
     "category": "storage",
