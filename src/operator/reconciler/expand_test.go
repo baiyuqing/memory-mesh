@@ -62,21 +62,12 @@ func TestOperatorCompiler_ExplicitWithInlineInputs(t *testing.T) {
 	}
 
 	// Wires: 2 inline inputs + 1 auto-wired credential (db→pooler).
-	if len(result.Composition.Wires) != 3 {
-		t.Fatalf("expected 3 wires, got %d", len(result.Composition.Wires))
+	if len(result.Composition.Wires) != testfixture.SampleWireCount {
+		t.Fatalf("expected %d wires, got %d", testfixture.SampleWireCount, len(result.Composition.Wires))
 	}
 
 	// Topo order must be: storage -> db -> pooler (regardless of input order).
-	posMap := make(map[string]int)
-	for i, ref := range result.Sorted {
-		posMap[ref.Name] = i
-	}
-	if posMap["storage"] >= posMap["db"] {
-		t.Errorf("storage should come before db")
-	}
-	if posMap["db"] >= posMap["pooler"] {
-		t.Errorf("db should come before pooler")
-	}
+	testfixture.AssertSampleTopoOrder(t, result.Sorted)
 }
 
 func TestOperatorAndAPIGetSameResult(t *testing.T) {
