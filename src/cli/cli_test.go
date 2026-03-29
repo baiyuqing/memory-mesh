@@ -30,7 +30,7 @@ func TestBlocksList(t *testing.T) {
 	}
 
 	// Must contain display names
-	for _, name := range []string{"Local Pv", "Postgresql", "Pgbouncer", "Password Rotation"} {
+	for _, name := range []string{"Local PV", "PostgreSQL", "PgBouncer", "Password Rotation"} {
 		if !strings.Contains(out, name) {
 			t.Errorf("output missing display name %q", name)
 		}
@@ -49,9 +49,9 @@ func TestDisplayName(t *testing.T) {
 		kind string
 		want string
 	}{
-		{"storage.local-pv", "Local Pv"},
-		{"datastore.postgresql", "Postgresql"},
-		{"gateway.pgbouncer", "Pgbouncer"},
+		{"storage.local-pv", "Local PV"},
+		{"datastore.postgresql", "PostgreSQL"},
+		{"gateway.pgbouncer", "PgBouncer"},
 		{"security.password-rotation", "Password Rotation"},
 	}
 	for _, tt := range tests {

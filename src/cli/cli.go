@@ -93,9 +93,20 @@ type compositionFile struct {
 	} `json:"composition"`
 }
 
-// displayName derives a human-readable name from a block kind.
-// e.g. "datastore.postgresql" → "PostgreSQL", "storage.local-pv" → "Local PV".
+// blockDisplayNames maps block kinds to their canonical human-readable names.
+var blockDisplayNames = map[string]string{
+	"storage.local-pv":            "Local PV",
+	"datastore.postgresql":        "PostgreSQL",
+	"gateway.pgbouncer":           "PgBouncer",
+	"security.password-rotation":  "Password Rotation",
+}
+
+// displayName returns the canonical human-readable name for a block kind.
 func displayName(kind string) string {
+	if name, ok := blockDisplayNames[kind]; ok {
+		return name
+	}
+	// Fallback for unknown kinds: title-case the suffix.
 	parts := strings.SplitN(kind, ".", 2)
 	name := kind
 	if len(parts) == 2 {
