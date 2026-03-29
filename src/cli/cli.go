@@ -18,13 +18,30 @@ import (
 	localpv "github.com/baiyuqing/ottoplus/src/operator/blocks/storage/local-pv"
 )
 
-const usage = `Usage: ottoplus <command> [options]
+const rootUsage = `Usage: ottoplus <command> [options]
 
 Commands:
-  blocks list                        List all registered blocks
-  compose validate --file <path>     Validate a composition file
-  compose auto-wire --file <path>    Auto-wire a composition and show wires
-  compose topology --file <path>     Show topological block order and wires
+  blocks     List registered blocks
+  compose    Validate, auto-wire, or inspect compositions
+
+Run 'ottoplus <command> --help' for details on a specific command.
+`
+
+const blocksUsage = `Usage: ottoplus blocks <subcommand>
+
+Subcommands:
+  list    List all registered blocks (category, name, kind, description)
+`
+
+const composeUsage = `Usage: ottoplus compose <subcommand> --file <path>
+
+Subcommands:
+  validate    Validate a composition file against the block registry
+  auto-wire   Auto-wire a composition and show the resulting wire table
+  topology    Show topological block order and wires
+
+Flags:
+  --file <path>    Path to a composition JSON file (required)
 `
 
 // Run dispatches to the appropriate subcommand based on args.
@@ -34,41 +51,80 @@ func Run(args []string) error {
 
 func run(args []string, w io.Writer) error {
 	if len(args) == 0 {
-		fmt.Fprint(w, usage)
+		fmt.Fprint(w, rootUsage)
 		return nil
 	}
 
 	switch args[0] {
+	case "--help", "-h", "help":
+		fmt.Fprint(w, rootUsage)
+		return nil
 	case "blocks":
 		return runBlocks(args[1:], w)
 	case "compose":
 		return runCompose(args[1:], w)
 	default:
-		fmt.Fprint(w, usage)
-		return fmt.Errorf("unknown command %q", args[0])
+		fmt.Fprint(w, rootUsage)
+		return fmt.Errorf("unknown command %q — available commands: blocks, compose", args[0])
 	}
 }
 
 func runBlocks(args []string, w io.Writer) error {
-	if len(args) == 0 || args[0] != "list" {
-		return fmt.Errorf("usage: ottoplus blocks list")
+	if len(args) == 0 {
+		fmt.Fprint(w, blocksUsage)
+		return fmt.Errorf("missing subcommand — run 'ottoplus blocks --help'")
 	}
-	registry := newRegistry()
-	return blocksList(registry, w)
+
+	switch args[0] {
+	case "--help", "-h", "help":
+		fmt.Fprint(w, blocksUsage)
+		return nil
+	case "list":
+		registry := newRegistry()
+		return blocksList(registry, w)
+	default:
+		fmt.Fprint(w, blocksUsage)
+		return fmt.Errorf("unknown blocks subcommand %q — available: list", args[0])
+	}
 }
 
 func runCompose(args []string, w io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: ottoplus compose <validate|auto-wire|topology> --file <path>")
+		fmt.Fprint(w, composeUsage)
+		return fmt.Errorf("missing subcommand — run 'ottoplus compose --help'")
 	}
 
 	sub := args[0]
-	fs := flag.NewFlagSet("compose "+sub, flag.ContinueOnError)
-	filePath := fs.String("file", "", "Path to composition JSON file")
+
+	switch sub {
+	case "--help", "-h", "help":
+		fmt.Fprint(w, composeUsage)
+		return nil
+	case "validate", "auto-wire", "topology":
+		// continue below
+	default:
+		fmt.Fprint(w, composeUsage)
+		return fmt.Errorf("unknown compose subcommand %q — available: validate, auto-wire, topology", sub)
+	}
+
+	// Intercept --help/-h before flag.Parse to avoid flag.ErrHelp error path.
+	for _, a := range args[1:] {
+		if a == "--help" || a == "-h" || a == "-help" {
+			fmt.Fprintf(w, "Usage: ottoplus compose %s --file <path>\n\n", sub)
+			fmt.Fprintf(w, "Flags:\n  --file <path>    Path to a composition JSON file (required)\n")
+			return nil
+		}
+	}
+
+	fs := flag.NewFlagSet("ottoplus compose "+sub, flag.ContinueOnError)
+	fs.SetOutput(w)
+	filePath := fs.String("file", "", "Path to composition JSON file (required)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
 	if *filePath == "" {
+		fmt.Fprintf(w, "Error: --file is required\n\n")
+		fmt.Fprintf(w, "Usage: ottoplus compose %s --file <path>\n", sub)
 		return fmt.Errorf("--file is required")
 	}
 
@@ -108,10 +164,10 @@ type compositionFile struct {
 
 // blockDisplayNames maps block kinds to their canonical human-readable names.
 var blockDisplayNames = map[string]string{
-	"storage.local-pv":            "Local PV",
-	"datastore.postgresql":        "PostgreSQL",
-	"gateway.pgbouncer":           "PgBouncer",
-	"security.password-rotation":  "Password Rotation",
+	"storage.local-pv":           "Local PV",
+	"datastore.postgresql":       "PostgreSQL",
+	"gateway.pgbouncer":          "PgBouncer",
+	"security.password-rotation": "Password Rotation",
 }
 
 // displayName returns the canonical human-readable name for a block kind.
