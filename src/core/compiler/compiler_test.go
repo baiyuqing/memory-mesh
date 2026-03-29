@@ -59,28 +59,16 @@ func TestCompile_ExplicitComposition(t *testing.T) {
 		t.Fatalf("expected result, got errors: %v", errs)
 	}
 
-	if len(result.Composition.Blocks) != 3 {
-		t.Fatalf("expected 3 blocks, got %d", len(result.Composition.Blocks))
+	if len(result.Composition.Blocks) != testfixture.SampleBlockCount {
+		t.Fatalf("expected %d blocks, got %d", testfixture.SampleBlockCount, len(result.Composition.Blocks))
 	}
 
 	// Topo order: storage -> db -> pooler.
-	if len(result.Sorted) != 3 {
-		t.Fatalf("expected 3 sorted, got %d", len(result.Sorted))
-	}
-	posMap := make(map[string]int)
-	for i, ref := range result.Sorted {
-		posMap[ref.Name] = i
-	}
-	if posMap["storage"] >= posMap["db"] {
-		t.Errorf("storage (pos %d) should come before db (pos %d)", posMap["storage"], posMap["db"])
-	}
-	if posMap["db"] >= posMap["pooler"] {
-		t.Errorf("db (pos %d) should come before pooler (pos %d)", posMap["db"], posMap["pooler"])
-	}
+	testfixture.AssertSampleTopoOrder(t, result.Sorted)
 
 	// Wires: 2 inline inputs + 1 auto-wired credential (db→pooler).
-	if len(result.Composition.Wires) != 3 {
-		t.Errorf("expected 3 wires, got %d", len(result.Composition.Wires))
+	if len(result.Composition.Wires) != testfixture.SampleWireCount {
+		t.Errorf("expected %d wires, got %d", testfixture.SampleWireCount, len(result.Composition.Wires))
 	}
 }
 
@@ -170,8 +158,8 @@ func TestCompile_CredentialPath_ExplicitWire(t *testing.T) {
 		t.Fatalf("expected result, got errors: %v", errs)
 	}
 
-	if len(result.Composition.Blocks) != 4 {
-		t.Fatalf("expected 4 blocks, got %d", len(result.Composition.Blocks))
+	if len(result.Composition.Blocks) != testfixture.StandardBlockCount {
+		t.Fatalf("expected %d blocks, got %d", testfixture.StandardBlockCount, len(result.Composition.Blocks))
 	}
 
 	testfixture.AssertCredentialPathOrder(t, result.Sorted)
@@ -226,7 +214,7 @@ func TestCompile_StandardPath_NoRegression(t *testing.T) {
 	if result == nil {
 		t.Fatalf("3-block path should still compile, got errors: %v", errs)
 	}
-	if len(result.Composition.Blocks) != 3 {
-		t.Fatalf("expected 3 blocks, got %d", len(result.Composition.Blocks))
+	if len(result.Composition.Blocks) != testfixture.SampleBlockCount {
+		t.Fatalf("expected %d blocks, got %d", testfixture.SampleBlockCount, len(result.Composition.Blocks))
 	}
 }
