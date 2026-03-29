@@ -2,6 +2,7 @@ package postgresql
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
@@ -102,5 +103,103 @@ func TestDescriptor_HasCredentialPort(t *testing.T) {
 	}
 	if !found {
 		t.Error("expected Descriptor to have a credential output port")
+	}
+}
+
+func TestReconcile_DevOnlyDSN(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(scheme)
+	_ = appsv1.AddToScheme(scheme)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).Build()
+	b := &Block{}
+
+	result, err := b.Reconcile(context.Background(), c, blocks.ReconcileRequest{
+		ClusterName:      "test-cluster",
+		ClusterNamespace: "default",
+		BlockRef: block.BlockRef{
+			Kind: "datastore.postgresql",
+			Name: "db",
+		},
+		ResolvedInputs: map[string]string{},
+	})
+	if err != nil {
+		t.Fatalf("Reconcile failed: %v", err)
+	}
+
+	// DSN must be present (backward compat) and use trust auth (no password in URL).
+	dsn := result.Outputs["dsn"]
+	if dsn == "" {
+		t.Fatal("expected dsn output to be present")
+	}
+	if strings.Contains(dsn, ":") && strings.Contains(dsn, "@") {
+		// Check there is no password between :// user part and @
+		// Format: postgresql://postgres@host — no colon-password before @
+		userPart := strings.SplitN(strings.TrimPrefix(dsn, "postgresql://"), "@", 2)[0]
+		if strings.Contains(userPart, ":") {
+			t.Errorf("dsn should not contain a password (dev-only trust auth), got: %s", dsn)
+		}
+	}
+
+	// Reconcile message must mention dev-only status.
+	if !strings.Contains(result.Message, "dev-only") {
+		t.Errorf("reconcile message should mention dev-only status, got: %s", result.Message)
+	}
+
+	// Credential must be marked DevOnly.
+	cred, err := block.DecodeCredentialRef(result.Outputs["credential"])
+	if err != nil {
+		t.Fatalf("credential decode failed: %v", err)
+	}
+	if !cred.DevOnly {
+		t.Error("credential.devOnly: expected true for dev-only trust auth")
+	}
+}
+
+func TestReconcile_TrustAuthEnv(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(scheme)
+	_ = appsv1.AddToScheme(scheme)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).Build()
+	b := &Block{}
+
+	_, err := b.Reconcile(context.Background(), c, blocks.ReconcileRequest{
+		ClusterName:      "test-cluster",
+		ClusterNamespace: "default",
+		BlockRef: block.BlockRef{
+			Kind: "datastore.postgresql",
+			Name: "db",
+		},
+		ResolvedInputs: map[string]string{},
+	})
+	if err != nil {
+		t.Fatalf("Reconcile failed: %v", err)
+	}
+
+	// Verify the StatefulSet uses trust auth.
+	var sts appsv1.StatefulSet
+	err = c.Get(context.Background(), types.NamespacedName{
+		Name:      "test-cluster-db",
+		Namespace: "default",
+	}, &sts)
+	if err != nil {
+		t.Fatalf("expected StatefulSet to exist: %v", err)
+	}
+
+	containers := sts.Spec.Template.Spec.Containers
+	if len(containers) == 0 {
+		t.Fatal("expected at least one container")
+	}
+
+	foundTrustAuth := false
+	for _, env := range containers[0].Env {
+		if env.Name == "POSTGRES_HOST_AUTH_METHOD" && env.Value == "trust" {
+			foundTrustAuth = true
+			break
+		}
+	}
+	if !foundTrustAuth {
+		t.Error("expected POSTGRES_HOST_AUTH_METHOD=trust env var (dev-only trust auth)")
 	}
 }

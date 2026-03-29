@@ -119,10 +119,8 @@ func (b *Block) Reconcile(ctx context.Context, c client.Client, req blocks.Recon
 		return blocks.ReconcileResult{Phase: block.PhaseFailed, Message: err.Error()}, err
 	}
 
-	// DSN preserved for backward compatibility.
-	// TODO(dev-only): This DSN uses trust auth — no password. This is a
-	// dev-only compatibility path. Production use should consume the
-	// credential port instead.
+	// DSN preserved for backward compatibility (dev-only: uses trust auth,
+	// no password). Production consumers should use the credential port.
 	dsn := fmt.Sprintf("postgresql://postgres@%s.%s.svc:5432/postgres", fullName, req.ClusterNamespace)
 
 	credRef := block.CredentialRef{
@@ -136,7 +134,7 @@ func (b *Block) Reconcile(ctx context.Context, c client.Client, req blocks.Recon
 
 	return blocks.ReconcileResult{
 		Phase:   block.PhaseReady,
-		Message: "PostgreSQL StatefulSet reconciled",
+		Message: "PostgreSQL StatefulSet reconciled (dev-only: trust auth, no password enforcement — use credential port for production)",
 		Outputs: map[string]string{
 			"dsn":        dsn,
 			"credential": credJSON,
