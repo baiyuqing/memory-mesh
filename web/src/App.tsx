@@ -1,7 +1,6 @@
+import { useState, useMemo } from 'react'
 import sampleComposition from '@examples/sample-composition.json'
 import './App.css'
-
-const compositionJson = JSON.stringify(sampleComposition, null, 2)
 
 interface BlockRef {
   kind: string
@@ -10,7 +9,11 @@ interface BlockRef {
   inputs?: Record<string, string>
 }
 
-const blocks: BlockRef[] = sampleComposition.composition.blocks
+const initialBlocks: BlockRef[] = sampleComposition.composition.blocks.map(b => ({
+  ...b,
+  parameters: b.parameters ? { ...b.parameters } : undefined,
+  inputs: b.inputs ? { ...b.inputs } : undefined,
+}))
 
 function categoryOf(kind: string): string {
   return kind.split('.')[0]
@@ -22,10 +25,12 @@ function dotClass(kind: string): string {
 
 function getWires(blocks: BlockRef[]): { from: string; to: string; port: string }[] {
   const wires: { from: string; to: string; port: string }[] = []
+  const nameSet = new Set(blocks.map(b => b.name))
   for (const b of blocks) {
     if (!b.inputs) continue
     for (const [port, ref] of Object.entries(b.inputs)) {
       const [fromBlock, fromPort] = ref.split('/')
+      if (!nameSet.has(fromBlock)) continue
       wires.push({ from: `${fromBlock}/${fromPort}`, to: `${b.name}/${port}`, port })
     }
   }
@@ -54,9 +59,6 @@ function topoSort(blocks: BlockRef[]): BlockRef[] {
   return result
 }
 
-const sorted = topoSort(blocks)
-const wires = getWires(blocks)
-
 // Registry of known block categories for sidebar display
 const categories = [
   { name: 'Storage', blocks: [{ kind: 'storage.local-pv', label: 'Local PV' }, { kind: 'storage.ebs', label: 'EBS' }] },
@@ -67,9 +69,63 @@ const categories = [
   { name: 'Integration', blocks: [{ kind: 'integration.s3-backup', label: 'S3 Backup' }] },
 ]
 
-const activeKinds = new Set(blocks.map(b => b.kind))
-
 function App() {
+  const [blocks, setBlocks] = useState<BlockRef[]>(initialBlocks)
+  const [deletedNames, setDeletedNames] = useState<Set<string>>(new Set())
+  const [selectedName, setSelectedName] = useState<string | null>(null)
+
+  // Single resolved composition: filter deleted blocks, strip dangling inputs
+  const currentBlocks = useMemo(() => {
+    const live = blocks.filter(b => !deletedNames.has(b.name))
+    const nameSet = new Set(live.map(b => b.name))
+    return live.map(b => {
+      if (!b.inputs) return b
+      const cleaned: Record<string, string> = {}
+      for (const [port, ref] of Object.entries(b.inputs)) {
+        if (nameSet.has(ref.split('/')[0])) cleaned[port] = ref
+      }
+      return Object.keys(cleaned).length > 0
+        ? { ...b, inputs: cleaned }
+        : { ...b, inputs: undefined }
+    })
+  }, [blocks, deletedNames])
+
+  const sorted = useMemo(() => topoSort(currentBlocks), [currentBlocks])
+  const wires = useMemo(() => getWires(currentBlocks), [currentBlocks])
+  const activeKinds = useMemo(() => new Set(currentBlocks.map(b => b.kind)), [currentBlocks])
+
+  const compositionOutput = useMemo(() => JSON.stringify(
+    { composition: { blocks: currentBlocks } },
+    null,
+    2,
+  ), [currentBlocks])
+
+  const selectedBlock = blocks.find(b => b.name === selectedName) ?? null
+  const isSelectedDeleted = selectedName !== null && deletedNames.has(selectedName)
+
+  function updateParam(blockName: string, key: string, value: string) {
+    setBlocks(prev => prev.map(b => {
+      if (b.name !== blockName || !b.parameters) return b
+      return { ...b, parameters: { ...b.parameters, [key]: value } }
+    }))
+  }
+
+  function toggleDelete(blockName: string) {
+    setDeletedNames(prev => {
+      const next = new Set(prev)
+      if (next.has(blockName)) {
+        next.delete(blockName)
+      } else {
+        next.add(blockName)
+      }
+      return next
+    })
+  }
+
+  function handleCardClick(name: string) {
+    setSelectedName(prev => prev === name ? null : name)
+  }
+
   return (
     <div className="app">
       {/* Header */}
@@ -95,58 +151,110 @@ function App() {
             ))}
           </div>
         ))}
-      </aside>
 
-      {/* Center: Canvas */}
-      <main className="canvas">
-        <div className="canvas-title">Composition Pipeline</div>
-        <div className="pipeline">
-          {sorted.map((b, i) => {
-            const incomingWire = i > 0 && b.inputs
-              ? Object.entries(b.inputs).find(([, ref]) => ref.split('/')[0] === sorted[i - 1].name)
-              : null
-
+        <div className="sidebar-section">
+          <div className="sidebar-title">All Blocks</div>
+          {blocks.map(b => {
+            const isDeleted = deletedNames.has(b.name)
             return (
-              <div key={b.name} style={{ display: 'flex', alignItems: 'center' }}>
-                {i > 0 && (
-                  <div className="wire">
-                    <div className="wire-label">{incomingWire ? incomingWire[1] : ''}</div>
-                    <div className="wire-line" />
-                  </div>
-                )}
-                <div className="block-card">
-                  <div className="block-card-name">{b.name}</div>
-                  <div className="block-card-kind">{b.kind}</div>
-                  {b.parameters && (
-                    <div className="block-card-params">
-                      {Object.entries(b.parameters).map(([k, v]) => (
-                        <span className="param-tag" key={k}>{k}={v}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <div
+                className={`sidebar-block-item ${isDeleted ? 'deleted' : ''} ${selectedName === b.name ? 'selected' : ''}`}
+                key={b.name}
+                onClick={() => handleCardClick(b.name)}
+              >
+                <div className={dotClass(b.kind)} />
+                <span className="sidebar-block-name">{b.name}</span>
+                <button
+                  className={`sidebar-block-action ${isDeleted ? 'restore' : 'delete'}`}
+                  onClick={(e) => { e.stopPropagation(); toggleDelete(b.name) }}
+                  title={isDeleted ? 'Restore block' : 'Remove block'}
+                >
+                  {isDeleted ? '+' : '\u00d7'}
+                </button>
               </div>
             )
           })}
         </div>
+      </aside>
+
+      {/* Center: Canvas */}
+      <main className="canvas" onClick={() => setSelectedName(null)}>
+        <div className="canvas-title">Composition Pipeline</div>
+        {currentBlocks.length === 0 ? (
+          <div className="canvas-empty">No blocks in composition. Restore blocks from the sidebar.</div>
+        ) : (
+          <div className="pipeline">
+            {sorted.map((b, i) => {
+              const incomingWire = i > 0 && b.inputs
+                ? Object.entries(b.inputs).find(([, ref]) => ref.split('/')[0] === sorted[i - 1].name)
+                : null
+
+              return (
+                <div key={b.name} style={{ display: 'flex', alignItems: 'center' }}>
+                  {i > 0 && (
+                    <div className="wire">
+                      <div className="wire-label">{incomingWire ? incomingWire[1] : ''}</div>
+                      <div className="wire-line" />
+                    </div>
+                  )}
+                  <div
+                    className={`block-card ${selectedName === b.name ? 'selected' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); handleCardClick(b.name) }}
+                  >
+                    <div className="block-card-name">{b.name}</div>
+                    <div className="block-card-kind">{b.kind}</div>
+                    {b.parameters && (
+                      <div className="block-card-params">
+                        {Object.entries(b.parameters).map(([k, v]) => (
+                          <span className="param-tag" key={k}>{k}={v}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </main>
 
       {/* Right: Parameters & generated output */}
       <aside className="params">
         <div className="params-title">Block Details</div>
-        {blocks.map(b => (
-          <div className="params-block" key={b.name}>
-            <div className="params-block-name">{b.name}</div>
-            {b.parameters && Object.entries(b.parameters).map(([k, v]) => (
-              <div className="params-row" key={k}>
-                <span className="params-key">{k}</span>
-                <span className="params-val">{v}</span>
-              </div>
-            ))}
-            {b.inputs && (
+        {selectedBlock ? (
+          <div className={`params-block ${isSelectedDeleted ? 'params-block-deleted' : ''}`}>
+            <div className="params-block-header">
+              <div className="params-block-name">{selectedBlock.name}</div>
+              <button
+                className={`params-block-toggle ${isSelectedDeleted ? 'restore' : 'delete'}`}
+                onClick={() => toggleDelete(selectedBlock.name)}
+              >
+                {isSelectedDeleted ? 'Restore' : 'Remove'}
+              </button>
+            </div>
+            <div className="params-block-kind">{selectedBlock.kind}</div>
+            {isSelectedDeleted && (
+              <div className="params-deleted-badge">Removed from composition</div>
+            )}
+            {selectedBlock.parameters && !isSelectedDeleted && (
+              <>
+                <div className="params-inputs-title">Parameters</div>
+                {Object.entries(selectedBlock.parameters).map(([k, v]) => (
+                  <div className="params-row" key={k}>
+                    <span className="params-key">{k}</span>
+                    <input
+                      className="params-input"
+                      value={v}
+                      onChange={(e) => updateParam(selectedBlock.name, k, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </>
+            )}
+            {selectedBlock.inputs && !isSelectedDeleted && (
               <>
                 <div className="params-inputs-title">Inputs</div>
-                {Object.entries(b.inputs).map(([k, v]) => (
+                {Object.entries(selectedBlock.inputs).map(([k, v]) => (
                   <div className="params-row" key={k}>
                     <span className="params-key">{k}</span>
                     <span className="params-val">{v}</span>
@@ -155,44 +263,63 @@ function App() {
               </>
             )}
           </div>
-        ))}
+        ) : (
+          <div className="params-empty">Select a block to view details</div>
+        )}
 
         <div className="params-divider" />
         <div className="params-title">Generated Output</div>
-        <pre className="params-output">{compositionJson}</pre>
+        <pre className="params-output">{compositionOutput}</pre>
       </aside>
 
       {/* Bottom: Validation & topology */}
       <section className="validate">
         <div className="validate-title">Validation &amp; Topology</div>
         <div className="validate-row">
-          <span className="validate-icon validate-ok">&#10003;</span>
-          <span>Composition valid &mdash; {blocks.length} blocks, {wires.length} wires</span>
+          <span className={`validate-icon ${currentBlocks.length > 0 ? 'validate-ok' : 'validate-warn'}`}>
+            {currentBlocks.length > 0 ? '\u2713' : '!'}
+          </span>
+          <span>
+            {currentBlocks.length > 0
+              ? <>Composition valid &mdash; {currentBlocks.length} blocks, {wires.length} wires</>
+              : <>Composition empty &mdash; no blocks</>
+            }
+          </span>
         </div>
-        <div className="validate-row">
-          <span className="validate-icon validate-info">&#8227;</span>
-          <span>Topological order:</span>
-        </div>
-        <div className="topo-order">
-          {sorted.map((b, i) => (
-            <div key={b.name} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {i > 0 && <span className="topo-arrow">&rarr;</span>}
-              <div className="topo-step">
-                <span className="topo-num">{i + 1}</span>
-                <span>{b.name}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="validate-row" style={{ marginTop: 8 }}>
-          <span className="validate-icon validate-info">&#8227;</span>
-          <span>Wires:</span>
-        </div>
-        {wires.map((w, i) => (
-          <div className="validate-row" key={i} style={{ paddingLeft: 22 }}>
-            <span>{w.from} &rarr; {w.to}</span>
+        {deletedNames.size > 0 && (
+          <div className="validate-row">
+            <span className="validate-icon validate-info">&#8227;</span>
+            <span>{deletedNames.size} block{deletedNames.size > 1 ? 's' : ''} removed (restorable)</span>
           </div>
-        ))}
+        )}
+        {currentBlocks.length > 0 && (
+          <>
+            <div className="validate-row">
+              <span className="validate-icon validate-info">&#8227;</span>
+              <span>Topological order:</span>
+            </div>
+            <div className="topo-order">
+              {sorted.map((b, i) => (
+                <div key={b.name} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {i > 0 && <span className="topo-arrow">&rarr;</span>}
+                  <div className="topo-step">
+                    <span className="topo-num">{i + 1}</span>
+                    <span>{b.name}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="validate-row" style={{ marginTop: 8 }}>
+              <span className="validate-icon validate-info">&#8227;</span>
+              <span>Wires:</span>
+            </div>
+            {wires.map((w, i) => (
+              <div className="validate-row" key={i} style={{ paddingLeft: 22 }}>
+                <span>{w.from} &rarr; {w.to}</span>
+              </div>
+            ))}
+          </>
+        )}
         <div className="source-label">
           Source: deploy/examples/sample-composition.json
         </div>
