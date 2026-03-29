@@ -1,4 +1,4 @@
-.PHONY: help dev-up dev-down test test-unit test-standard ci-smoke ci-unit ci-web ci-local lint seed logs build clean demo fmt fmt-check
+.PHONY: help dev-up dev-down test test-unit test-standard ci-smoke ci-unit ci-web ci-cli-smoke ci-local lint seed logs build clean demo fmt fmt-check
 
 CLUSTER_NAME := ottoplus-dev
 K3D_CONFIG := deploy/k3d-config.yaml
@@ -69,7 +69,13 @@ ci-unit: test ## Local mirror of CI unit workflow (full unit tests)
 ci-web: ## Run frontend checks (test + build)
 	cd web && npm install --silent && npm run ci
 
-ci-local: ci-smoke ci-unit ci-web ## Run all CI checks locally in sequence
+ci-cli-smoke: ## Run CLI smoke (4 commands from README/QUICKSTART)
+	go run ./cmd/ottoplus blocks list
+	go run ./cmd/ottoplus compose validate --file deploy/examples/sample-composition.json
+	go run ./cmd/ottoplus compose auto-wire --file deploy/examples/sample-composition.json
+	go run ./cmd/ottoplus compose topology --file deploy/examples/sample-composition.json
+
+ci-local: ci-smoke ci-unit ci-web ci-cli-smoke ## Run all CI checks locally in sequence
 
 # --- Code Quality ---
 

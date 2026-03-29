@@ -1,0 +1,53 @@
+name: CLI Smoke
+run-name: "CLI Smoke · ${{ github.ref_name }} · ${{ github.event_name }}"
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+      - 'Makefile'
+      - 'go.mod'
+      - 'go.sum'
+      - 'cmd/ottoplus/**'
+      - 'src/cli/**'
+      - 'deploy/examples/**'
+      - 'src/core/**'
+      - 'src/operator/blocks/**'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+      - 'Makefile'
+      - 'go.mod'
+      - 'go.sum'
+      - 'cmd/ottoplus/**'
+      - 'src/cli/**'
+      - 'deploy/examples/**'
+      - 'src/core/**'
+      - 'src/operator/blocks/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cli-smoke:
+    name: CLI Smoke Check
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: CLI smoke check
+        run: make ci-cli-smoke
