@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/baiyuqing/ottoplus/src/core/testfixture"
 )
 
 func TestBlocksList(t *testing.T) {
@@ -388,10 +390,10 @@ func TestBlocksListFormatJSON(t *testing.T) {
 	}
 	// Verify sorted order and all fields present
 	wantOrder := []blockEntry{
-		{Category: "datastore", Name: "PostgreSQL", Kind: "datastore.postgresql", Description: "PostgreSQL database engine managed as a Kubernetes StatefulSet."},
-		{Category: "gateway", Name: "PgBouncer", Kind: "gateway.pgbouncer", Description: "PgBouncer connection pooler for PostgreSQL."},
-		{Category: "security", Name: "Password Rotation", Kind: "security.password-rotation", Description: "Credential rotation scaffold via CronJob (stub — generates and stores passwords in Secret, does not yet execute ALTER USER on upstream DB)."},
-		{Category: "storage", Name: "Local PV", Kind: "storage.local-pv", Description: "Local PersistentVolume storage for database data. Ephemeral — data does not survive node loss."},
+		{Category: "datastore", Name: "PostgreSQL", Kind: "datastore.postgresql", Description: testfixture.BlockDescription(t, "datastore.postgresql")},
+		{Category: "gateway", Name: "PgBouncer", Kind: "gateway.pgbouncer", Description: testfixture.BlockDescription(t, "gateway.pgbouncer")},
+		{Category: "security", Name: "Password Rotation", Kind: "security.password-rotation", Description: testfixture.BlockDescription(t, "security.password-rotation")},
+		{Category: "storage", Name: "Local PV", Kind: "storage.local-pv", Description: testfixture.BlockDescription(t, "storage.local-pv")},
 	}
 	for i, want := range wantOrder {
 		got := entries[i]
@@ -607,33 +609,38 @@ func TestGolden_BlocksListJSON(t *testing.T) {
 	if err := run([]string{"blocks", "list", "--format", "json"}, &buf); err != nil {
 		t.Fatal(err)
 	}
-	want := `[
+	want := fmt.Sprintf(`[
   {
     "category": "datastore",
     "name": "PostgreSQL",
     "kind": "datastore.postgresql",
-    "description": "PostgreSQL database engine managed as a Kubernetes StatefulSet."
+    "description": "%s"
   },
   {
     "category": "gateway",
     "name": "PgBouncer",
     "kind": "gateway.pgbouncer",
-    "description": "PgBouncer connection pooler for PostgreSQL."
+    "description": "%s"
   },
   {
     "category": "security",
     "name": "Password Rotation",
     "kind": "security.password-rotation",
-    "description": "Credential rotation scaffold via CronJob (stub — generates and stores passwords in Secret, does not yet execute ALTER USER on upstream DB)."
+    "description": "%s"
   },
   {
     "category": "storage",
     "name": "Local PV",
     "kind": "storage.local-pv",
-    "description": "Local PersistentVolume storage for database data. Ephemeral — data does not survive node loss."
+    "description": "%s"
   }
 ]
-`
+`,
+		testfixture.BlockDescription(t, "datastore.postgresql"),
+		testfixture.BlockDescription(t, "gateway.pgbouncer"),
+		testfixture.BlockDescription(t, "security.password-rotation"),
+		testfixture.BlockDescription(t, "storage.local-pv"),
+	)
 	if got := buf.String(); got != want {
 		t.Errorf("blocks list --format json output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}
