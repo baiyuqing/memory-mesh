@@ -177,6 +177,7 @@ function App() {
   const yamlOutput = useMemo(() => toYaml(compositionData), [compositionData])
 
   const selectedBlock = blocks.find(b => b.name === selectedName) ?? null
+  const resolvedSelectedBlock = currentBlocks.find(b => b.name === selectedName) ?? null
   const isSelectedDeleted = selectedName !== null && deletedNames.has(selectedName)
 
   function updateParam(blockName: string, key: string, value: string) {
@@ -422,10 +423,10 @@ function App() {
                   ))}
                 </>
               )}
-              {selectedBlock.inputs && !isSelectedDeleted && (
+              {resolvedSelectedBlock?.inputs && !isSelectedDeleted && (
                 <div className="params-group">
                   <div className="params-group-title">Inputs</div>
-                  {Object.entries(selectedBlock.inputs).map(([k, v]) => (
+                  {Object.entries(resolvedSelectedBlock.inputs).map(([k, v]) => (
                     <div className="params-field" key={k}>
                       <label className="params-field-label">{k}</label>
                       <span className="params-val">{v}</span>
