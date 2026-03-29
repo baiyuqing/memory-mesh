@@ -59,13 +59,15 @@ Runs `vitest` against `web/src/composition.test.ts`. This test imports `deploy/e
 - Block kinds match (storage.local-pv, datastore.postgresql, gateway.pgbouncer)
 - Input wiring is correct (storage -> db -> pooler)
 
+This is the only test that directly anchors the onboarding sample (`sample-composition.json`).
+
 ### Go tests
 
 ```bash
 make ci-local
 ```
 
-The Go-side tests in `deploy/examples/`, `src/core/compiler/`, `src/api/`, and `src/operator/reconciler/` also exercise the sample compositions. These are not affected by frontend changes.
+The Go-side tests in `deploy/examples/`, `src/core/compiler/`, `src/api/`, and `src/operator/reconciler/` exercise the **standard** compositions (`standard-composition.json` / `LoadStandardCompositionJSON`), not this onboarding sample. They serve as project-level regression checks but do not directly validate the 3-block onboarding path.
 
 ## Build
 
