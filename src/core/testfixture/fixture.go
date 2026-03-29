@@ -34,18 +34,20 @@ func (f *FakeBlock) ValidateParameters(_ context.Context, _ map[string]string) e
 func Phase1Blocks() []block.Block {
 	return []block.Block{
 		&FakeBlock{Desc: block.Descriptor{
-			Kind:     "storage.local-pv",
-			Category: block.CategoryStorage,
-			Version:  "1.0.0",
-			Ports:    []block.Port{{Name: "pvc-spec", PortType: "pvc-spec", Direction: block.PortOutput}},
+			Kind:        "storage.local-pv",
+			Category:    block.CategoryStorage,
+			Version:     "1.0.0",
+			Description: "Local PersistentVolume storage for database data. Ephemeral — data does not survive node loss.",
+			Ports:       []block.Port{{Name: "pvc-spec", PortType: "pvc-spec", Direction: block.PortOutput}},
 			Parameters: []block.ParameterSpec{
 				{Name: "size", Type: "string", Default: "1Gi"},
 			},
 		}},
 		&FakeBlock{Desc: block.Descriptor{
-			Kind:     "datastore.postgresql",
-			Category: block.CategoryDatastore,
-			Version:  "1.0.0",
+			Kind:        "datastore.postgresql",
+			Category:    block.CategoryDatastore,
+			Version:     "1.0.0",
+			Description: "PostgreSQL database engine managed as a Kubernetes StatefulSet.",
 			Ports: []block.Port{
 				{Name: "storage", PortType: "pvc-spec", Direction: block.PortInput, Required: true},
 				{Name: "dsn", PortType: "dsn", Direction: block.PortOutput},
@@ -54,9 +56,10 @@ func Phase1Blocks() []block.Block {
 			},
 		}},
 		&FakeBlock{Desc: block.Descriptor{
-			Kind:     "gateway.pgbouncer",
-			Category: block.CategoryGateway,
-			Version:  "1.0.0",
+			Kind:        "gateway.pgbouncer",
+			Category:    block.CategoryGateway,
+			Version:     "1.0.0",
+			Description: "PgBouncer connection pooler for PostgreSQL.",
 			Ports: []block.Port{
 				{Name: "upstream-dsn", PortType: "dsn", Direction: block.PortInput, Required: true},
 				{Name: "upstream-credential", PortType: "credential", Direction: block.PortInput},
@@ -64,9 +67,10 @@ func Phase1Blocks() []block.Block {
 			},
 		}},
 		&FakeBlock{Desc: block.Descriptor{
-			Kind:     "security.password-rotation",
-			Category: block.CategorySecurity,
-			Version:  "1.0.0",
+			Kind:        "security.password-rotation",
+			Category:    block.CategorySecurity,
+			Version:     "1.0.0",
+			Description: "Credential rotation scaffold via CronJob (stub — generates and stores passwords in Secret, does not yet execute ALTER USER on upstream DB).",
 			Ports: []block.Port{
 				{Name: "upstream-dsn", PortType: "dsn", Direction: block.PortInput, Required: true},
 				{Name: "credential", PortType: "credential", Direction: block.PortOutput},

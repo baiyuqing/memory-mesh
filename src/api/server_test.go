@@ -50,6 +50,37 @@ func TestListBlocks(t *testing.T) {
 	}
 }
 
+func TestListBlocks_CatalogDescriptions(t *testing.T) {
+	srv := setupTestServer(t)
+	req := httptest.NewRequest("GET", "/v1/blocks", nil)
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var body BlockListResponse
+	json.NewDecoder(w.Body).Decode(&body)
+
+	// Build kind→description map from API response.
+	descMap := make(map[string]string)
+	for _, b := range body.Blocks {
+		descMap[b.Kind] = b.Description
+	}
+
+	// postgresql: standard description, no dev-only caveat in catalog.
+	wantPG := "PostgreSQL database engine managed as a Kubernetes StatefulSet."
+	if got := descMap["datastore.postgresql"]; got != wantPG {
+		t.Errorf("datastore.postgresql description:\n  got:  %q\n  want: %q", got, wantPG)
+	}
+
+	// password-rotation: must reflect stub status.
+	wantPR := "Credential rotation scaffold via CronJob (stub — generates and stores passwords in Secret, does not yet execute ALTER USER on upstream DB)."
+	if got := descMap["security.password-rotation"]; got != wantPR {
+		t.Errorf("security.password-rotation description:\n  got:  %q\n  want: %q", got, wantPR)
+	}
+}
+
 func TestListBlocksByCategory(t *testing.T) {
 	srv := setupTestServer(t)
 	req := httptest.NewRequest("GET", "/v1/blocks?category=datastore", nil)
@@ -82,6 +113,32 @@ func TestGetBlock(t *testing.T) {
 	json.NewDecoder(w.Body).Decode(&desc)
 	if desc.Kind != "datastore.postgresql" {
 		t.Errorf("expected kind datastore.postgresql, got %s", desc.Kind)
+	}
+}
+
+func TestGetBlock_DescriptionAccuracy(t *testing.T) {
+	srv := setupTestServer(t)
+
+	tests := []struct {
+		kind string
+		want string
+	}{
+		{"datastore.postgresql", "PostgreSQL database engine managed as a Kubernetes StatefulSet."},
+		{"security.password-rotation", "Credential rotation scaffold via CronJob (stub — generates and stores passwords in Secret, does not yet execute ALTER USER on upstream DB)."},
+	}
+	for _, tt := range tests {
+		req := httptest.NewRequest("GET", "/v1/blocks/"+tt.kind, nil)
+		w := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("GET /v1/blocks/%s: expected 200, got %d", tt.kind, w.Code)
+		}
+		var desc block.Descriptor
+		json.NewDecoder(w.Body).Decode(&desc)
+		if desc.Description != tt.want {
+			t.Errorf("GET /v1/blocks/%s description:\n  got:  %q\n  want: %q", tt.kind, desc.Description, tt.want)
+		}
 	}
 }
 
