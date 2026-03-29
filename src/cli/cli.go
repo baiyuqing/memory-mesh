@@ -23,6 +23,8 @@ const usage = `Usage: ottoplus <command> [options]
 Commands:
   blocks list                        List all registered blocks
   compose validate --file <path>     Validate a composition file
+  compose auto-wire --file <path>    Auto-wire a composition and show wires
+  compose topology --file <path>     Show topological block order and wires
 `
 
 // Run dispatches to the appropriate subcommand based on args.
@@ -56,11 +58,12 @@ func runBlocks(args []string, w io.Writer) error {
 }
 
 func runCompose(args []string, w io.Writer) error {
-	if len(args) == 0 || args[0] != "validate" {
-		return fmt.Errorf("usage: ottoplus compose validate --file <path>")
+	if len(args) == 0 {
+		return fmt.Errorf("usage: ottoplus compose <validate|auto-wire|topology> --file <path>")
 	}
 
-	fs := flag.NewFlagSet("compose validate", flag.ContinueOnError)
+	sub := args[0]
+	fs := flag.NewFlagSet("compose "+sub, flag.ContinueOnError)
 	filePath := fs.String("file", "", "Path to composition JSON file")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
@@ -70,7 +73,17 @@ func runCompose(args []string, w io.Writer) error {
 	}
 
 	registry := newRegistry()
-	return composeValidate(registry, *filePath, w)
+
+	switch sub {
+	case "validate":
+		return composeValidate(registry, *filePath, w)
+	case "auto-wire":
+		return composeAutoWire(registry, *filePath, w)
+	case "topology":
+		return composeTopology(registry, *filePath, w)
+	default:
+		return fmt.Errorf("unknown compose subcommand %q", sub)
+	}
 }
 
 func newRegistry() *block.Registry {
@@ -164,6 +177,84 @@ func composeValidate(registry *block.Registry, filePath string, w io.Writer) err
 
 	fmt.Fprintf(w, "ok  %s (%d blocks)\n", filePath, len(comp.Blocks))
 	return nil
+}
+
+func composeAutoWire(registry *block.Registry, filePath string, w io.Writer) error {
+	comp, err := loadComposition(filePath)
+	if err != nil {
+		return err
+	}
+
+	if errs := comp.NormalizeInputs(); len(errs) > 0 {
+		return reportErrors(w, filePath, errs)
+	}
+
+	if errs := comp.AutoWire(registry); len(errs) > 0 {
+		return reportErrors(w, filePath, errs)
+	}
+
+	fmt.Fprintf(w, "ok  %s (%d blocks, %d wires)\n\n", filePath, len(comp.Blocks), len(comp.Wires))
+	if len(comp.Wires) == 0 {
+		fmt.Fprintln(w, "No wires.")
+		return nil
+	}
+
+	fmt.Fprintf(w, "%-20s  %-16s  %-20s  %-16s\n", "FROM BLOCK", "PORT", "TO BLOCK", "PORT")
+	for _, wire := range comp.Wires {
+		fmt.Fprintf(w, "%-20s  %-16s  %-20s  %-16s\n",
+			wire.FromBlock, wire.FromPort, wire.ToBlock, wire.ToPort)
+	}
+	return nil
+}
+
+func composeTopology(registry *block.Registry, filePath string, w io.Writer) error {
+	comp, err := loadComposition(filePath)
+	if err != nil {
+		return err
+	}
+
+	if errs := comp.NormalizeInputs(); len(errs) > 0 {
+		return reportErrors(w, filePath, errs)
+	}
+
+	if errs := comp.AutoWire(registry); len(errs) > 0 {
+		return reportErrors(w, filePath, errs)
+	}
+
+	sorted, err := comp.TopologicalSort()
+	if err != nil {
+		return fmt.Errorf("topology: %w", err)
+	}
+
+	fmt.Fprintf(w, "ok  %s (%d blocks)\n\n", filePath, len(sorted))
+	fmt.Fprintln(w, "Topological order:")
+	for i, ref := range sorted {
+		fmt.Fprintf(w, "  %d. %s (%s)\n", i+1, ref.Name, ref.Kind)
+	}
+
+	if len(comp.Wires) > 0 {
+		fmt.Fprintf(w, "\nWires (%d):\n", len(comp.Wires))
+		for _, wire := range comp.Wires {
+			fmt.Fprintf(w, "  %s/%s -> %s/%s\n",
+				wire.FromBlock, wire.FromPort, wire.ToBlock, wire.ToPort)
+		}
+	}
+	return nil
+}
+
+func loadComposition(filePath string) (*block.Composition, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read file: %w", err)
+	}
+
+	var doc compositionFile
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return nil, fmt.Errorf("invalid JSON: %w", err)
+	}
+
+	comp := &block.Composition{Blocks: doc.Composition.Blocks}
+	return comp, nil
 }
 
 func reportErrors(w io.Writer, filePath string, errs []error) error {
