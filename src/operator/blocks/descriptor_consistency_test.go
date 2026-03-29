@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/baiyuqing/ottoplus/src/core/block"
+	"github.com/baiyuqing/ottoplus/src/core/testfixture"
 
 	// Import all block implementations.
 	"github.com/baiyuqing/ottoplus/src/operator/blocks/datastore/mysql"
@@ -30,6 +31,13 @@ import (
 
 	"gopkg.in/yaml.v3"
 )
+
+// targetKinds are the block kinds whose descriptions receive cross-layer
+// consistency protection (Descriptor ↔ BLOCK.md ↔ testfixture ↔ CLI ↔ API).
+var targetKinds = []string{
+	"datastore.postgresql",
+	"security.password-rotation",
+}
 
 // blockMDDescriptor mirrors the BLOCK.md YAML frontmatter structure.
 type blockMDDescriptor struct {
@@ -223,6 +231,79 @@ func TestBlockMD_MatchesDescriptor(t *testing.T) {
 						t.Errorf("provides[%d]: BLOCK.md=%q, Descriptor=%q", i, md.Provides[i], desc.Provides[i])
 					}
 				}
+			}
+		})
+	}
+}
+
+// TestDescriptionConsistency_FixtureMatchesDescriptor verifies that the
+// testfixture FakeBlock descriptions for postgresql and password-rotation
+// match the real block Descriptor descriptions. This is the cross-layer
+// glue: if a Descriptor description changes, this test forces the
+// testfixture (and therefore the API and CLI test baselines) to update.
+func TestDescriptionConsistency_FixtureMatchesDescriptor(t *testing.T) {
+	// Build kind → description map from real block Descriptors.
+	realDescs := make(map[string]string)
+	for _, entry := range allBlocks() {
+		d := entry.Block.Descriptor()
+		realDescs[d.Kind] = d.Description
+	}
+
+	// Build kind → description map from testfixture FakeBlocks.
+	fixtureDescs := make(map[string]string)
+	for _, b := range testfixture.Phase1Blocks() {
+		d := b.Descriptor()
+		fixtureDescs[d.Kind] = d.Description
+	}
+
+	for _, kind := range targetKinds {
+		t.Run(kind, func(t *testing.T) {
+			realDesc, ok := realDescs[kind]
+			if !ok {
+				t.Fatalf("kind %q not found in real block registry", kind)
+			}
+			fixtureDesc, ok := fixtureDescs[kind]
+			if !ok {
+				t.Fatalf("kind %q not found in testfixture.Phase1Blocks()", kind)
+			}
+			if realDesc != fixtureDesc {
+				t.Errorf("description mismatch for %q:\n  Descriptor:   %q\n  testfixture:  %q", kind, realDesc, fixtureDesc)
+			}
+		})
+	}
+}
+
+// TestDescriptionConsistency_BlockMDMatchesDescriptor verifies that the
+// BLOCK.md description for postgresql and password-rotation matches
+// the Descriptor description. This is a focused subset of
+// TestBlockMD_MatchesDescriptor that targets the two critical blocks.
+func TestDescriptionConsistency_BlockMDMatchesDescriptor(t *testing.T) {
+	entries := allBlocks()
+	entryMap := make(map[string]struct {
+		Block  block.Block
+		MDPath string
+	})
+	for _, e := range entries {
+		d := e.Block.Descriptor()
+		entryMap[d.Kind] = struct {
+			Block  block.Block
+			MDPath string
+		}{e.Block, e.MDPath}
+	}
+
+	for _, kind := range targetKinds {
+		t.Run(kind, func(t *testing.T) {
+			entry, ok := entryMap[kind]
+			if !ok {
+				t.Fatalf("kind %q not found in allBlocks()", kind)
+			}
+			md, err := parseFrontmatter(entry.MDPath)
+			if err != nil {
+				t.Fatalf("failed to parse BLOCK.md: %v", err)
+			}
+			desc := entry.Block.Descriptor()
+			if md.Description != desc.Description {
+				t.Errorf("description mismatch for %q:\n  BLOCK.md:     %q\n  Descriptor:   %q", kind, md.Description, desc.Description)
 			}
 		})
 	}
