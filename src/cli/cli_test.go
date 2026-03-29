@@ -148,9 +148,9 @@ func TestComposeAutoWire_StandardComposition(t *testing.T) {
 			t.Errorf("output missing %s header", header)
 		}
 	}
-	// Must report 4 wires for standard composition
-	if !strings.Contains(out, "4 wires") {
-		t.Errorf("expected 4 wires, got: %s", out)
+	// Must report correct wire count for standard composition
+	if !strings.Contains(out, fmt.Sprintf("%d wires", standardSpec.wireCount)) {
+		t.Errorf("expected %d wires, got: %s", standardSpec.wireCount, out)
 	}
 }
 
@@ -165,8 +165,8 @@ func TestComposeAutoWire_SampleComposition(t *testing.T) {
 	if !strings.Contains(out, "ok") {
 		t.Errorf("expected ok output, got: %s", out)
 	}
-	if !strings.Contains(out, "3 wires") {
-		t.Errorf("expected 3 wires, got: %s", out)
+	if !strings.Contains(out, fmt.Sprintf("%d wires", sampleSpec.wireCount)) {
+		t.Errorf("expected %d wires, got: %s", sampleSpec.wireCount, out)
 	}
 }
 
@@ -184,14 +184,7 @@ func TestComposeTopology_StandardComposition(t *testing.T) {
 	if !strings.Contains(out, "Topological order") {
 		t.Errorf("expected topological order section, got: %s", out)
 	}
-	// storage must come before db in topological order
-	storageIdx := strings.Index(out, "storage (storage.local-pv)")
-	dbIdx := strings.Index(out, "db (datastore.postgresql)")
-	if storageIdx < 0 || dbIdx < 0 {
-		t.Errorf("missing expected blocks in output: %s", out)
-	} else if storageIdx > dbIdx {
-		t.Errorf("storage should come before db in topological order")
-	}
+	assertTopoOrder(t, standardSpec, out)
 }
 
 func TestComposeTopology_SampleComposition(t *testing.T) {
@@ -205,8 +198,8 @@ func TestComposeTopology_SampleComposition(t *testing.T) {
 	if !strings.Contains(out, "ok") {
 		t.Errorf("expected ok output, got: %s", out)
 	}
-	if !strings.Contains(out, "3 blocks") {
-		t.Errorf("expected 3 blocks, got: %s", out)
+	if !strings.Contains(out, fmt.Sprintf("%d blocks", sampleSpec.blockCount)) {
+		t.Errorf("expected %d blocks, got: %s", sampleSpec.blockCount, out)
 	}
 }
 
@@ -472,8 +465,8 @@ func TestComposeValidateFormatJSON(t *testing.T) {
 	if !result.Valid {
 		t.Error("expected valid=true")
 	}
-	if result.BlockCount != 3 {
-		t.Errorf("expected blockCount=3, got %d", result.BlockCount)
+	if result.BlockCount != sampleSpec.blockCount {
+		t.Errorf("expected blockCount=%d, got %d", sampleSpec.blockCount, result.BlockCount)
 	}
 	if result.File != path {
 		t.Errorf("expected file=%q, got %q", path, result.File)
@@ -490,14 +483,9 @@ func TestComposeAutoWireFormatJSON(t *testing.T) {
 	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
 		t.Fatalf("invalid JSON: %v\n%s", err, buf.String())
 	}
-	if result.BlockCount != 3 {
-		t.Errorf("expected blockCount=3, got %d", result.BlockCount)
-	}
-	if result.WireCount != 3 {
-		t.Errorf("expected wireCount=3, got %d", result.WireCount)
-	}
-	if len(result.Wires) != 3 {
-		t.Fatalf("expected 3 wires, got %d", len(result.Wires))
+	assertJSONCounts(t, sampleSpec, result.BlockCount, result.WireCount)
+	if len(result.Wires) != sampleSpec.wireCount {
+		t.Fatalf("expected %d wires, got %d", sampleSpec.wireCount, len(result.Wires))
 	}
 	wantWires := []wireEntry{
 		{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
@@ -521,11 +509,11 @@ func TestComposeTopologyFormatJSON(t *testing.T) {
 	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
 		t.Fatalf("invalid JSON: %v\n%s", err, buf.String())
 	}
-	if result.BlockCount != 3 {
-		t.Errorf("expected blockCount=3, got %d", result.BlockCount)
+	if result.BlockCount != sampleSpec.blockCount {
+		t.Errorf("expected blockCount=%d, got %d", sampleSpec.blockCount, result.BlockCount)
 	}
-	if len(result.Order) != 3 {
-		t.Fatalf("expected 3 order entries, got %d", len(result.Order))
+	if len(result.Order) != sampleSpec.blockCount {
+		t.Fatalf("expected %d order entries, got %d", sampleSpec.blockCount, len(result.Order))
 	}
 	wantOrder := []topoBlockEntry{
 		{Index: 1, Name: "storage", Kind: "storage.local-pv"},
@@ -537,8 +525,8 @@ func TestComposeTopologyFormatJSON(t *testing.T) {
 			t.Errorf("order %d mismatch.\nwant: %+v\ngot:  %+v", i, want, result.Order[i])
 		}
 	}
-	if result.WireCount != 3 {
-		t.Errorf("expected wireCount=3, got %d", result.WireCount)
+	if result.WireCount != sampleSpec.wireCount {
+		t.Errorf("expected wireCount=%d, got %d", sampleSpec.wireCount, result.WireCount)
 	}
 }
 
@@ -829,8 +817,8 @@ type compositionSpec struct {
 var sampleSpec = compositionSpec{
 	name:       "sample",
 	path:       sampleCompositionPath,
-	blockCount: 3,
-	wireCount:  3,
+	blockCount: testfixture.SampleBlockCount,
+	wireCount:  testfixture.SampleWireCount,
 	tableWires: []string{
 		"db                    credential        pooler                upstream-credential",
 		"db                    dsn               pooler                upstream-dsn",
@@ -841,13 +829,15 @@ var sampleSpec = compositionSpec{
 		{FromBlock: "db", FromPort: "dsn", ToBlock: "pooler", ToPort: "upstream-dsn"},
 		{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
 	},
+	topoOrder:  testfixture.SampleTopoOrder,
+	topoLabels: testfixture.SampleTopoLabels,
 }
 
 var standardSpec = compositionSpec{
 	name:       "standard",
 	path:       standardCompositionPath,
-	blockCount: 4,
-	wireCount:  4,
+	blockCount: testfixture.StandardBlockCount,
+	wireCount:  testfixture.StandardWireCount,
 	tableWires: []string{
 		"rotator               credential        pooler                upstream-credential",
 		"db                    dsn               rotator               upstream-dsn",
@@ -859,8 +849,8 @@ var standardSpec = compositionSpec{
 		{FromBlock: "db", FromPort: "dsn", ToBlock: "pooler", ToPort: "upstream-dsn"},
 		{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
 	},
-	topoOrder:  []string{"db", "rotator", "pooler"},
-	topoLabels: []string{"db (datastore.postgresql)", "rotator (security.password-rotation)", "pooler (gateway.pgbouncer)"},
+	topoOrder:  testfixture.StandardTopoOrder,
+	topoLabels: testfixture.StandardTopoLabels,
 }
 
 // assertTableWires checks that the table output contains the expected summary and wires.
