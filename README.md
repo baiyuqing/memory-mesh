@@ -45,6 +45,15 @@ go run ./cmd/ottoplus compose auto-wire --file deploy/examples/sample-compositio
 go run ./cmd/ottoplus compose topology --file deploy/examples/sample-composition.json
 ```
 
+All commands support `--format json` for machine-readable output:
+
+```bash
+go run ./cmd/ottoplus blocks list --format json
+go run ./cmd/ottoplus compose validate --file deploy/examples/sample-composition.json --format json
+go run ./cmd/ottoplus compose auto-wire --file deploy/examples/sample-composition.json --format json
+go run ./cmd/ottoplus compose topology --file deploy/examples/sample-composition.json --format json
+```
+
 The CLI accepts any composition JSON via `--file`. Run any command with `--help` for usage details.
 
 ## Onboarding Sample
