@@ -640,7 +640,7 @@ func TestGolden_ComposeValidate(t *testing.T) {
 	if err := run([]string{"compose", "validate", "--file", path}, &buf); err != nil {
 		t.Fatal(err)
 	}
-	want := fmt.Sprintf("ok  %s (3 blocks)\n", path)
+	want := fmt.Sprintf("ok  %s (%d blocks)\n", path, sampleSpec.blockCount)
 	if got := buf.String(); got != want {
 		t.Errorf("compose validate output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}
@@ -652,7 +652,7 @@ func TestGolden_ComposeAutoWire(t *testing.T) {
 	if err := run([]string{"compose", "auto-wire", "--file", path}, &buf); err != nil {
 		t.Fatal(err)
 	}
-	want := fmt.Sprintf("ok  %s (3 blocks, 3 wires)\n", path) +
+	want := fmt.Sprintf("ok  %s (%d blocks, %d wires)\n", path, sampleSpec.blockCount, sampleSpec.wireCount) +
 		"\n" +
 		"FROM BLOCK            PORT              TO BLOCK              PORT            \n" +
 		"storage               pvc-spec          db                    storage         \n" +
@@ -669,14 +669,15 @@ func TestGolden_ComposeTopology(t *testing.T) {
 	if err := run([]string{"compose", "topology", "--file", path}, &buf); err != nil {
 		t.Fatal(err)
 	}
-	want := fmt.Sprintf("ok  %s (3 blocks)\n", path) +
+	topoSection := "Topological order:\n"
+	for i, label := range sampleSpec.topoLabels {
+		topoSection += fmt.Sprintf("  %d. %s\n", i+1, label)
+	}
+	want := fmt.Sprintf("ok  %s (%d blocks)\n", path, sampleSpec.blockCount) +
 		"\n" +
-		"Topological order:\n" +
-		"  1. storage (storage.local-pv)\n" +
-		"  2. db (datastore.postgresql)\n" +
-		"  3. pooler (gateway.pgbouncer)\n" +
+		topoSection +
 		"\n" +
-		"Wires (3):\n" +
+		fmt.Sprintf("Wires (%d):\n", sampleSpec.wireCount) +
 		"  storage/pvc-spec -> db/storage\n" +
 		"  db/dsn -> pooler/upstream-dsn\n" +
 		"  db/credential -> pooler/upstream-credential\n"
@@ -694,9 +695,9 @@ func TestGolden_ComposeValidateJSON(t *testing.T) {
 	want := fmt.Sprintf(`{
   "file": %q,
   "valid": true,
-  "blockCount": 3
+  "blockCount": %d
 }
-`, path)
+`, path, sampleSpec.blockCount)
 	if got := buf.String(); got != want {
 		t.Errorf("compose validate --format json output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}
@@ -710,8 +711,8 @@ func TestGolden_ComposeAutoWireJSON(t *testing.T) {
 	}
 	want := fmt.Sprintf(`{
   "file": %q,
-  "blockCount": 3,
-  "wireCount": 3,
+  "blockCount": %d,
+  "wireCount": %d,
   "wires": [
     {
       "fromBlock": "storage",
@@ -733,7 +734,7 @@ func TestGolden_ComposeAutoWireJSON(t *testing.T) {
     }
   ]
 }
-`, path)
+`, path, sampleSpec.blockCount, sampleSpec.wireCount)
 	if got := buf.String(); got != want {
 		t.Errorf("compose auto-wire --format json output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}
@@ -747,7 +748,7 @@ func TestGolden_ComposeTopologyJSON(t *testing.T) {
 	}
 	want := fmt.Sprintf(`{
   "file": %q,
-  "blockCount": 3,
+  "blockCount": %d,
   "order": [
     {
       "index": 1,
@@ -765,7 +766,7 @@ func TestGolden_ComposeTopologyJSON(t *testing.T) {
       "kind": "gateway.pgbouncer"
     }
   ],
-  "wireCount": 3,
+  "wireCount": %d,
   "wires": [
     {
       "fromBlock": "storage",
@@ -787,7 +788,7 @@ func TestGolden_ComposeTopologyJSON(t *testing.T) {
     }
   ]
 }
-`, path)
+`, path, sampleSpec.blockCount, sampleSpec.wireCount)
 	if got := buf.String(); got != want {
 		t.Errorf("compose topology --format json output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}
