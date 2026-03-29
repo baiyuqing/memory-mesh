@@ -553,6 +553,20 @@ func TestComposeSubcommandHelpIncludesFormat(t *testing.T) {
 	}
 }
 
+func TestComposeUnexpectedArg(t *testing.T) {
+	path := sampleCompositionPath(t)
+	for _, sub := range []string{"validate", "auto-wire", "topology"} {
+		var buf bytes.Buffer
+		err := run([]string{"compose", sub, "--file", path, "garbage"}, &buf)
+		if err == nil {
+			t.Fatalf("compose %s with trailing arg should error", sub)
+		}
+		if !strings.Contains(err.Error(), "unexpected argument") {
+			t.Errorf("compose %s: unexpected error: %v", sub, err)
+		}
+	}
+}
+
 func TestComposeFormatInvalid(t *testing.T) {
 	path := sampleCompositionPath(t)
 	for _, sub := range []string{"validate", "auto-wire", "topology"} {

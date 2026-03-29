@@ -151,6 +151,11 @@ func runCompose(args []string, w io.Writer) error {
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
+	if fs.NArg() > 0 {
+		fmt.Fprintf(w, "Error: unexpected argument %q\n\n", fs.Arg(0))
+		fmt.Fprintf(w, "Usage: ottoplus compose %s --file <path> [--format <table|json>]\n", sub)
+		return fmt.Errorf("unexpected argument %q", fs.Arg(0))
+	}
 	if *filePath == "" {
 		fmt.Fprintf(w, "Error: --file is required\n\n")
 		fmt.Fprintf(w, "Usage: ottoplus compose %s --file <path>\n", sub)
