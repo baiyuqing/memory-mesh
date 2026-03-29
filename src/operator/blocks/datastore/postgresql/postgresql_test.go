@@ -141,9 +141,11 @@ func TestReconcile_DevOnlyDSN(t *testing.T) {
 		}
 	}
 
-	// Reconcile message must mention dev-only status.
-	if !strings.Contains(result.Message, "dev-only") {
-		t.Errorf("reconcile message should mention dev-only status, got: %s", result.Message)
+	// Reconcile message must mention dev-only status with specific keywords.
+	for _, keyword := range []string{"dev-only", "trust auth", "no password enforcement", "credential port"} {
+		if !strings.Contains(result.Message, keyword) {
+			t.Errorf("reconcile message missing %q keyword, got: %s", keyword, result.Message)
+		}
 	}
 
 	// Credential must be marked DevOnly.
