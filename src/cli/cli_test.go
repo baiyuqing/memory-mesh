@@ -184,14 +184,7 @@ func TestComposeTopology_StandardComposition(t *testing.T) {
 	if !strings.Contains(out, "Topological order") {
 		t.Errorf("expected topological order section, got: %s", out)
 	}
-	// storage must come before db in topological order
-	storageIdx := strings.Index(out, "storage (storage.local-pv)")
-	dbIdx := strings.Index(out, "db (datastore.postgresql)")
-	if storageIdx < 0 || dbIdx < 0 {
-		t.Errorf("missing expected blocks in output: %s", out)
-	} else if storageIdx > dbIdx {
-		t.Errorf("storage should come before db in topological order")
-	}
+	assertTopoOrder(t, standardSpec, out)
 }
 
 func TestComposeTopology_SampleComposition(t *testing.T) {
@@ -837,7 +830,7 @@ var sampleSpec = compositionSpec{
 		{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
 	},
 	topoOrder:  testfixture.SampleTopoOrder,
-	topoLabels: []string{"storage (storage.local-pv)", "db (datastore.postgresql)", "pooler (gateway.pgbouncer)"},
+	topoLabels: testfixture.SampleTopoLabels,
 }
 
 var standardSpec = compositionSpec{
@@ -856,8 +849,8 @@ var standardSpec = compositionSpec{
 		{FromBlock: "db", FromPort: "dsn", ToBlock: "pooler", ToPort: "upstream-dsn"},
 		{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
 	},
-	topoOrder:  []string{"db", "rotator", "pooler"},
-	topoLabels: []string{"db (datastore.postgresql)", "rotator (security.password-rotation)", "pooler (gateway.pgbouncer)"},
+	topoOrder:  testfixture.StandardTopoOrder,
+	topoLabels: testfixture.StandardTopoLabels,
 }
 
 // assertTableWires checks that the table output contains the expected summary and wires.

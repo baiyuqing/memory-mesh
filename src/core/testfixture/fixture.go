@@ -132,6 +132,44 @@ var SampleTopoOrder = []string{"storage", "db", "pooler"}
 // StandardTopoOrder is the expected topological order for the standard path.
 var StandardTopoOrder = []string{"storage", "db", "rotator", "pooler"}
 
+// blockKindMap maps block name to kind from Phase1Blocks.
+var blockKindMap = func() map[string]string {
+	m := make(map[string]string)
+	for _, b := range Phase1Blocks() {
+		d := b.Descriptor()
+		// Use the short name (last segment after the dot is the category prefix).
+		// Names in compositions use arbitrary aliases, so we map kind to itself
+		// and also map common aliases used in sample/standard compositions.
+		m[d.Kind] = d.Kind
+	}
+	// Common composition aliases → kind.
+	m["storage"] = "storage.local-pv"
+	m["db"] = "datastore.postgresql"
+	m["pooler"] = "gateway.pgbouncer"
+	m["rotator"] = "security.password-rotation"
+	return m
+}()
+
+// TopoLabels converts an ordered list of block names into "name (kind)"
+// labels for topology text output assertions.
+func TopoLabels(order []string) []string {
+	labels := make([]string, len(order))
+	for i, name := range order {
+		kind, ok := blockKindMap[name]
+		if !ok {
+			kind = name // fallback
+		}
+		labels[i] = name + " (" + kind + ")"
+	}
+	return labels
+}
+
+// SampleTopoLabels are the "name (kind)" labels for sample path topology output.
+var SampleTopoLabels = TopoLabels(SampleTopoOrder)
+
+// StandardTopoLabels are the "name (kind)" labels for standard path topology output.
+var StandardTopoLabels = TopoLabels(StandardTopoOrder)
+
 // examplesDir returns the absolute path to deploy/examples/ relative
 // to this source file's location.
 func examplesDir() string {
