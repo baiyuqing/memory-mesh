@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -369,6 +370,78 @@ func TestUnknownCommand(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "Usage:") {
 		t.Error("expected usage in output")
+	}
+}
+
+// --- Golden output snapshot tests ---
+// These tests protect the exact format stability of CLI output.
+// Any change to column names, spacing, ordering, success text, wire labels,
+// or topology structure will break these tests — that is intentional.
+
+func TestGolden_BlocksList(t *testing.T) {
+	var buf bytes.Buffer
+	if err := run([]string{"blocks", "list"}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	want := "" +
+		"CATEGORY        NAME                    KIND                        DESCRIPTION\n" +
+		"datastore       PostgreSQL              datastore.postgresql        PostgreSQL database engine managed as...\n" +
+		"gateway         PgBouncer               gateway.pgbouncer           PgBouncer connection pooler for Postg...\n" +
+		"security        Password Rotation       security.password-rotation  Automated database credential rotatio...\n" +
+		"storage         Local PV                storage.local-pv            Local PersistentVolume storage for da...\n"
+	if got := buf.String(); got != want {
+		t.Errorf("blocks list output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func TestGolden_ComposeValidate(t *testing.T) {
+	path := sampleCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "validate", "--file", path}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf("ok  %s (3 blocks)\n", path)
+	if got := buf.String(); got != want {
+		t.Errorf("compose validate output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func TestGolden_ComposeAutoWire(t *testing.T) {
+	path := sampleCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "auto-wire", "--file", path}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf("ok  %s (3 blocks, 3 wires)\n", path) +
+		"\n" +
+		"FROM BLOCK            PORT              TO BLOCK              PORT            \n" +
+		"storage               pvc-spec          db                    storage         \n" +
+		"db                    dsn               pooler                upstream-dsn    \n" +
+		"db                    credential        pooler                upstream-credential\n"
+	if got := buf.String(); got != want {
+		t.Errorf("compose auto-wire output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func TestGolden_ComposeTopology(t *testing.T) {
+	path := sampleCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "topology", "--file", path}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf("ok  %s (3 blocks)\n", path) +
+		"\n" +
+		"Topological order:\n" +
+		"  1. storage (storage.local-pv)\n" +
+		"  2. db (datastore.postgresql)\n" +
+		"  3. pooler (gateway.pgbouncer)\n" +
+		"\n" +
+		"Wires (3):\n" +
+		"  storage/pvc-spec -> db/storage\n" +
+		"  db/dsn -> pooler/upstream-dsn\n" +
+		"  db/credential -> pooler/upstream-credential\n"
+	if got := buf.String(); got != want {
+		t.Errorf("compose topology output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}
 }
 
