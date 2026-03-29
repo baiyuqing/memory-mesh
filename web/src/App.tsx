@@ -59,6 +59,46 @@ function topoSort(blocks: BlockRef[]): BlockRef[] {
   return result
 }
 
+// Minimal YAML serializer for composition output
+function toYaml(obj: unknown, indent = 0): string {
+  const pad = '  '.repeat(indent)
+  if (obj === null || obj === undefined) return `${pad}~`
+  if (typeof obj === 'string') return obj.includes(':') || obj.includes('#') || obj.includes("'")
+    ? `"${obj}"` : obj
+  if (typeof obj === 'number' || typeof obj === 'boolean') return String(obj)
+  if (Array.isArray(obj)) {
+    if (obj.length === 0) return '[]'
+    return obj.map(item => {
+      if (typeof item === 'object' && item !== null) {
+        const entries = Object.entries(item)
+        const first = entries[0]
+        const rest = entries.slice(1)
+        let line = `${pad}- ${first[0]}: ${toYaml(first[1], indent + 2)}`
+        for (const [k, v] of rest) {
+          if (typeof v === 'object' && v !== null) {
+            line += `\n${pad}  ${k}:\n${toYaml(v, indent + 3)}`
+          } else {
+            line += `\n${pad}  ${k}: ${toYaml(v, indent + 2)}`
+          }
+        }
+        return line
+      }
+      return `${pad}- ${toYaml(item, indent + 1)}`
+    }).join('\n')
+  }
+  if (typeof obj === 'object') {
+    const entries = Object.entries(obj)
+    if (entries.length === 0) return '{}'
+    return entries.map(([k, v]) => {
+      if (typeof v === 'object' && v !== null) {
+        return `${pad}${k}:\n${toYaml(v, indent + 1)}`
+      }
+      return `${pad}${k}: ${toYaml(v, indent + 1)}`
+    }).join('\n')
+  }
+  return String(obj)
+}
+
 // Registry of known block categories for sidebar display
 const categories = [
   { name: 'Storage', blocks: [{ kind: 'storage.local-pv', label: 'Local PV' }, { kind: 'storage.ebs', label: 'EBS' }] },
@@ -69,10 +109,13 @@ const categories = [
   { name: 'Integration', blocks: [{ kind: 'integration.s3-backup', label: 'S3 Backup' }] },
 ]
 
+type OutputFormat = 'json' | 'yaml'
+
 function App() {
   const [blocks, setBlocks] = useState<BlockRef[]>(initialBlocks)
   const [deletedNames, setDeletedNames] = useState<Set<string>>(new Set())
   const [selectedName, setSelectedName] = useState<string | null>(null)
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>('json')
 
   // Single resolved composition: filter deleted blocks, strip dangling inputs
   const currentBlocks = useMemo(() => {
@@ -94,11 +137,9 @@ function App() {
   const wires = useMemo(() => getWires(currentBlocks), [currentBlocks])
   const activeKinds = useMemo(() => new Set(currentBlocks.map(b => b.kind)), [currentBlocks])
 
-  const compositionOutput = useMemo(() => JSON.stringify(
-    { composition: { blocks: currentBlocks } },
-    null,
-    2,
-  ), [currentBlocks])
+  const compositionData = useMemo(() => ({ composition: { blocks: currentBlocks } }), [currentBlocks])
+  const jsonOutput = useMemo(() => JSON.stringify(compositionData, null, 2), [compositionData])
+  const yamlOutput = useMemo(() => toYaml(compositionData), [compositionData])
 
   const selectedBlock = blocks.find(b => b.name === selectedName) ?? null
   const isSelectedDeleted = selectedName !== null && deletedNames.has(selectedName)
@@ -218,7 +259,7 @@ function App() {
         )}
       </main>
 
-      {/* Right: Parameters & generated output */}
+      {/* Right: Block details */}
       <aside className="params">
         <div className="params-title">Block Details</div>
         {selectedBlock ? (
@@ -266,62 +307,96 @@ function App() {
         ) : (
           <div className="params-empty">Select a block to view details</div>
         )}
-
-        <div className="params-divider" />
-        <div className="params-title">Generated Output</div>
-        <pre className="params-output">{compositionOutput}</pre>
       </aside>
 
-      {/* Bottom: Validation & topology */}
-      <section className="validate">
-        <div className="validate-title">Validation &amp; Topology</div>
-        <div className="validate-row">
-          <span className={`validate-icon ${currentBlocks.length > 0 ? 'validate-ok' : 'validate-warn'}`}>
-            {currentBlocks.length > 0 ? '\u2713' : '!'}
-          </span>
-          <span>
-            {currentBlocks.length > 0
-              ? <>Composition valid &mdash; {currentBlocks.length} blocks, {wires.length} wires</>
-              : <>Composition empty &mdash; no blocks</>
-            }
-          </span>
-        </div>
-        {deletedNames.size > 0 && (
-          <div className="validate-row">
-            <span className="validate-icon validate-info">&#8227;</span>
-            <span>{deletedNames.size} block{deletedNames.size > 1 ? 's' : ''} removed (restorable)</span>
-          </div>
-        )}
-        {currentBlocks.length > 0 && (
-          <>
-            <div className="validate-row">
-              <span className="validate-icon validate-info">&#8227;</span>
-              <span>Topological order:</span>
-            </div>
-            <div className="topo-order">
-              {sorted.map((b, i) => (
-                <div key={b.name} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  {i > 0 && <span className="topo-arrow">&rarr;</span>}
-                  <div className="topo-step">
-                    <span className="topo-num">{i + 1}</span>
-                    <span>{b.name}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="validate-row" style={{ marginTop: 8 }}>
-              <span className="validate-icon validate-info">&#8227;</span>
-              <span>Wires:</span>
-            </div>
-            {wires.map((w, i) => (
-              <div className="validate-row" key={i} style={{ paddingLeft: 22 }}>
-                <span>{w.from} &rarr; {w.to}</span>
+      {/* Bottom: Results & explanation */}
+      <section className="results">
+        <div className="results-panels">
+          {/* Generated Output */}
+          <div className="results-card results-output">
+            <div className="results-card-header">
+              <div className="results-card-title">Generated Output</div>
+              <div className="results-tabs">
+                <button
+                  className={`results-tab ${outputFormat === 'json' ? 'active' : ''}`}
+                  onClick={() => setOutputFormat('json')}
+                >
+                  JSON
+                </button>
+                <button
+                  className={`results-tab ${outputFormat === 'yaml' ? 'active' : ''}`}
+                  onClick={() => setOutputFormat('yaml')}
+                >
+                  YAML
+                </button>
               </div>
-            ))}
-          </>
-        )}
-        <div className="source-label">
-          Source: deploy/examples/sample-composition.json
+            </div>
+            <pre className="results-pre">{outputFormat === 'json' ? jsonOutput : yamlOutput}</pre>
+          </div>
+
+          {/* Validation */}
+          <div className="results-card results-validation">
+            <div className="results-card-header">
+              <div className="results-card-title">Validation</div>
+            </div>
+            <div className="results-card-body">
+              <div className="validate-row">
+                <span className={`validate-icon ${currentBlocks.length > 0 ? 'validate-ok' : 'validate-warn'}`}>
+                  {currentBlocks.length > 0 ? '\u2713' : '!'}
+                </span>
+                <span>
+                  {currentBlocks.length > 0
+                    ? <>Composition valid &mdash; {currentBlocks.length} blocks, {wires.length} wires</>
+                    : <>Composition empty &mdash; no blocks</>
+                  }
+                </span>
+              </div>
+              {deletedNames.size > 0 && (
+                <div className="validate-row">
+                  <span className="validate-icon validate-info">&#8227;</span>
+                  <span>{deletedNames.size} block{deletedNames.size > 1 ? 's' : ''} removed (restorable)</span>
+                </div>
+              )}
+              <div className="results-source">
+                Source: deploy/examples/sample-composition.json
+              </div>
+            </div>
+          </div>
+
+          {/* Topology & Wires */}
+          <div className="results-card results-topology">
+            <div className="results-card-header">
+              <div className="results-card-title">Topology &amp; Wires</div>
+            </div>
+            <div className="results-card-body">
+              {currentBlocks.length > 0 ? (
+                <>
+                  <div className="topo-order">
+                    {sorted.map((b, i) => (
+                      <div key={b.name} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {i > 0 && <span className="topo-arrow">&rarr;</span>}
+                        <div className="topo-step">
+                          <span className="topo-num">{i + 1}</span>
+                          <span>{b.name}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {wires.length > 0 && (
+                    <div className="wires-list">
+                      {wires.map((w, i) => (
+                        <div className="wire-row" key={i}>
+                          <span>{w.from} &rarr; {w.to}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="results-empty">No blocks to display topology</div>
+              )}
+            </div>
+          </div>
         </div>
       </section>
     </div>
