@@ -177,6 +177,7 @@ function App() {
   const yamlOutput = useMemo(() => toYaml(compositionData), [compositionData])
 
   const selectedBlock = blocks.find(b => b.name === selectedName) ?? null
+  const resolvedSelectedBlock = currentBlocks.find(b => b.name === selectedName) ?? null
   const isSelectedDeleted = selectedName !== null && deletedNames.has(selectedName)
 
   function updateParam(blockName: string, key: string, value: string) {
@@ -262,30 +263,55 @@ function App() {
       {/* Center: Canvas */}
       <main className="canvas" onClick={() => setSelectedName(null)}>
         <div className="canvas-title">Composition Pipeline</div>
-        {currentBlocks.length === 0 ? (
+        {blocks.every(b => deletedNames.has(b.name)) ? (
           <div className="canvas-empty">No blocks in composition. Restore blocks from the sidebar.</div>
         ) : (
           <div className="pipeline">
-            {sorted.map((b, i) => {
-              const incomingWire = i > 0 && b.inputs
-                ? Object.entries(b.inputs).find(([, ref]) => ref.split('/')[0] === sorted[i - 1].name)
+            {topoSort(blocks).map((b, i, arr) => {
+              const isDeleted = deletedNames.has(b.name)
+              const cat = categoryOf(b.kind)
+              const prevBlock = arr[i - 1]
+              const incomingWire = i > 0 && b.inputs && prevBlock
+                ? Object.entries(b.inputs).find(([, ref]) => ref.split('/')[0] === prevBlock.name)
                 : null
+              const wireActive = incomingWire && !isDeleted && !deletedNames.has(prevBlock?.name ?? '')
 
               return (
                 <div key={b.name} style={{ display: 'flex', alignItems: 'center' }}>
                   {i > 0 && (
-                    <div className="wire">
-                      <div className="wire-label">{incomingWire ? incomingWire[1] : ''}</div>
+                    <div className={`wire ${wireActive ? 'wire-active' : 'wire-inactive'}`}>
+                      <div className="wire-label">
+                        {incomingWire ? (
+                          <>
+                            <span className="wire-port-from">{incomingWire[1].split('/')[1]}</span>
+                            <span className="wire-arrow-label">&rarr;</span>
+                            <span className="wire-port-to">{incomingWire[0]}</span>
+                          </>
+                        ) : ''}
+                      </div>
                       <div className="wire-line" />
                     </div>
                   )}
                   <div
-                    className={`block-card ${selectedName === b.name ? 'selected' : ''}`}
+                    className={`block-card ${selectedName === b.name ? 'selected' : ''} ${isDeleted ? 'block-card-deleted' : ''} block-card-${cat}`}
                     onClick={(e) => { e.stopPropagation(); handleCardClick(b.name) }}
                   >
+                    <div className="block-card-header">
+                      <span className={`block-card-badge ${cat}`}>{cat}</span>
+                      {isDeleted && (
+                        <button
+                          className="block-card-restore"
+                          onClick={(e) => { e.stopPropagation(); toggleDelete(b.name) }}
+                          title="Restore block"
+                        >
+                          Restore
+                        </button>
+                      )}
+                    </div>
                     <div className="block-card-name">{b.name}</div>
                     <div className="block-card-kind">{b.kind}</div>
-                    {b.parameters && (
+                    {isDeleted && <div className="block-card-removed-chip">Removed</div>}
+                    {!isDeleted && b.parameters && (
                       <div className="block-card-params">
                         {Object.entries(b.parameters).map(([k, v]) => (
                           <span className="param-tag" key={k}>{k}={v}</span>
@@ -397,10 +423,10 @@ function App() {
                   ))}
                 </>
               )}
-              {selectedBlock.inputs && !isSelectedDeleted && (
+              {resolvedSelectedBlock?.inputs && !isSelectedDeleted && (
                 <div className="params-group">
                   <div className="params-group-title">Inputs</div>
-                  {Object.entries(selectedBlock.inputs).map(([k, v]) => (
+                  {Object.entries(resolvedSelectedBlock.inputs).map(([k, v]) => (
                     <div className="params-field" key={k}>
                       <label className="params-field-label">{k}</label>
                       <span className="params-val">{v}</span>
