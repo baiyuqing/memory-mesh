@@ -374,49 +374,23 @@ func TestUnknownCommand(t *testing.T) {
 }
 
 // --- Golden output snapshot tests ---
-// These tests protect the format stability of CLI output: column names,
-// ordering, success text, wire labels, and topology structure.
+// These tests protect the exact format stability of CLI output.
+// Any change to column names, spacing, ordering, success text, wire labels,
+// or topology structure will break these tests — that is intentional.
 
 func TestGolden_BlocksList(t *testing.T) {
 	var buf bytes.Buffer
 	if err := run([]string{"blocks", "list"}, &buf); err != nil {
 		t.Fatal(err)
 	}
-	lines := strings.Split(strings.TrimRight(buf.String(), "\n"), "\n")
-
-	// Header line: exact column names and order
-	if len(lines) < 1 {
-		t.Fatal("no output")
-	}
-	for _, col := range []string{"CATEGORY", "NAME", "KIND", "DESCRIPTION"} {
-		if !strings.Contains(lines[0], col) {
-			t.Errorf("header missing column %q: %s", col, lines[0])
-		}
-	}
-
-	// Expect exactly 4 data rows + 1 header = 5 lines
-	if len(lines) != 5 {
-		t.Errorf("expected 5 lines (1 header + 4 blocks), got %d", len(lines))
-	}
-
-	// Rows sorted by category then kind: datastore, gateway, security, storage
-	wantOrder := []struct{ category, name, kind string }{
-		{"datastore", "PostgreSQL", "datastore.postgresql"},
-		{"gateway", "PgBouncer", "gateway.pgbouncer"},
-		{"security", "Password Rotation", "security.password-rotation"},
-		{"storage", "Local PV", "storage.local-pv"},
-	}
-	for i, want := range wantOrder {
-		line := lines[i+1]
-		if !strings.Contains(line, want.category) {
-			t.Errorf("line %d: expected category %q, got: %s", i+1, want.category, line)
-		}
-		if !strings.Contains(line, want.name) {
-			t.Errorf("line %d: expected name %q, got: %s", i+1, want.name, line)
-		}
-		if !strings.Contains(line, want.kind) {
-			t.Errorf("line %d: expected kind %q, got: %s", i+1, want.kind, line)
-		}
+	want := "" +
+		"CATEGORY        NAME                    KIND                        DESCRIPTION\n" +
+		"datastore       PostgreSQL              datastore.postgresql        PostgreSQL database engine managed as...\n" +
+		"gateway         PgBouncer               gateway.pgbouncer           PgBouncer connection pooler for Postg...\n" +
+		"security        Password Rotation       security.password-rotation  Automated database credential rotatio...\n" +
+		"storage         Local PV                storage.local-pv            Local PersistentVolume storage for da...\n"
+	if got := buf.String(); got != want {
+		t.Errorf("blocks list output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}
 }
 
@@ -426,14 +400,9 @@ func TestGolden_ComposeValidate(t *testing.T) {
 	if err := run([]string{"compose", "validate", "--file", path}, &buf); err != nil {
 		t.Fatal(err)
 	}
-	out := buf.String()
-
-	// Must match format: "ok  <path> (3 blocks)"
-	if !strings.Contains(out, "ok") {
-		t.Error("missing 'ok' prefix")
-	}
-	if !strings.Contains(out, "(3 blocks)") {
-		t.Errorf("expected '(3 blocks)', got: %s", out)
+	want := fmt.Sprintf("ok  %s (3 blocks)\n", path)
+	if got := buf.String(); got != want {
+		t.Errorf("compose validate output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}
 }
 
@@ -443,51 +412,14 @@ func TestGolden_ComposeAutoWire(t *testing.T) {
 	if err := run([]string{"compose", "auto-wire", "--file", path}, &buf); err != nil {
 		t.Fatal(err)
 	}
-	lines := strings.Split(strings.TrimRight(buf.String(), "\n"), "\n")
-
-	// Line 1: "ok  <path> (3 blocks, 3 wires)"
-	if !strings.Contains(lines[0], "(3 blocks, 3 wires)") {
-		t.Errorf("summary line mismatch: %s", lines[0])
-	}
-
-	// Line 2: empty
-	// Line 3: header with exact column names
-	headerLine := ""
-	for _, l := range lines {
-		if strings.Contains(l, "FROM BLOCK") {
-			headerLine = l
-			break
-		}
-	}
-	if headerLine == "" {
-		t.Fatal("missing wire table header")
-	}
-	for _, col := range []string{"FROM BLOCK", "PORT", "TO BLOCK", "PORT"} {
-		if !strings.Contains(headerLine, col) {
-			t.Errorf("header missing %q", col)
-		}
-	}
-
-	// Exact wire rows (3 wires for onboarding sample)
-	out := buf.String()
-	wantWires := []struct{ from, fromPort, to, toPort string }{
-		{"storage", "pvc-spec", "db", "storage"},
-		{"db", "dsn", "pooler", "upstream-dsn"},
-		{"db", "credential", "pooler", "upstream-credential"},
-	}
-	for _, w := range wantWires {
-		found := false
-		for _, l := range lines {
-			if strings.Contains(l, w.from) && strings.Contains(l, w.fromPort) &&
-				strings.Contains(l, w.to) && strings.Contains(l, w.toPort) &&
-				l != headerLine {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("missing wire: %s/%s -> %s/%s in output:\n%s", w.from, w.fromPort, w.to, w.toPort, out)
-		}
+	want := fmt.Sprintf("ok  %s (3 blocks, 3 wires)\n", path) +
+		"\n" +
+		"FROM BLOCK            PORT              TO BLOCK              PORT            \n" +
+		"storage               pvc-spec          db                    storage         \n" +
+		"db                    dsn               pooler                upstream-dsn    \n" +
+		"db                    credential        pooler                upstream-credential\n"
+	if got := buf.String(); got != want {
+		t.Errorf("compose auto-wire output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}
 }
 
@@ -497,51 +429,19 @@ func TestGolden_ComposeTopology(t *testing.T) {
 	if err := run([]string{"compose", "topology", "--file", path}, &buf); err != nil {
 		t.Fatal(err)
 	}
-	out := buf.String()
-	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
-
-	// Line 1: "ok  <path> (3 blocks)"
-	if !strings.Contains(lines[0], "(3 blocks)") {
-		t.Errorf("summary line mismatch: %s", lines[0])
-	}
-
-	// "Topological order:" section header
-	if !strings.Contains(out, "Topological order:") {
-		t.Error("missing 'Topological order:' header")
-	}
-
-	// Exact order: storage -> db -> pooler with kind annotations
-	wantOrder := []struct {
-		index int
-		name  string
-		kind  string
-	}{
-		{1, "storage", "storage.local-pv"},
-		{2, "db", "datastore.postgresql"},
-		{3, "pooler", "gateway.pgbouncer"},
-	}
-	for _, w := range wantOrder {
-		expected := fmt.Sprintf("%d. %s (%s)", w.index, w.name, w.kind)
-		if !strings.Contains(out, expected) {
-			t.Errorf("missing topo entry %q in output:\n%s", expected, out)
-		}
-	}
-
-	// "Wires (3):" section
-	if !strings.Contains(out, "Wires (3):") {
-		t.Error("missing 'Wires (3):' header")
-	}
-
-	// Wire format: "block/port -> block/port"
-	wantWires := []string{
-		"storage/pvc-spec -> db/storage",
-		"db/dsn -> pooler/upstream-dsn",
-		"db/credential -> pooler/upstream-credential",
-	}
-	for _, w := range wantWires {
-		if !strings.Contains(out, w) {
-			t.Errorf("missing wire %q in output:\n%s", w, out)
-		}
+	want := fmt.Sprintf("ok  %s (3 blocks)\n", path) +
+		"\n" +
+		"Topological order:\n" +
+		"  1. storage (storage.local-pv)\n" +
+		"  2. db (datastore.postgresql)\n" +
+		"  3. pooler (gateway.pgbouncer)\n" +
+		"\n" +
+		"Wires (3):\n" +
+		"  storage/pvc-spec -> db/storage\n" +
+		"  db/dsn -> pooler/upstream-dsn\n" +
+		"  db/credential -> pooler/upstream-credential\n"
+	if got := buf.String(); got != want {
+		t.Errorf("compose topology output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}
 }
 
