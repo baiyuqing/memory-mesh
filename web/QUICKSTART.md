@@ -40,6 +40,26 @@ The four-panel layout shows:
 
 All changes are reflected immediately across all panels. No page refresh needed.
 
+## CLI alternative
+
+If you prefer the terminal over the browser, you can inspect the same sample composition with the CLI:
+
+```bash
+# List all registered blocks
+go run ./cmd/ottoplus blocks list
+
+# Validate the onboarding sample
+go run ./cmd/ottoplus compose validate --file deploy/examples/sample-composition.json
+
+# Show auto-wired connections
+go run ./cmd/ottoplus compose auto-wire --file deploy/examples/sample-composition.json
+
+# Show topological order and wires
+go run ./cmd/ottoplus compose topology --file deploy/examples/sample-composition.json
+```
+
+The CLI accepts any composition JSON via `--file` — it is not limited to the onboarding sample. Run any command with `--help` for usage details.
+
 ## Sample file location
 
 The default composition is loaded from:

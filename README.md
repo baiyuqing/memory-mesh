@@ -38,11 +38,14 @@ curl -s -X POST http://localhost:8080/v1/compositions/validate \
 ### CLI
 
 ```bash
+go run ./cmd/ottoplus --help
 go run ./cmd/ottoplus blocks list
 go run ./cmd/ottoplus compose validate --file deploy/examples/sample-composition.json
 go run ./cmd/ottoplus compose auto-wire --file deploy/examples/sample-composition.json
 go run ./cmd/ottoplus compose topology --file deploy/examples/sample-composition.json
 ```
+
+The CLI accepts any composition JSON via `--file`. Run any command with `--help` for usage details.
 
 ## Onboarding Sample
 
@@ -60,19 +63,20 @@ The workbench imports this file directly and loads it on startup. The CLI and AP
 ## How It Is Structured
 
 ```
-      ┌──────────┐    ┌──────────┐    ┌──────────────┐
-      │Workbench │    │ REST API │    │   Operator    │
-      │ (browser)│    │  :8080   │    │  (k8s CRDs)  │
-      └────┬─────┘    └────┬─────┘    └──────┬───────┘
-           │               │                 │
-           │               └────────┬────────┘
-           │                        ▼
-           │              ┌──────────────────┐
-           │              │ Shared Compiler   │
-           │              │ + Block Registry  │
-           │              │ (validate, wire,  │
-           │              │  topo-sort)       │
-           │              └──────────────────┘
+      ┌──────────┐  ┌──────────┐  ┌─────┐  ┌──────────────┐
+      │Workbench │  │ REST API │  │ CLI │  │   Operator    │
+      │ (browser)│  │  :8080   │  │     │  │  (k8s CRDs)  │
+      └────┬─────┘  └────┬─────┘  └──┬──┘  └──────┬───────┘
+           │              │           │            │
+           │              └─────┬─────┘            │
+           │                    └────────┬─────────┘
+           │                             ▼
+           │                   ┌──────────────────┐
+           │                   │ Shared Compiler   │
+           │                   │ + Block Registry  │
+           │                   │ (validate, wire,  │
+           │                   │  topo-sort)       │
+           │                   └──────────────────┘
            │
            ▼
   sample-composition.json
@@ -81,6 +85,7 @@ The workbench imports this file directly and loads it on startup. The CLI and AP
 
 - **Workbench** (`web/`) — Vite + React + TypeScript browser UI. Imports `sample-composition.json` directly at build time as the default demo input.
 - **API** (`cmd/api`) — REST endpoints for block catalog, validation, auto-wiring, and topology. Accepts any composition JSON via POST.
+- **CLI** (`cmd/ottoplus`) — Terminal interface for listing blocks and running compose commands (`validate`, `auto-wire`, `topology`) against any composition file.
 - **Operator** (`cmd/operator`) — Kubernetes controller that watches `Cluster` CRDs and reconciles blocks in dependency order.
 - **Shared Compiler + Block Registry** (`src/core/`) — pure Go logic used by API, operator, and CLI. Single path for shorthand expansion, explicit wiring, and compilation.
 
