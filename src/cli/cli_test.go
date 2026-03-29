@@ -15,22 +15,49 @@ func TestBlocksList(t *testing.T) {
 	}
 	out := buf.String()
 
-	// Must contain header
-	if !strings.Contains(out, "CATEGORY") {
-		t.Error("output missing CATEGORY header")
+	// Must contain headers
+	for _, header := range []string{"CATEGORY", "NAME", "KIND"} {
+		if !strings.Contains(out, header) {
+			t.Errorf("output missing %s header", header)
+		}
 	}
 
-	// Must list the 3 registered block kinds
-	for _, kind := range []string{"storage.local-pv", "datastore.postgresql", "gateway.pgbouncer"} {
+	// Must list the registered block kinds
+	for _, kind := range []string{"storage.local-pv", "datastore.postgresql", "gateway.pgbouncer", "security.password-rotation"} {
 		if !strings.Contains(out, kind) {
 			t.Errorf("output missing block kind %q", kind)
 		}
 	}
 
+	// Must contain display names
+	for _, name := range []string{"Local Pv", "Postgresql", "Pgbouncer", "Password Rotation"} {
+		if !strings.Contains(out, name) {
+			t.Errorf("output missing display name %q", name)
+		}
+	}
+
 	// Must contain categories
-	for _, cat := range []string{"storage", "datastore", "gateway"} {
+	for _, cat := range []string{"storage", "datastore", "gateway", "security"} {
 		if !strings.Contains(out, cat) {
 			t.Errorf("output missing category %q", cat)
+		}
+	}
+}
+
+func TestDisplayName(t *testing.T) {
+	tests := []struct {
+		kind string
+		want string
+	}{
+		{"storage.local-pv", "Local Pv"},
+		{"datastore.postgresql", "Postgresql"},
+		{"gateway.pgbouncer", "Pgbouncer"},
+		{"security.password-rotation", "Password Rotation"},
+	}
+	for _, tt := range tests {
+		got := displayName(tt.kind)
+		if got != tt.want {
+			t.Errorf("displayName(%q) = %q, want %q", tt.kind, got, tt.want)
 		}
 	}
 }

@@ -93,6 +93,23 @@ type compositionFile struct {
 	} `json:"composition"`
 }
 
+// displayName derives a human-readable name from a block kind.
+// e.g. "datastore.postgresql" → "PostgreSQL", "storage.local-pv" → "Local PV".
+func displayName(kind string) string {
+	parts := strings.SplitN(kind, ".", 2)
+	name := kind
+	if len(parts) == 2 {
+		name = parts[1]
+	}
+	words := strings.Split(name, "-")
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
+}
+
 func blocksList(registry *block.Registry, w io.Writer) error {
 	descriptors := registry.List()
 	sort.Slice(descriptors, func(i, j int) bool {
@@ -102,13 +119,13 @@ func blocksList(registry *block.Registry, w io.Writer) error {
 		return descriptors[i].Kind < descriptors[j].Kind
 	})
 
-	fmt.Fprintf(w, "%-14s  %-26s  %s\n", "CATEGORY", "KIND", "DESCRIPTION")
+	fmt.Fprintf(w, "%-14s  %-22s  %-26s  %s\n", "CATEGORY", "NAME", "KIND", "DESCRIPTION")
 	for _, d := range descriptors {
 		desc := d.Description
-		if len(desc) > 50 {
-			desc = desc[:47] + "..."
+		if len(desc) > 40 {
+			desc = desc[:37] + "..."
 		}
-		fmt.Fprintf(w, "%-14s  %-26s  %s\n", d.Category, d.Kind, desc)
+		fmt.Fprintf(w, "%-14s  %-22s  %-26s  %s\n", d.Category, displayName(d.Kind), d.Kind, desc)
 	}
 	return nil
 }
