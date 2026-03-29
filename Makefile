@@ -69,11 +69,15 @@ ci-unit: test ## Local mirror of CI unit workflow (full unit tests)
 ci-web: ## Run frontend checks (test + build)
 	cd web && npm install --silent && npm run ci
 
-ci-cli-smoke: ## Run CLI smoke (4 commands from README/QUICKSTART)
+ci-cli-smoke: ## Run CLI smoke (8 commands from README/QUICKSTART: table + JSON)
 	go run ./cmd/ottoplus blocks list
 	go run ./cmd/ottoplus compose validate --file deploy/examples/sample-composition.json
 	go run ./cmd/ottoplus compose auto-wire --file deploy/examples/sample-composition.json
 	go run ./cmd/ottoplus compose topology --file deploy/examples/sample-composition.json
+	go run ./cmd/ottoplus blocks list --format json
+	go run ./cmd/ottoplus compose validate --file deploy/examples/sample-composition.json --format json
+	go run ./cmd/ottoplus compose auto-wire --file deploy/examples/sample-composition.json --format json
+	go run ./cmd/ottoplus compose topology --file deploy/examples/sample-composition.json --format json
 
 ci-local: ci-smoke ci-unit ci-web ci-cli-smoke ## Run all CI checks locally in sequence
 
