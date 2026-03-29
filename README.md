@@ -104,7 +104,7 @@ make help          # Show all targets
 make build         # Build api-server and operator binaries
 make test          # Unit tests
 make demo          # Build and run API server locally
-make ci-local      # Smoke + unit CI checks
+make ci-local      # All CI checks (Go smoke + unit + web)
 make dev-up        # Create k3d cluster + LocalStack
 make dev-down      # Tear down
 ```
