@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -373,6 +374,89 @@ func TestUnknownCommand(t *testing.T) {
 	}
 }
 
+func TestBlocksListFormatJSON(t *testing.T) {
+	var buf bytes.Buffer
+	if err := run([]string{"blocks", "list", "--format", "json"}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	var entries []blockEntry
+	if err := json.Unmarshal(buf.Bytes(), &entries); err != nil {
+		t.Fatalf("invalid JSON output: %v\n%s", err, buf.String())
+	}
+	if len(entries) != 4 {
+		t.Fatalf("expected 4 blocks, got %d", len(entries))
+	}
+	// Verify sorted order and all fields present
+	wantOrder := []blockEntry{
+		{Category: "datastore", Name: "PostgreSQL", Kind: "datastore.postgresql", Description: "PostgreSQL database engine managed as a Kubernetes StatefulSet."},
+		{Category: "gateway", Name: "PgBouncer", Kind: "gateway.pgbouncer", Description: "PgBouncer connection pooler for PostgreSQL."},
+		{Category: "security", Name: "Password Rotation", Kind: "security.password-rotation", Description: "Automated database credential rotation via CronJob."},
+		{Category: "storage", Name: "Local PV", Kind: "storage.local-pv", Description: "Local PersistentVolume storage for database data. Ephemeral — data does not survive node loss."},
+	}
+	for i, want := range wantOrder {
+		got := entries[i]
+		if got != want {
+			t.Errorf("entry %d mismatch.\nwant: %+v\ngot:  %+v", i, want, got)
+		}
+	}
+}
+
+func TestBlocksListFormatTable(t *testing.T) {
+	// --format table should produce the same output as no flag
+	var defBuf, tableBuf bytes.Buffer
+	if err := run([]string{"blocks", "list"}, &defBuf); err != nil {
+		t.Fatal(err)
+	}
+	if err := run([]string{"blocks", "list", "--format", "table"}, &tableBuf); err != nil {
+		t.Fatal(err)
+	}
+	if defBuf.String() != tableBuf.String() {
+		t.Errorf("--format table output differs from default.\ndefault:\n%s\ntable:\n%s", defBuf.String(), tableBuf.String())
+	}
+}
+
+func TestBlocksListFormatInvalid(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"blocks", "list", "--format", "yaml"}, &buf)
+	if err == nil {
+		t.Fatal("expected error for unsupported format")
+	}
+	if !strings.Contains(err.Error(), "unsupported format") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestBlocksListFormatMissingValue(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"blocks", "list", "--format"}, &buf)
+	if err == nil {
+		t.Fatal("expected error for --format without value")
+	}
+}
+
+func TestBlocksListUnexpectedArg(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"blocks", "list", "garbage"}, &buf)
+	if err == nil {
+		t.Fatal("expected error for unexpected positional argument")
+	}
+	if !strings.Contains(err.Error(), "unexpected argument") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestBlocksListHelp(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"blocks", "list", "--help"}, &buf)
+	if err != nil {
+		t.Fatalf("blocks list --help returned error: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "--format") {
+		t.Error("blocks list --help missing --format flag")
+	}
+}
+
 // --- Golden output snapshot tests ---
 // These tests protect the exact format stability of CLI output.
 // Any change to column names, spacing, ordering, success text, wire labels,
@@ -391,6 +475,43 @@ func TestGolden_BlocksList(t *testing.T) {
 		"storage         Local PV                storage.local-pv            Local PersistentVolume storage for da...\n"
 	if got := buf.String(); got != want {
 		t.Errorf("blocks list output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func TestGolden_BlocksListJSON(t *testing.T) {
+	var buf bytes.Buffer
+	if err := run([]string{"blocks", "list", "--format", "json"}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	want := `[
+  {
+    "category": "datastore",
+    "name": "PostgreSQL",
+    "kind": "datastore.postgresql",
+    "description": "PostgreSQL database engine managed as a Kubernetes StatefulSet."
+  },
+  {
+    "category": "gateway",
+    "name": "PgBouncer",
+    "kind": "gateway.pgbouncer",
+    "description": "PgBouncer connection pooler for PostgreSQL."
+  },
+  {
+    "category": "security",
+    "name": "Password Rotation",
+    "kind": "security.password-rotation",
+    "description": "Automated database credential rotation via CronJob."
+  },
+  {
+    "category": "storage",
+    "name": "Local PV",
+    "kind": "storage.local-pv",
+    "description": "Local PersistentVolume storage for database data. Ephemeral — data does not survive node loss."
+  }
+]
+`
+	if got := buf.String(); got != want {
+		t.Errorf("blocks list --format json output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}
 }
 

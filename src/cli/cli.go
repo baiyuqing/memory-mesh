@@ -31,6 +31,9 @@ const blocksUsage = `Usage: ottoplus blocks <subcommand>
 
 Subcommands:
   list    List all registered blocks (category, name, kind, description)
+
+Flags:
+  --format <table|json>    Output format (default: table)
 `
 
 const composeUsage = `Usage: ottoplus compose <subcommand> --file <path>
@@ -80,7 +83,31 @@ func runBlocks(args []string, w io.Writer) error {
 		fmt.Fprint(w, blocksUsage)
 		return nil
 	case "list":
+		// Intercept --help before flag.Parse to avoid flag.ErrHelp error path.
+		for _, a := range args[1:] {
+			if a == "--help" || a == "-h" || a == "-help" {
+				fmt.Fprint(w, "Usage: ottoplus blocks list [--format <table|json>]\n\nFlags:\n  --format <table|json>    Output format (default: table)\n")
+				return nil
+			}
+		}
+		fs := flag.NewFlagSet("ottoplus blocks list", flag.ContinueOnError)
+		fs.SetOutput(w)
+		format := fs.String("format", "table", "Output format: table or json")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		if fs.NArg() > 0 {
+			fmt.Fprintf(w, "Error: unexpected argument %q\n\n", fs.Arg(0))
+			fmt.Fprint(w, "Usage: ottoplus blocks list [--format <table|json>]\n")
+			return fmt.Errorf("unexpected argument %q", fs.Arg(0))
+		}
+		if *format != "table" && *format != "json" {
+			return fmt.Errorf("unsupported format %q — available: table, json", *format)
+		}
 		registry := newRegistry()
+		if *format == "json" {
+			return blocksListJSON(registry, w)
+		}
 		return blocksList(registry, w)
 	default:
 		fmt.Fprint(w, blocksUsage)
@@ -208,6 +235,37 @@ func blocksList(registry *block.Registry, w io.Writer) error {
 		fmt.Fprintf(w, "%-14s  %-22s  %-26s  %s\n", d.Category, displayName(d.Kind), d.Kind, desc)
 	}
 	return nil
+}
+
+type blockEntry struct {
+	Category    string `json:"category"`
+	Name        string `json:"name"`
+	Kind        string `json:"kind"`
+	Description string `json:"description"`
+}
+
+func blocksListJSON(registry *block.Registry, w io.Writer) error {
+	descriptors := registry.List()
+	sort.Slice(descriptors, func(i, j int) bool {
+		if descriptors[i].Category != descriptors[j].Category {
+			return descriptors[i].Category < descriptors[j].Category
+		}
+		return descriptors[i].Kind < descriptors[j].Kind
+	})
+
+	entries := make([]blockEntry, len(descriptors))
+	for i, d := range descriptors {
+		entries[i] = blockEntry{
+			Category:    string(d.Category),
+			Name:        displayName(d.Kind),
+			Kind:        d.Kind,
+			Description: d.Description,
+		}
+	}
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(entries)
 }
 
 func composeValidate(registry *block.Registry, filePath string, w io.Writer) error {
