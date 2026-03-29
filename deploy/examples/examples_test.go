@@ -21,8 +21,8 @@ func TestStandardCompositionJSON_Compiles(t *testing.T) {
 	if len(errs) > 0 {
 		t.Fatalf("unexpected errors: %v", errs)
 	}
-	if len(result.Sorted) != 4 {
-		t.Fatalf("expected 4 sorted blocks, got %d", len(result.Sorted))
+	if len(result.Sorted) != testfixture.StandardBlockCount {
+		t.Fatalf("expected %d sorted blocks, got %d", testfixture.StandardBlockCount, len(result.Sorted))
 	}
 }
 
@@ -41,8 +41,8 @@ func TestStandardClusterYAML_Compiles(t *testing.T) {
 	if len(errs) > 0 {
 		t.Fatalf("unexpected errors: %v", errs)
 	}
-	if len(result.Sorted) != 4 {
-		t.Fatalf("expected 4 sorted blocks, got %d", len(result.Sorted))
+	if len(result.Sorted) != testfixture.StandardBlockCount {
+		t.Fatalf("expected %d sorted blocks, got %d", testfixture.StandardBlockCount, len(result.Sorted))
 	}
 }
 
