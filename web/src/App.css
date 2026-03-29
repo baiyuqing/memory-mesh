@@ -271,6 +271,25 @@
   margin-bottom: 4px;
 }
 
+.params-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0;
+}
+
+.params-output {
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  border-radius: var(--radius);
+  padding: 10px;
+  overflow-x: auto;
+  white-space: pre;
+  margin-top: 8px;
+}
+
 /* --- Validate (bottom) --- */
 .validate {
   grid-area: validate;

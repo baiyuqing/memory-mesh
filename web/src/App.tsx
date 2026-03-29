@@ -1,6 +1,8 @@
 import sampleComposition from '@examples/sample-composition.json'
 import './App.css'
 
+const compositionJson = JSON.stringify(sampleComposition, null, 2)
+
 interface BlockRef {
   kind: string
   name: string
@@ -154,6 +156,10 @@ function App() {
             )}
           </div>
         ))}
+
+        <div className="params-divider" />
+        <div className="params-title">Generated Output</div>
+        <pre className="params-output">{compositionJson}</pre>
       </aside>
 
       {/* Bottom: Validation & topology */}
