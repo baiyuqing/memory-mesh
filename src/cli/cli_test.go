@@ -239,11 +239,119 @@ func TestComposeUnknownSubcommand(t *testing.T) {
 	}
 }
 
+func TestRootHelp(t *testing.T) {
+	for _, flag := range []string{"--help", "-h", "help"} {
+		var buf bytes.Buffer
+		err := run([]string{flag}, &buf)
+		if err != nil {
+			t.Fatalf("root %s returned error: %v", flag, err)
+		}
+		out := buf.String()
+		for _, want := range []string{"Usage:", "blocks", "compose"} {
+			if !strings.Contains(out, want) {
+				t.Errorf("root %s output missing %q", flag, want)
+			}
+		}
+	}
+}
+
+func TestRootNoArgs(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{}, &buf)
+	if err != nil {
+		t.Fatalf("root no-args returned error: %v", err)
+	}
+	if !strings.Contains(buf.String(), "Usage:") {
+		t.Error("expected usage output for no args")
+	}
+}
+
+func TestBlocksHelp(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"blocks", "--help"}, &buf)
+	if err != nil {
+		t.Fatalf("blocks --help returned error: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "list") {
+		t.Error("blocks help missing 'list' subcommand")
+	}
+}
+
+func TestBlocksNoArgs(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"blocks"}, &buf)
+	if err == nil {
+		t.Fatal("expected error for blocks with no subcommand")
+	}
+	if !strings.Contains(buf.String(), "Usage:") {
+		t.Error("expected usage in output")
+	}
+}
+
+func TestBlocksUnknownSubcommand(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"blocks", "foobar"}, &buf)
+	if err == nil {
+		t.Fatal("expected error for unknown blocks subcommand")
+	}
+	if !strings.Contains(err.Error(), "unknown blocks subcommand") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestComposeHelp(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"compose", "--help"}, &buf)
+	if err != nil {
+		t.Fatalf("compose --help returned error: %v", err)
+	}
+	out := buf.String()
+	for _, want := range []string{"validate", "auto-wire", "topology", "--file"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("compose help missing %q", want)
+		}
+	}
+}
+
+func TestComposeNoArgs(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"compose"}, &buf)
+	if err == nil {
+		t.Fatal("expected error for compose with no subcommand")
+	}
+	if !strings.Contains(buf.String(), "Usage:") {
+		t.Error("expected usage in output")
+	}
+}
+
+func TestComposeMissingFile(t *testing.T) {
+	for _, sub := range []string{"validate", "auto-wire", "topology"} {
+		var buf bytes.Buffer
+		err := run([]string{"compose", sub}, &buf)
+		if err == nil {
+			t.Fatalf("compose %s without --file should error", sub)
+		}
+		if !strings.Contains(err.Error(), "--file is required") {
+			t.Errorf("compose %s: unexpected error: %v", sub, err)
+		}
+		if !strings.Contains(buf.String(), "--file is required") {
+			t.Errorf("compose %s: output should mention --file requirement", sub)
+		}
+	}
+}
+
 func TestUnknownCommand(t *testing.T) {
 	var buf bytes.Buffer
 	err := run([]string{"foobar"}, &buf)
 	if err == nil {
 		t.Fatal("expected error for unknown command")
+	}
+	if !strings.Contains(err.Error(), "unknown command") {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if !strings.Contains(buf.String(), "Usage:") {
+		t.Error("expected usage in output")
 	}
 }
 
