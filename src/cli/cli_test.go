@@ -457,6 +457,130 @@ func TestBlocksListHelp(t *testing.T) {
 	}
 }
 
+func TestComposeValidateFormatJSON(t *testing.T) {
+	path := sampleCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "validate", "--file", path, "--format", "json"}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	var result validateResult
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, buf.String())
+	}
+	if !result.Valid {
+		t.Error("expected valid=true")
+	}
+	if result.BlockCount != 3 {
+		t.Errorf("expected blockCount=3, got %d", result.BlockCount)
+	}
+	if result.File != path {
+		t.Errorf("expected file=%q, got %q", path, result.File)
+	}
+}
+
+func TestComposeAutoWireFormatJSON(t *testing.T) {
+	path := sampleCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "auto-wire", "--file", path, "--format", "json"}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	var result autoWireResult
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, buf.String())
+	}
+	if result.BlockCount != 3 {
+		t.Errorf("expected blockCount=3, got %d", result.BlockCount)
+	}
+	if result.WireCount != 3 {
+		t.Errorf("expected wireCount=3, got %d", result.WireCount)
+	}
+	if len(result.Wires) != 3 {
+		t.Fatalf("expected 3 wires, got %d", len(result.Wires))
+	}
+	wantWires := []wireEntry{
+		{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
+		{FromBlock: "db", FromPort: "dsn", ToBlock: "pooler", ToPort: "upstream-dsn"},
+		{FromBlock: "db", FromPort: "credential", ToBlock: "pooler", ToPort: "upstream-credential"},
+	}
+	for i, want := range wantWires {
+		if result.Wires[i] != want {
+			t.Errorf("wire %d mismatch.\nwant: %+v\ngot:  %+v", i, want, result.Wires[i])
+		}
+	}
+}
+
+func TestComposeTopologyFormatJSON(t *testing.T) {
+	path := sampleCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "topology", "--file", path, "--format", "json"}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	var result topologyResult
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, buf.String())
+	}
+	if result.BlockCount != 3 {
+		t.Errorf("expected blockCount=3, got %d", result.BlockCount)
+	}
+	if len(result.Order) != 3 {
+		t.Fatalf("expected 3 order entries, got %d", len(result.Order))
+	}
+	wantOrder := []topoBlockEntry{
+		{Index: 1, Name: "storage", Kind: "storage.local-pv"},
+		{Index: 2, Name: "db", Kind: "datastore.postgresql"},
+		{Index: 3, Name: "pooler", Kind: "gateway.pgbouncer"},
+	}
+	for i, want := range wantOrder {
+		if result.Order[i] != want {
+			t.Errorf("order %d mismatch.\nwant: %+v\ngot:  %+v", i, want, result.Order[i])
+		}
+	}
+	if result.WireCount != 3 {
+		t.Errorf("expected wireCount=3, got %d", result.WireCount)
+	}
+}
+
+func TestComposeSubcommandHelpIncludesFormat(t *testing.T) {
+	for _, sub := range []string{"validate", "auto-wire", "topology"} {
+		var buf bytes.Buffer
+		err := run([]string{"compose", sub, "--help"}, &buf)
+		if err != nil {
+			t.Fatalf("compose %s --help returned error: %v", sub, err)
+		}
+		if !strings.Contains(buf.String(), "--format") {
+			t.Errorf("compose %s --help missing --format flag", sub)
+		}
+	}
+}
+
+func TestComposeUnexpectedArg(t *testing.T) {
+	path := sampleCompositionPath(t)
+	for _, sub := range []string{"validate", "auto-wire", "topology"} {
+		var buf bytes.Buffer
+		err := run([]string{"compose", sub, "--file", path, "garbage"}, &buf)
+		if err == nil {
+			t.Fatalf("compose %s with trailing arg should error", sub)
+		}
+		if !strings.Contains(err.Error(), "unexpected argument") {
+			t.Errorf("compose %s: unexpected error: %v", sub, err)
+		}
+	}
+}
+
+func TestComposeFormatInvalid(t *testing.T) {
+	path := sampleCompositionPath(t)
+	for _, sub := range []string{"validate", "auto-wire", "topology"} {
+		var buf bytes.Buffer
+		err := run([]string{"compose", sub, "--file", path, "--format", "yaml"}, &buf)
+		if err == nil {
+			t.Fatalf("compose %s --format yaml should error", sub)
+		}
+		if !strings.Contains(err.Error(), "unsupported format") {
+			t.Errorf("compose %s: unexpected error: %v", sub, err)
+		}
+	}
+}
+
 // --- Golden output snapshot tests ---
 // These tests protect the exact format stability of CLI output.
 // Any change to column names, spacing, ordering, success text, wire labels,
@@ -563,6 +687,114 @@ func TestGolden_ComposeTopology(t *testing.T) {
 		"  db/credential -> pooler/upstream-credential\n"
 	if got := buf.String(); got != want {
 		t.Errorf("compose topology output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func TestGolden_ComposeValidateJSON(t *testing.T) {
+	path := sampleCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "validate", "--file", path, "--format", "json"}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf(`{
+  "file": %q,
+  "valid": true,
+  "blockCount": 3
+}
+`, path)
+	if got := buf.String(); got != want {
+		t.Errorf("compose validate --format json output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func TestGolden_ComposeAutoWireJSON(t *testing.T) {
+	path := sampleCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "auto-wire", "--file", path, "--format", "json"}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf(`{
+  "file": %q,
+  "blockCount": 3,
+  "wireCount": 3,
+  "wires": [
+    {
+      "fromBlock": "storage",
+      "fromPort": "pvc-spec",
+      "toBlock": "db",
+      "toPort": "storage"
+    },
+    {
+      "fromBlock": "db",
+      "fromPort": "dsn",
+      "toBlock": "pooler",
+      "toPort": "upstream-dsn"
+    },
+    {
+      "fromBlock": "db",
+      "fromPort": "credential",
+      "toBlock": "pooler",
+      "toPort": "upstream-credential"
+    }
+  ]
+}
+`, path)
+	if got := buf.String(); got != want {
+		t.Errorf("compose auto-wire --format json output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func TestGolden_ComposeTopologyJSON(t *testing.T) {
+	path := sampleCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "topology", "--file", path, "--format", "json"}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf(`{
+  "file": %q,
+  "blockCount": 3,
+  "order": [
+    {
+      "index": 1,
+      "name": "storage",
+      "kind": "storage.local-pv"
+    },
+    {
+      "index": 2,
+      "name": "db",
+      "kind": "datastore.postgresql"
+    },
+    {
+      "index": 3,
+      "name": "pooler",
+      "kind": "gateway.pgbouncer"
+    }
+  ],
+  "wireCount": 3,
+  "wires": [
+    {
+      "fromBlock": "storage",
+      "fromPort": "pvc-spec",
+      "toBlock": "db",
+      "toPort": "storage"
+    },
+    {
+      "fromBlock": "db",
+      "fromPort": "dsn",
+      "toBlock": "pooler",
+      "toPort": "upstream-dsn"
+    },
+    {
+      "fromBlock": "db",
+      "fromPort": "credential",
+      "toBlock": "pooler",
+      "toPort": "upstream-credential"
+    }
+  ]
+}
+`, path)
+	if got := buf.String(); got != want {
+		t.Errorf("compose topology --format json output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}
 }
 
