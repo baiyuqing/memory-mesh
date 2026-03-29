@@ -798,6 +798,207 @@ func TestGolden_ComposeTopologyJSON(t *testing.T) {
 	}
 }
 
+// --- Credential-path wire regression tests ---
+// These tests protect the credential wiring in sample and standard compositions.
+// If a credential wire drifts, disappears, or is mis-routed, these tests catch it.
+
+func TestCredentialPath_SampleComposition_AutoWire(t *testing.T) {
+	path := sampleCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "auto-wire", "--file", path}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+
+	// Sample: 3 blocks, 3 wires. Credential wire is auto-wired from db to pooler.
+	if !strings.Contains(out, "3 blocks, 3 wires") {
+		t.Errorf("expected 3 blocks / 3 wires summary, got: %s", out)
+	}
+	// The credential wire must go from db to pooler.
+	for _, wire := range []string{
+		"db                    credential        pooler                upstream-credential",
+		"db                    dsn               pooler                upstream-dsn",
+		"storage               pvc-spec          db                    storage",
+	} {
+		if !strings.Contains(out, wire) {
+			t.Errorf("missing expected wire %q in output:\n%s", wire, out)
+		}
+	}
+}
+
+func TestCredentialPath_StandardComposition_AutoWire(t *testing.T) {
+	path := standardCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "auto-wire", "--file", path}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+
+	// Standard: 4 blocks, 4 wires. Credential wire goes from rotator to pooler.
+	if !strings.Contains(out, "4 blocks, 4 wires") {
+		t.Errorf("expected 4 blocks / 4 wires summary, got: %s", out)
+	}
+	// Key wires that must not drift (order may vary due to map iteration).
+	for _, wire := range []string{
+		"rotator               credential        pooler                upstream-credential",
+		"db                    dsn               rotator               upstream-dsn",
+	} {
+		if !strings.Contains(out, wire) {
+			t.Errorf("missing expected credential-path wire %q in output:\n%s", wire, out)
+		}
+	}
+	// Storage wire must remain.
+	if !strings.Contains(out, "storage               pvc-spec          db                    storage") {
+		t.Errorf("missing storage wire in output:\n%s", out)
+	}
+}
+
+func TestCredentialPath_StandardComposition_Topology(t *testing.T) {
+	path := standardCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "topology", "--file", path}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+
+	// 4 blocks in topological order.
+	if !strings.Contains(out, "4 blocks") {
+		t.Errorf("expected 4 blocks, got: %s", out)
+	}
+	// Rotator must come after db and before pooler in topological order.
+	dbIdx := strings.Index(out, "db (datastore.postgresql)")
+	rotatorIdx := strings.Index(out, "rotator (security.password-rotation)")
+	poolerIdx := strings.Index(out, "pooler (gateway.pgbouncer)")
+	if dbIdx < 0 || rotatorIdx < 0 || poolerIdx < 0 {
+		t.Fatalf("missing expected blocks in topology output:\n%s", out)
+	}
+	if dbIdx > rotatorIdx {
+		t.Errorf("db must come before rotator in topological order")
+	}
+	if rotatorIdx > poolerIdx {
+		t.Errorf("rotator must come before pooler in topological order")
+	}
+
+	// Credential wire must appear in topology wires section.
+	if !strings.Contains(out, "rotator/credential -> pooler/upstream-credential") {
+		t.Errorf("missing credential wire in topology:\n%s", out)
+	}
+	if !strings.Contains(out, "Wires (4)") {
+		t.Errorf("expected 4 wires in topology, got:\n%s", out)
+	}
+}
+
+func TestCredentialPath_StandardComposition_TopologyJSON(t *testing.T) {
+	path := standardCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "topology", "--file", path, "--format", "json"}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	var result topologyResult
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, buf.String())
+	}
+	if result.BlockCount != 4 {
+		t.Errorf("expected blockCount=4, got %d", result.BlockCount)
+	}
+	if result.WireCount != 4 {
+		t.Errorf("expected wireCount=4, got %d", result.WireCount)
+	}
+
+	// Verify the credential wire exists in JSON output.
+	foundCredWire := false
+	for _, w := range result.Wires {
+		if w.FromBlock == "rotator" && w.FromPort == "credential" &&
+			w.ToBlock == "pooler" && w.ToPort == "upstream-credential" {
+			foundCredWire = true
+			break
+		}
+	}
+	if !foundCredWire {
+		t.Errorf("missing credential wire (rotator/credential -> pooler/upstream-credential) in JSON topology")
+	}
+
+	// Verify topological order: db before rotator before pooler.
+	orderMap := make(map[string]int)
+	for _, entry := range result.Order {
+		orderMap[entry.Name] = entry.Index
+	}
+	if orderMap["db"] >= orderMap["rotator"] {
+		t.Errorf("db (index %d) must come before rotator (index %d)", orderMap["db"], orderMap["rotator"])
+	}
+	if orderMap["rotator"] >= orderMap["pooler"] {
+		t.Errorf("rotator (index %d) must come before pooler (index %d)", orderMap["rotator"], orderMap["pooler"])
+	}
+}
+
+func TestCredentialPath_StandardComposition_AutoWireJSON(t *testing.T) {
+	path := standardCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "auto-wire", "--file", path, "--format", "json"}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	var result autoWireResult
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, buf.String())
+	}
+	if result.BlockCount != 4 {
+		t.Errorf("expected blockCount=4, got %d", result.BlockCount)
+	}
+	if result.WireCount != 4 {
+		t.Errorf("expected wireCount=4, got %d", result.WireCount)
+	}
+
+	// Verify credential-path wires exist in JSON output.
+	wantWires := []wireEntry{
+		{FromBlock: "rotator", FromPort: "credential", ToBlock: "pooler", ToPort: "upstream-credential"},
+		{FromBlock: "db", FromPort: "dsn", ToBlock: "rotator", ToPort: "upstream-dsn"},
+		{FromBlock: "db", FromPort: "dsn", ToBlock: "pooler", ToPort: "upstream-dsn"},
+		{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
+	}
+	for _, want := range wantWires {
+		found := false
+		for _, got := range result.Wires {
+			if got == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("missing wire %+v in JSON auto-wire output", want)
+		}
+	}
+}
+
+func TestCredentialPath_SampleComposition_ValidateJSON(t *testing.T) {
+	path := sampleCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "validate", "--file", path, "--format", "json"}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	var result validateResult
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, buf.String())
+	}
+	if result.BlockCount != 3 {
+		t.Errorf("expected blockCount=3, got %d", result.BlockCount)
+	}
+}
+
+func TestCredentialPath_StandardComposition_ValidateJSON(t *testing.T) {
+	path := standardCompositionPath(t)
+	var buf bytes.Buffer
+	if err := run([]string{"compose", "validate", "--file", path, "--format", "json"}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	var result validateResult
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, buf.String())
+	}
+	if result.BlockCount != 4 {
+		t.Errorf("expected blockCount=4, got %d", result.BlockCount)
+	}
+}
+
 // helpers to locate example files relative to the repo root.
 func repoRoot(t *testing.T) string {
 	t.Helper()
