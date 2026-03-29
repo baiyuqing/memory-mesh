@@ -477,6 +477,7 @@
 .validate-ok { color: var(--green); }
 .validate-warn { color: var(--amber); }
 .validate-info { color: var(--accent); }
+.validate-error { color: var(--red); font-size: 11px; }
 
 .topo-order {
   display: flex;

@@ -75,15 +75,46 @@ function App() {
   const [selectedName, setSelectedName] = useState<string | null>(null)
 
   const liveBlocks = useMemo(() => blocks.filter(b => !deletedNames.has(b.name)), [blocks, deletedNames])
-  const sorted = useMemo(() => topoSort(liveBlocks), [liveBlocks])
-  const wires = useMemo(() => getWires(liveBlocks), [liveBlocks])
+
+  // Strip dangling input references (inputs pointing to deleted blocks)
+  const liveNameSet = useMemo(() => new Set(liveBlocks.map(b => b.name)), [liveBlocks])
+  const resolvedBlocks = useMemo(() => liveBlocks.map(b => {
+    if (!b.inputs) return b
+    const cleaned: Record<string, string> = {}
+    for (const [port, ref] of Object.entries(b.inputs)) {
+      const fromBlock = ref.split('/')[0]
+      if (liveNameSet.has(fromBlock)) cleaned[port] = ref
+    }
+    return Object.keys(cleaned).length > 0
+      ? { ...b, inputs: cleaned }
+      : { ...b, inputs: undefined }
+  }), [liveBlocks, liveNameSet])
+
+  // Detect broken references for validation
+  const brokenRefs = useMemo(() => {
+    const broken: { block: string; port: string; ref: string }[] = []
+    for (const b of liveBlocks) {
+      if (!b.inputs) continue
+      for (const [port, ref] of Object.entries(b.inputs)) {
+        const fromBlock = ref.split('/')[0]
+        if (!liveNameSet.has(fromBlock)) {
+          broken.push({ block: b.name, port, ref })
+        }
+      }
+    }
+    return broken
+  }, [liveBlocks, liveNameSet])
+
+  const sorted = useMemo(() => topoSort(resolvedBlocks), [resolvedBlocks])
+  const wires = useMemo(() => getWires(resolvedBlocks), [resolvedBlocks])
   const activeKinds = useMemo(() => new Set(liveBlocks.map(b => b.kind)), [liveBlocks])
+  const isValid = liveBlocks.length > 0 && brokenRefs.length === 0
 
   const compositionOutput = useMemo(() => JSON.stringify(
-    { composition: { blocks: liveBlocks } },
+    { composition: { blocks: resolvedBlocks } },
     null,
     2,
-  ), [liveBlocks])
+  ), [resolvedBlocks])
 
   const selectedBlock = blocks.find(b => b.name === selectedName) ?? null
   const isSelectedDeleted = selectedName !== null && deletedNames.has(selectedName)
@@ -261,13 +292,15 @@ function App() {
       <section className="validate">
         <div className="validate-title">Validation &amp; Topology</div>
         <div className="validate-row">
-          <span className={`validate-icon ${liveBlocks.length > 0 ? 'validate-ok' : 'validate-warn'}`}>
-            {liveBlocks.length > 0 ? '\u2713' : '!'}
+          <span className={`validate-icon ${isValid ? 'validate-ok' : 'validate-warn'}`}>
+            {isValid ? '\u2713' : '!'}
           </span>
           <span>
-            {liveBlocks.length > 0
-              ? <>Composition valid &mdash; {liveBlocks.length} blocks, {wires.length} wires</>
-              : <>Composition empty &mdash; no blocks</>
+            {liveBlocks.length === 0
+              ? <>Composition empty &mdash; no blocks</>
+              : isValid
+                ? <>Composition valid &mdash; {liveBlocks.length} blocks, {wires.length} wires</>
+                : <>Composition invalid &mdash; {liveBlocks.length} blocks, {brokenRefs.length} broken reference{brokenRefs.length > 1 ? 's' : ''}</>
             }
           </span>
         </div>
@@ -277,6 +310,11 @@ function App() {
             <span>{deletedNames.size} block{deletedNames.size > 1 ? 's' : ''} removed</span>
           </div>
         )}
+        {brokenRefs.map((br, i) => (
+          <div className="validate-row validate-error" key={i} style={{ paddingLeft: 22 }}>
+            <span>{br.block}.{br.port} references missing block "{br.ref.split('/')[0]}"</span>
+          </div>
+        ))}
         {liveBlocks.length > 0 && (
           <>
             <div className="validate-row">
