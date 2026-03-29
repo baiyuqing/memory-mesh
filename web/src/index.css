@@ -5,20 +5,34 @@
 }
 
 :root {
-  --bg: #0f1117;
-  --surface: #1a1d27;
-  --surface-raised: #21253a;
-  --border: #2a2e42;
-  --text: #d8dce8;
-  --text-muted: #7b8098;
+  --bg: #0a0c14;
+  --bg-subtle: #0e1019;
+  --surface: #131622;
+  --surface-raised: #1a1e30;
+  --surface-elevated: #20253a;
+  --border: #1e2236;
+  --border-bright: #2a3050;
+  --text: #e0e4f0;
+  --text-muted: #6b7194;
+  --text-dim: #4a506e;
   --accent: #5b7fff;
+  --accent-bright: #7b9aff;
   --accent-dim: rgba(91, 127, 255, 0.10);
+  --accent-glow: rgba(91, 127, 255, 0.06);
   --green: #34d399;
+  --green-dim: rgba(52, 211, 153, 0.10);
   --amber: #fbbf24;
+  --amber-dim: rgba(251, 191, 36, 0.10);
   --red: #f87171;
-  --radius: 6px;
+  --red-dim: rgba(248, 113, 113, 0.10);
+  --radius: 8px;
+  --radius-sm: 5px;
+  --radius-lg: 12px;
   --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', ui-monospace, monospace;
   --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-panel: 0 0 0 1px var(--border), 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 html, body, #root {
@@ -29,4 +43,9 @@ html, body, #root {
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }

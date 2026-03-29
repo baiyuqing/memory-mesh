@@ -209,6 +209,12 @@ function App() {
         <div className="header-logo">otto<span>plus</span></div>
         <div className="header-sep" />
         <div className="header-label">Workbench</div>
+        <div className="header-source">
+          <span className="header-source-dot" />
+          <span className="header-source-path">deploy/examples/sample-composition.json</span>
+          <div className="header-sep" />
+          <span className="header-block-count">{currentBlocks.length} blocks &middot; {wires.length} wires</span>
+        </div>
       </header>
 
       {/* Left: Block catalog */}
