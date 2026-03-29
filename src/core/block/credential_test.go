@@ -77,6 +77,34 @@ func TestCredentialRef_DevOnlyOmittedWhenFalse(t *testing.T) {
 	}
 }
 
+// TestCredentialRef_JSONFieldNames verifies the exact JSON field names in the
+// wire format. If a json struct tag is renamed, this test catches it before
+// any cross-block or cross-layer integration silently breaks.
+func TestCredentialRef_JSONFieldNames(t *testing.T) {
+	cr := CredentialRef{
+		SecretName:      "s",
+		SecretNamespace: "ns",
+		UsernameKey:     "u",
+		PasswordKey:     "p",
+		DevOnly:         true,
+	}
+	encoded, err := cr.Encode()
+	if err != nil {
+		t.Fatalf("Encode failed: %v", err)
+	}
+	for _, field := range []string{
+		`"secretName"`,
+		`"secretNamespace"`,
+		`"usernameKey"`,
+		`"passwordKey"`,
+		`"devOnly"`,
+	} {
+		if !contains(encoded, field) {
+			t.Errorf("JSON wire format missing field %s, got: %s", field, encoded)
+		}
+	}
+}
+
 func TestDecodeCredentialRef_InvalidJSON(t *testing.T) {
 	_, err := DecodeCredentialRef("not json")
 	if err == nil {
