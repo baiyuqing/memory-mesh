@@ -269,8 +269,8 @@ func TestTopology_StandardPath(t *testing.T) {
 	var resp TopologyResponse
 	json.NewDecoder(w.Body).Decode(&resp)
 
-	if len(resp.Nodes) != 4 {
-		t.Fatalf("expected 4 nodes, got %d", len(resp.Nodes))
+	if len(resp.Nodes) != testfixture.StandardBlockCount {
+		t.Fatalf("expected %d nodes, got %d", testfixture.StandardBlockCount, len(resp.Nodes))
 	}
 
 	// Verify topological order: storage -> db -> rotator -> pooler.
@@ -278,14 +278,12 @@ func TestTopology_StandardPath(t *testing.T) {
 	for i, n := range resp.Nodes {
 		posMap[n.Name] = i
 	}
-	if posMap["storage"] >= posMap["db"] {
-		t.Errorf("storage (pos %d) should come before db (pos %d)", posMap["storage"], posMap["db"])
-	}
-	if posMap["db"] >= posMap["rotator"] {
-		t.Errorf("db (pos %d) should come before rotator (pos %d)", posMap["db"], posMap["rotator"])
-	}
-	if posMap["rotator"] >= posMap["pooler"] {
-		t.Errorf("rotator (pos %d) should come before pooler (pos %d)", posMap["rotator"], posMap["pooler"])
+	order := testfixture.StandardTopoOrder
+	for i := 0; i < len(order)-1; i++ {
+		a, b := order[i], order[i+1]
+		if posMap[a] >= posMap[b] {
+			t.Errorf("%s (pos %d) should come before %s (pos %d)", a, posMap[a], b, posMap[b])
+		}
 	}
 }
 

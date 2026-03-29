@@ -114,6 +114,24 @@ func CredentialPathComposition() []block.BlockRef {
 	}
 }
 
+// Sample path summary constants (deploy/examples/sample-composition.json).
+const (
+	SampleBlockCount = 3
+	SampleWireCount  = 3
+)
+
+// Standard path summary constants (deploy/examples/standard-composition.json).
+const (
+	StandardBlockCount = 4
+	StandardWireCount  = 4
+)
+
+// SampleTopoOrder is the expected topological order for the sample path.
+var SampleTopoOrder = []string{"storage", "db", "pooler"}
+
+// StandardTopoOrder is the expected topological order for the standard path.
+var StandardTopoOrder = []string{"storage", "db", "rotator", "pooler"}
+
 // examplesDir returns the absolute path to deploy/examples/ relative
 // to this source file's location.
 func examplesDir() string {
