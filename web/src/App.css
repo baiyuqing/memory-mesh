@@ -391,6 +391,32 @@
   color: var(--text);
 }
 
+.params-field-wrap {
+  padding: 4px 0;
+}
+
+.params-required {
+  color: var(--red);
+  margin-left: 2px;
+  font-weight: 600;
+}
+
+.params-field-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+.params-field-desc code {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--accent);
+  background: var(--bg);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
 .params-no-params {
   font-size: 11px;
   color: var(--text-muted);

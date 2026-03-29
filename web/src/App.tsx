@@ -115,25 +115,31 @@ interface FieldMeta {
   label: string
   type: 'text' | 'number' | 'select'
   group: string
+  required?: boolean
+  defaultValue?: string
+  description?: string
   options?: string[]
 }
 
-const blockFieldMeta: Record<string, { title: string; fields: FieldMeta[] }> = {
+const blockFieldMeta: Record<string, { title: string; description: string; fields: FieldMeta[] }> = {
   'storage.local-pv': {
     title: 'Local Persistent Volume',
+    description: 'Provisions a local persistent volume on the node for data storage.',
     fields: [
-      { key: 'size', label: 'Volume Size', type: 'text', group: 'Storage' },
+      { key: 'size', label: 'Volume Size', type: 'text', group: 'Storage', required: true, defaultValue: '5Gi', description: 'Capacity of the persistent volume (e.g. 1Gi, 10Gi)' },
     ],
   },
   'datastore.postgresql': {
     title: 'PostgreSQL Database',
+    description: 'Deploys a PostgreSQL cluster with configurable version and replicas.',
     fields: [
-      { key: 'version', label: 'Version', type: 'select', group: 'Engine', options: ['14', '15', '16', '17'] },
-      { key: 'replicas', label: 'Replicas', type: 'number', group: 'Scaling' },
+      { key: 'version', label: 'Version', type: 'select', group: 'Engine', required: true, defaultValue: '16', description: 'PostgreSQL major version', options: ['14', '15', '16', '17'] },
+      { key: 'replicas', label: 'Replicas', type: 'number', group: 'Scaling', required: false, defaultValue: '3', description: 'Number of database replicas for high availability' },
     ],
   },
   'gateway.pgbouncer': {
     title: 'PgBouncer Connection Pooler',
+    description: 'Lightweight connection pooler that sits between the application and PostgreSQL.',
     fields: [],
   },
 }
@@ -309,7 +315,7 @@ function App() {
                 </button>
               </div>
               <div className="params-block-kind">{selectedBlock.kind}</div>
-              {meta && <div className="params-block-desc">{meta.title}</div>}
+              {meta && <div className="params-block-desc">{meta.description}</div>}
               {isSelectedDeleted && (
                 <div className="params-deleted-badge">Removed from composition</div>
               )}
@@ -321,32 +327,42 @@ function App() {
                       {meta.fields.filter(f => f.group === group).map(field => {
                         const val = selectedBlock.parameters?.[field.key] ?? ''
                         return (
-                          <div className="params-field" key={field.key}>
-                            <label className="params-field-label">{field.label}</label>
-                            {field.type === 'select' ? (
-                              <select
-                                className="params-select"
-                                value={val}
-                                onChange={(e) => updateParam(selectedBlock.name, field.key, e.target.value)}
-                              >
-                                {field.options?.map(opt => (
-                                  <option key={opt} value={opt}>{opt}</option>
-                                ))}
-                              </select>
-                            ) : field.type === 'number' ? (
-                              <input
-                                className="params-input"
-                                type="number"
-                                min="1"
-                                value={val}
-                                onChange={(e) => updateParam(selectedBlock.name, field.key, e.target.value)}
-                              />
-                            ) : (
-                              <input
-                                className="params-input"
-                                value={val}
-                                onChange={(e) => updateParam(selectedBlock.name, field.key, e.target.value)}
-                              />
+                          <div className="params-field-wrap" key={field.key}>
+                            <div className="params-field">
+                              <label className="params-field-label">
+                                {field.label}
+                                {field.required && <span className="params-required">*</span>}
+                              </label>
+                              {field.type === 'select' ? (
+                                <select
+                                  className="params-select"
+                                  value={val}
+                                  onChange={(e) => updateParam(selectedBlock.name, field.key, e.target.value)}
+                                >
+                                  {field.options?.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              ) : field.type === 'number' ? (
+                                <input
+                                  className="params-input"
+                                  type="number"
+                                  min="1"
+                                  value={val}
+                                  placeholder={field.defaultValue}
+                                  onChange={(e) => updateParam(selectedBlock.name, field.key, e.target.value)}
+                                />
+                              ) : (
+                                <input
+                                  className="params-input"
+                                  value={val}
+                                  placeholder={field.defaultValue}
+                                  onChange={(e) => updateParam(selectedBlock.name, field.key, e.target.value)}
+                                />
+                              )}
+                            </div>
+                            {field.description && (
+                              <div className="params-field-desc">{field.description}{field.defaultValue && <> &middot; default: <code>{field.defaultValue}</code></>}</div>
                             )}
                           </div>
                         )
