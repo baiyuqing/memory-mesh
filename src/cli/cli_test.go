@@ -426,6 +426,25 @@ func TestBlocksListFormatInvalid(t *testing.T) {
 	}
 }
 
+func TestBlocksListFormatMissingValue(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"blocks", "list", "--format"}, &buf)
+	if err == nil {
+		t.Fatal("expected error for --format without value")
+	}
+}
+
+func TestBlocksListUnexpectedArg(t *testing.T) {
+	var buf bytes.Buffer
+	err := run([]string{"blocks", "list", "garbage"}, &buf)
+	if err == nil {
+		t.Fatal("expected error for unexpected positional argument")
+	}
+	if !strings.Contains(err.Error(), "unexpected argument") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
 func TestBlocksListHelp(t *testing.T) {
 	var buf bytes.Buffer
 	err := run([]string{"blocks", "list", "--help"}, &buf)

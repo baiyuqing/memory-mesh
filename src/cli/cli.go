@@ -83,21 +83,29 @@ func runBlocks(args []string, w io.Writer) error {
 		fmt.Fprint(w, blocksUsage)
 		return nil
 	case "list":
-		format := "table"
-		for i, a := range args[1:] {
+		// Intercept --help before flag.Parse to avoid flag.ErrHelp error path.
+		for _, a := range args[1:] {
 			if a == "--help" || a == "-h" || a == "-help" {
 				fmt.Fprint(w, "Usage: ottoplus blocks list [--format <table|json>]\n\nFlags:\n  --format <table|json>    Output format (default: table)\n")
 				return nil
 			}
-			if a == "--format" && i+1 < len(args[1:]) {
-				format = args[1:][i+1]
-			}
 		}
-		if format != "table" && format != "json" {
-			return fmt.Errorf("unsupported format %q — available: table, json", format)
+		fs := flag.NewFlagSet("ottoplus blocks list", flag.ContinueOnError)
+		fs.SetOutput(w)
+		format := fs.String("format", "table", "Output format: table or json")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		if fs.NArg() > 0 {
+			fmt.Fprintf(w, "Error: unexpected argument %q\n\n", fs.Arg(0))
+			fmt.Fprint(w, "Usage: ottoplus blocks list [--format <table|json>]\n")
+			return fmt.Errorf("unexpected argument %q", fs.Arg(0))
+		}
+		if *format != "table" && *format != "json" {
+			return fmt.Errorf("unsupported format %q — available: table, json", *format)
 		}
 		registry := newRegistry()
-		if format == "json" {
+		if *format == "json" {
 			return blocksListJSON(registry, w)
 		}
 		return blocksList(registry, w)
