@@ -194,6 +194,21 @@ type compositionJSON struct {
 	} `json:"composition"`
 }
 
+// LoadSampleCompositionJSON reads deploy/examples/sample-composition.json
+// and returns the 3-block sample path blocks.
+func LoadSampleCompositionJSON(t *testing.T) []block.BlockRef {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(examplesDir(), "sample-composition.json"))
+	if err != nil {
+		t.Fatalf("read sample-composition.json: %v", err)
+	}
+	var doc compositionJSON
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("parse sample-composition.json: %v", err)
+	}
+	return doc.Composition.Blocks
+}
+
 // LoadStandardCompositionJSON reads deploy/examples/standard-composition.json
 // and returns the 4-block standard path blocks.
 func LoadStandardCompositionJSON(t *testing.T) []block.BlockRef {
