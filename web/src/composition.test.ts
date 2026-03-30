@@ -205,7 +205,7 @@ describe('API status pill state mapping', () => {
     expect(pill.label).toBe('API connected')
     expect(pill.className).toBe('api-connected')
     expect(pill.hint).toBeNull()
-    expect(pill.docsUrl).toBeNull()
+    expect(pill.docsUrl).toBe('/QUICKSTART.md')
     expect(pill.target).toBe('localhost:8080')
     expect(pill.connectedNote).toBe('credential sources live')
   })
