@@ -212,13 +212,7 @@ function App() {
     })
   }, [currentBlocks])
 
-  const compositionData = useMemo(() => {
-    const data: Record<string, unknown> = { composition: { blocks: currentBlocks } }
-    if (Object.keys(credentialSources).length > 0) {
-      data.credentialSources = credentialSources
-    }
-    return data
-  }, [currentBlocks, credentialSources])
+  const compositionData = useMemo(() => ({ composition: { blocks: currentBlocks } }), [currentBlocks])
   const jsonOutput = useMemo(() => JSON.stringify(compositionData, null, 2), [compositionData])
   const yamlOutput = useMemo(() => toYaml(compositionData), [compositionData])
 
@@ -510,6 +504,22 @@ function App() {
               </div>
             </div>
             <pre className="results-pre">{outputFormat === 'json' ? jsonOutput : yamlOutput}</pre>
+            {Object.keys(credentialSources).length > 0 && (
+              <div className="output-credential-note">
+                {Object.entries(credentialSources)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([consumer, source]) => (
+                    <span key={consumer} className="output-credential-item">
+                      credential: {consumer} &larr; {source}
+                    </span>
+                  ))}
+              </div>
+            )}
+            {apiAvailable === false && (
+              <div className="output-credential-note output-credential-unavailable">
+                <span className="output-credential-item">credential sources unavailable — start API server</span>
+              </div>
+            )}
           </div>
 
           {/* Validation */}
