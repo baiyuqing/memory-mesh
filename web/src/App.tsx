@@ -169,7 +169,7 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
         </>
       )}
       {available === true && targetChanged && (
-        <span className="header-api-target-changed">health record cleared</span>
+        <span className="header-api-target-changed">health record cleared after target changed</span>
       )}
       {pill.connectedNote && !recovered && (
         <span className="header-api-connected-note">{pill.connectedNote}</span>

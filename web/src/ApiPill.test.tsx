@@ -565,7 +565,7 @@ describe('ApiPill health target change reset', () => {
     await act(async () => {
       rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
     })
-    expect(screen.queryByText('health record cleared')).toBeNull()
+    expect(screen.queryByText('health record cleared after target changed')).toBeNull()
   })
 
   it('shows reset note when target changes and health record existed', async () => {
@@ -583,7 +583,7 @@ describe('ApiPill health target change reset', () => {
     await act(async () => {
       rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
     })
-    expect(screen.getByText('health record cleared')).toBeDefined()
+    expect(screen.getByText('health record cleared after target changed')).toBeDefined()
   })
 
   it('reset note auto-clears after 3 seconds', async () => {
@@ -599,13 +599,13 @@ describe('ApiPill health target change reset', () => {
     await act(async () => {
       rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
     })
-    expect(screen.getByText('health record cleared')).toBeDefined()
+    expect(screen.getByText('health record cleared after target changed')).toBeDefined()
 
     await act(async () => {
       vi.advanceTimersByTime(3100)
     })
 
-    expect(screen.queryByText('health record cleared')).toBeNull()
+    expect(screen.queryByText('health record cleared after target changed')).toBeNull()
   })
 })
 
