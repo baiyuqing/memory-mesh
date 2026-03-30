@@ -190,6 +190,75 @@ describe('ApiPill target docs link', () => {
   })
 })
 
+describe('ApiPill target health action', () => {
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  it('shows ping button when connected with onHealthCheck', () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    const btn = screen.getByTitle('Check API health')
+    expect(btn).toBeDefined()
+    expect(btn.className).toBe('header-api-target-health')
+    expect(btn.textContent).toBe('ping')
+  })
+
+  it('shows checking then ok on successful health check', async () => {
+    let resolve: (v: boolean) => void
+    const onHealthCheck = vi.fn().mockImplementation(() => new Promise<boolean>(r => { resolve = r }))
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    const btn = screen.getByTitle('Check API health')
+    btn.click()
+    expect(onHealthCheck).toHaveBeenCalledOnce()
+    await vi.waitFor(() => {
+      expect(btn.textContent).toBe('checking')
+    })
+    resolve!(true)
+    await vi.waitFor(() => {
+      expect(btn.textContent).toBe('ok')
+    })
+  })
+
+  it('shows fail when health check returns false', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(false)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    const btn = screen.getByTitle('Check API health')
+    btn.click()
+    await vi.waitFor(() => {
+      expect(btn.textContent).toBe('fail')
+    })
+  })
+
+  it('shows fail when health check rejects', async () => {
+    const onHealthCheck = vi.fn().mockRejectedValue(new Error('network'))
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    const btn = screen.getByTitle('Check API health')
+    btn.click()
+    await vi.waitFor(() => {
+      expect(btn.textContent).toBe('fail')
+    })
+  })
+
+  it('does not show ping button when unavailable', () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    render(<ApiPill available={false} onHealthCheck={onHealthCheck} />)
+    expect(screen.queryByTitle('Check API health')).toBeNull()
+  })
+
+  it('does not show ping button without onHealthCheck', () => {
+    render(<ApiPill available={true} />)
+    expect(screen.queryByTitle('Check API health')).toBeNull()
+  })
+
+  it('does not show ping button in neutral state', () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    render(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    expect(screen.queryByTitle('Check API health')).toBeNull()
+  })
+})
+
 describe('ApiPill docs link', () => {
   beforeEach(() => {
     const writeText = vi.fn().mockResolvedValue(undefined)
