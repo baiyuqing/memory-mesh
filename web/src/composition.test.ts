@@ -224,7 +224,7 @@ describe('API status pill state mapping', () => {
 
   it('provides docs link only when unavailable', () => {
     const pill = apiPillState(false)
-    expect(pill.docsUrl).toBe('web/QUICKSTART.md')
+    expect(pill.docsUrl).toBe('/QUICKSTART.md')
   })
 })
 

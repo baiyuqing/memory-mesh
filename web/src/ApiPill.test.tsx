@@ -19,7 +19,7 @@ describe('ApiPill docs link', () => {
     const link = screen.getByTitle('Setup instructions')
     expect(link).toBeDefined()
     expect(link.textContent).toBe('docs')
-    expect(link.getAttribute('href')).toBe('web/QUICKSTART.md')
+    expect(link.getAttribute('href')).toBe('/QUICKSTART.md')
     expect(link.getAttribute('target')).toBe('_blank')
   })
 

@@ -19,7 +19,7 @@ const initialBlocks: BlockRef[] = sampleComposition.composition.blocks.map(b => 
 // Exported so tests can verify the exact label/class/hint/docsUrl mapping.
 export function apiPillState(available: boolean | null): { label: string; className: string; hint: string | null; docsUrl: string | null } {
   if (available === true) return { label: 'API connected', className: 'api-connected', hint: null, docsUrl: null }
-  if (available === false) return { label: 'API unavailable', className: 'api-unavailable', hint: 'make workbench', docsUrl: 'web/QUICKSTART.md' }
+  if (available === false) return { label: 'API unavailable', className: 'api-unavailable', hint: 'make workbench', docsUrl: '/QUICKSTART.md' }
   return { label: 'API', className: '', hint: null, docsUrl: null }
 }
 
