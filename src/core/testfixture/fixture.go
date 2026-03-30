@@ -132,11 +132,29 @@ var SampleTopoOrder = []string{"storage", "db", "pooler"}
 // StandardTopoOrder is the expected topological order for the standard path.
 var StandardTopoOrder = []string{"storage", "db", "rotator", "pooler"}
 
+// SampleCredentialWire is the credential wire in the sample path:
+// db produces the credential directly to pooler.
+var SampleCredentialWire = block.Wire{
+	FromBlock: "db", FromPort: "credential", ToBlock: "pooler", ToPort: "upstream-credential",
+}
+
+// StandardCredentialWire is the credential wire in the standard path:
+// rotator produces the credential to pooler (not db directly).
+var StandardCredentialWire = block.Wire{
+	FromBlock: "rotator", FromPort: "credential", ToBlock: "pooler", ToPort: "upstream-credential",
+}
+
+// WireLabel returns "fromBlock/fromPort -> toBlock/toPort" for use in
+// text output assertions.
+func WireLabel(w block.Wire) string {
+	return w.FromBlock + "/" + w.FromPort + " -> " + w.ToBlock + "/" + w.ToPort
+}
+
 // SampleExpectedWires lists the wires produced by the sample (3-block) path.
 var SampleExpectedWires = []block.Wire{
 	{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
 	{FromBlock: "db", FromPort: "dsn", ToBlock: "pooler", ToPort: "upstream-dsn"},
-	{FromBlock: "db", FromPort: "credential", ToBlock: "pooler", ToPort: "upstream-credential"},
+	SampleCredentialWire,
 }
 
 // StandardExpectedWires lists the wires produced by the standard (4-block credential) path.
@@ -144,7 +162,7 @@ var StandardExpectedWires = []block.Wire{
 	{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
 	{FromBlock: "db", FromPort: "dsn", ToBlock: "rotator", ToPort: "upstream-dsn"},
 	{FromBlock: "db", FromPort: "dsn", ToBlock: "pooler", ToPort: "upstream-dsn"},
-	{FromBlock: "rotator", FromPort: "credential", ToBlock: "pooler", ToPort: "upstream-credential"},
+	StandardCredentialWire,
 }
 
 // blockKindMap maps block name to kind from Phase1Blocks.

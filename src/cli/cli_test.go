@@ -992,7 +992,7 @@ func TestCredentialPath_StandardComposition_Topology(t *testing.T) {
 		t.Errorf("expected %d wires in topology, got:\n%s", standardSpec.wireCount, out)
 	}
 	assertTopoOrder(t, standardSpec, out)
-	if !strings.Contains(out, "rotator/credential -> pooler/upstream-credential") {
+	if !strings.Contains(out, testfixture.WireLabel(testfixture.StandardCredentialWire)) {
 		t.Errorf("missing credential wire in topology:\n%s", out)
 	}
 }
