@@ -51,6 +51,18 @@ func TestSampleSummaryTruth(t *testing.T) {
 		t.Errorf("len(SampleExpectedWires)=%d but SampleWireCount=%d",
 			len(testfixture.SampleExpectedWires), testfixture.SampleWireCount)
 	}
+
+	// Verify SampleCredentialWire is present in the compiled wires.
+	found := false
+	for _, w := range result.Composition.Wires {
+		if w == testfixture.SampleCredentialWire {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("SampleCredentialWire %v not found in compiled wires", testfixture.SampleCredentialWire)
+	}
 }
 
 // TestStandardSummaryTruth verifies that the standard path summary constants
@@ -95,6 +107,18 @@ func TestStandardSummaryTruth(t *testing.T) {
 	if len(testfixture.StandardExpectedWires) != testfixture.StandardWireCount {
 		t.Errorf("len(StandardExpectedWires)=%d but StandardWireCount=%d",
 			len(testfixture.StandardExpectedWires), testfixture.StandardWireCount)
+	}
+
+	// Verify StandardCredentialWire is present in the compiled wires.
+	found := false
+	for _, w := range result.Composition.Wires {
+		if w == testfixture.StandardCredentialWire {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("StandardCredentialWire %v not found in compiled wires", testfixture.StandardCredentialWire)
 	}
 }
 
