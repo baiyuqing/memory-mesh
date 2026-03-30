@@ -668,6 +668,9 @@ func TestGolden_ComposeTopology(t *testing.T) {
 		"\n" +
 		topoSection +
 		"\n" +
+		"Credential sources:\n" +
+		fmt.Sprintf("  %s <- %s\n", testfixture.SampleCredentialWire.ToBlock, testfixture.SampleCredentialWire.FromBlock) +
+		"\n" +
 		fmt.Sprintf("Wires (%d):\n", sampleSpec.wireCount) +
 		"  storage/pvc-spec -> db/storage\n" +
 		"  db/dsn -> pooler/upstream-dsn\n" +
@@ -757,6 +760,9 @@ func TestGolden_ComposeTopologyJSON(t *testing.T) {
       "kind": "gateway.pgbouncer"
     }
   ],
+  "credentialSources": {
+    %q: %q
+  },
   "wireCount": %d,
   "wires": [
     {
@@ -779,7 +785,7 @@ func TestGolden_ComposeTopologyJSON(t *testing.T) {
     }
   ]
 }
-`, path, sampleSpec.blockCount, sampleSpec.wireCount)
+`, path, sampleSpec.blockCount, testfixture.SampleCredentialWire.ToBlock, testfixture.SampleCredentialWire.FromBlock, sampleSpec.wireCount)
 	if got := buf.String(); got != want {
 		t.Errorf("compose topology --format json output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}
@@ -992,6 +998,10 @@ func TestCredentialPath_StandardComposition_Topology(t *testing.T) {
 		t.Errorf("expected %d wires in topology, got:\n%s", standardSpec.wireCount, out)
 	}
 	assertTopoOrder(t, standardSpec, out)
+	wantCredSrc := fmt.Sprintf("%s <- %s", testfixture.StandardCredentialWire.ToBlock, testfixture.StandardCredentialWire.FromBlock)
+	if !strings.Contains(out, wantCredSrc) {
+		t.Errorf("missing credential source %q in topology:\n%s", wantCredSrc, out)
+	}
 	if !strings.Contains(out, testfixture.WireLabel(testfixture.StandardCredentialWire)) {
 		t.Errorf("missing credential wire in topology:\n%s", out)
 	}

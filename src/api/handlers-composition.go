@@ -90,9 +90,10 @@ type TopologyNode struct {
 
 // TopologyResponse is the response for POST /v1/compositions/topology.
 type TopologyResponse struct {
-	Nodes []TopologyNode `json:"nodes"`
-	Wires []block.Wire   `json:"wires"`
-	Error string         `json:"error,omitempty"`
+	Nodes             []TopologyNode    `json:"nodes"`
+	Wires             []block.Wire      `json:"wires"`
+	CredentialSources map[string]string `json:"credentialSources,omitempty"`
+	Error             string            `json:"error,omitempty"`
 }
 
 // handleTopology returns the topological sort order and dependency graph
@@ -135,8 +136,13 @@ func (s *Server) handleTopology(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	credSources := block.CredentialSources(result.Composition.Wires)
+	if len(credSources) == 0 {
+		credSources = nil
+	}
 	writeJSON(w, http.StatusOK, TopologyResponse{
-		Nodes: nodes,
-		Wires: result.Composition.Wires,
+		Nodes:             nodes,
+		Wires:             result.Composition.Wires,
+		CredentialSources: credSources,
 	})
 }

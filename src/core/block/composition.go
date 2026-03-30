@@ -23,6 +23,19 @@ type Wire struct {
 	ToPort    string `json:"toPort"    yaml:"toPort"`
 }
 
+// CredentialSources returns a per-consumer mapping of credential wires:
+// each entry maps a consumer block (ToBlock) to its credential source
+// block (FromBlock) for wires whose ToPort is "upstream-credential".
+func CredentialSources(wires []Wire) map[string]string {
+	m := make(map[string]string)
+	for _, w := range wires {
+		if w.ToPort == "upstream-credential" {
+			m[w.ToBlock] = w.FromBlock
+		}
+	}
+	return m
+}
+
 // Composition is the domain model for a fully described, wired-together
 // set of blocks. This is what the CRD's spec.blocks section maps to.
 type Composition struct {
