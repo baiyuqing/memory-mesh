@@ -93,6 +93,21 @@ describe('ApiPill target note', () => {
     const target = screen.getByText('localhost:8080')
     expect(target).toBeDefined()
     expect(target.className).toBe('header-api-target')
+    // Connected badge treatment: parent pill has api-connected class,
+    // which activates .api-connected .header-api-target CSS styling
+    const pill = target.closest('.header-api-pill')
+    expect(pill).not.toBeNull()
+    expect(pill!.classList.contains('api-connected')).toBe(true)
+  })
+
+  it('target in unavailable state does not get connected badge treatment', () => {
+    render(<ApiPill available={false} />)
+    const target = screen.getByText('localhost:8080')
+    expect(target.className).toBe('header-api-target')
+    const pill = target.closest('.header-api-pill')
+    expect(pill).not.toBeNull()
+    expect(pill!.classList.contains('api-connected')).toBe(false)
+    expect(pill!.classList.contains('api-unavailable')).toBe(true)
   })
 
   it('does not show target in neutral state', () => {
