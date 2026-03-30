@@ -312,7 +312,7 @@ describe('ApiPill health result', () => {
     expect(screen.queryByText('unreachable')).toBeNull()
   })
 
-  it('hides result during active health check', async () => {
+  it('keeps last result visible during next health check', async () => {
     let resolve: (v: boolean) => void
     const onHealthCheck = vi.fn().mockImplementation(() => new Promise<boolean>(r => { resolve = r }))
     render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
@@ -326,10 +326,34 @@ describe('ApiPill health result', () => {
     await vi.waitFor(() => {
       expect(screen.getByText('reachable')).toBeDefined()
     })
-    // Second check — result should hide while checking
+    // Second check — last result stays visible while checking
     screen.getByTitle('Check API health').click()
     await vi.waitFor(() => {
       expect(screen.getByTitle('Check API health').textContent).toBe('checking')
+    })
+    expect(screen.getByText('reachable')).toBeDefined()
+  })
+
+  it('updates result when new check completes with different outcome', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    // First check: success
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByTitle('Check API health').textContent).toBe('ok')
+    })
+    vi.advanceTimersByTime(1500)
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    // Second check: failure — result should update
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByTitle('Check API health').textContent).toBe('fail')
+    })
+    vi.advanceTimersByTime(1500)
+    await vi.waitFor(() => {
+      expect(screen.getByText('unreachable')).toBeDefined()
     })
     expect(screen.queryByText('reachable')).toBeNull()
   })
