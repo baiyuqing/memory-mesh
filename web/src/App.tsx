@@ -36,6 +36,7 @@ export function copyToClipboard(
 // Exported so tests can render and click the pill in isolation.
 export function ApiPill({ available, onRetry }: { available: boolean | null; onRetry?: () => void }) {
   const [copied, setCopied] = useState(false)
+  const [targetCopied, setTargetCopied] = useState(false)
   const [recovered, setRecovered] = useState(false)
   const prevAvailable = useRef(available)
   const pill = apiPillState(available)
@@ -57,6 +58,14 @@ export function ApiPill({ available, onRetry }: { available: boolean | null; onR
     })
   }, [pill.hint])
 
+  const handleTargetCopy = useCallback(() => {
+    if (!pill.target) return
+    copyToClipboard(pill.target, () => {
+      setTargetCopied(true)
+      setTimeout(() => setTargetCopied(false), 1500)
+    })
+  }, [pill.target])
+
   return (
     <div className={`header-api-pill ${pill.className}`}>
       <span className="header-api-dot" />
@@ -66,6 +75,15 @@ export function ApiPill({ available, onRetry }: { available: boolean | null; onR
       )}
       {pill.target && (
         <span className="header-api-target">{pill.target}</span>
+      )}
+      {available === true && pill.target && (
+        <button
+          className="header-api-target-copy"
+          onClick={handleTargetCopy}
+          title="Copy target"
+        >
+          {targetCopied ? 'copied' : 'copy'}
+        </button>
       )}
       {pill.connectedNote && !recovered && (
         <span className="header-api-connected-note">{pill.connectedNote}</span>

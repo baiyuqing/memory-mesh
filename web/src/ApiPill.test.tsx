@@ -116,6 +116,54 @@ describe('ApiPill target note', () => {
   })
 })
 
+describe('ApiPill target copy action', () => {
+  beforeEach(() => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  it('shows copy button next to target when connected', () => {
+    render(<ApiPill available={true} />)
+    const copyBtn = screen.getByTitle('Copy target')
+    expect(copyBtn).toBeDefined()
+    expect(copyBtn.className).toBe('header-api-target-copy')
+    expect(copyBtn.textContent).toBe('copy')
+  })
+
+  it('copies target text to clipboard on click', async () => {
+    render(<ApiPill available={true} />)
+    const copyBtn = screen.getByTitle('Copy target')
+    copyBtn.click()
+    await vi.waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('localhost:8080')
+    })
+  })
+
+  it('shows copied feedback after click', async () => {
+    render(<ApiPill available={true} />)
+    const copyBtn = screen.getByTitle('Copy target')
+    copyBtn.click()
+    await vi.waitFor(() => {
+      expect(copyBtn.textContent).toBe('copied')
+    })
+  })
+
+  it('does not show target copy button when unavailable', () => {
+    render(<ApiPill available={false} />)
+    expect(screen.queryByTitle('Copy target')).toBeNull()
+  })
+
+  it('does not show target copy button in neutral state', () => {
+    render(<ApiPill available={null} />)
+    expect(screen.queryByTitle('Copy target')).toBeNull()
+  })
+})
+
 describe('ApiPill docs link', () => {
   beforeEach(() => {
     const writeText = vi.fn().mockResolvedValue(undefined)
