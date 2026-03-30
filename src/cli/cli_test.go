@@ -487,16 +487,7 @@ func TestComposeAutoWireFormatJSON(t *testing.T) {
 	if len(result.Wires) != sampleSpec.wireCount {
 		t.Fatalf("expected %d wires, got %d", sampleSpec.wireCount, len(result.Wires))
 	}
-	wantWires := []wireEntry{
-		{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
-		{FromBlock: "db", FromPort: "dsn", ToBlock: "pooler", ToPort: "upstream-dsn"},
-		{FromBlock: "db", FromPort: "credential", ToBlock: "pooler", ToPort: "upstream-credential"},
-	}
-	for i, want := range wantWires {
-		if result.Wires[i] != want {
-			t.Errorf("wire %d mismatch.\nwant: %+v\ngot:  %+v", i, want, result.Wires[i])
-		}
-	}
+	assertJSONWires(t, sampleSpec, result.Wires)
 }
 
 func TestComposeTopologyFormatJSON(t *testing.T) {

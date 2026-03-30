@@ -132,6 +132,21 @@ var SampleTopoOrder = []string{"storage", "db", "pooler"}
 // StandardTopoOrder is the expected topological order for the standard path.
 var StandardTopoOrder = []string{"storage", "db", "rotator", "pooler"}
 
+// SampleExpectedWires lists the wires produced by the sample (3-block) path.
+var SampleExpectedWires = []block.Wire{
+	{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
+	{FromBlock: "db", FromPort: "dsn", ToBlock: "pooler", ToPort: "upstream-dsn"},
+	{FromBlock: "db", FromPort: "credential", ToBlock: "pooler", ToPort: "upstream-credential"},
+}
+
+// StandardExpectedWires lists the wires produced by the standard (4-block credential) path.
+var StandardExpectedWires = []block.Wire{
+	{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
+	{FromBlock: "db", FromPort: "dsn", ToBlock: "rotator", ToPort: "upstream-dsn"},
+	{FromBlock: "db", FromPort: "dsn", ToBlock: "pooler", ToPort: "upstream-dsn"},
+	{FromBlock: "rotator", FromPort: "credential", ToBlock: "pooler", ToPort: "upstream-credential"},
+}
+
 // blockKindMap maps block name to kind from Phase1Blocks.
 var blockKindMap = func() map[string]string {
 	m := make(map[string]string)
@@ -271,23 +286,32 @@ func AssertSampleTopoOrder(t *testing.T, sorted []block.BlockRef) {
 	assertTopoOrder(t, sorted, SampleTopoOrder)
 }
 
-// AssertCredentialPathWires verifies the 3 key wires of the standard
-// credential path exist: storage→db, db→rotator, rotator→pooler.
-func AssertCredentialPathWires(t *testing.T, wires []block.Wire) {
+// assertWiresExist verifies that all expected wires exist in the actual wire set.
+func assertWiresExist(t *testing.T, actual []block.Wire, expected []block.Wire) {
 	t.Helper()
 	wireSet := make(map[string]bool)
-	for _, w := range wires {
+	for _, w := range actual {
 		key := w.FromBlock + "/" + w.FromPort + "->" + w.ToBlock + "/" + w.ToPort
 		wireSet[key] = true
 	}
-	expectedWires := []string{
-		"storage/pvc-spec->db/storage",
-		"db/dsn->rotator/upstream-dsn",
-		"rotator/credential->pooler/upstream-credential",
-	}
-	for _, ew := range expectedWires {
-		if !wireSet[ew] {
-			t.Errorf("expected wire %q not found in %v", ew, wireSet)
+	for _, ew := range expected {
+		key := ew.FromBlock + "/" + ew.FromPort + "->" + ew.ToBlock + "/" + ew.ToPort
+		if !wireSet[key] {
+			t.Errorf("expected wire %q not found in %v", key, wireSet)
 		}
 	}
+}
+
+// AssertCredentialPathWires verifies the key wires of the standard
+// credential path exist: storage→db, db→rotator, rotator→pooler.
+func AssertCredentialPathWires(t *testing.T, wires []block.Wire) {
+	t.Helper()
+	assertWiresExist(t, wires, StandardExpectedWires)
+}
+
+// AssertSampleWires verifies the key wires of the sample path exist:
+// storage→db, db→pooler (dsn + credential).
+func AssertSampleWires(t *testing.T, wires []block.Wire) {
+	t.Helper()
+	assertWiresExist(t, wires, SampleExpectedWires)
 }
