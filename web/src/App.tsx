@@ -32,6 +32,15 @@ export function copyToClipboard(
   navigator.clipboard.writeText(command).then(onCopied, () => {})
 }
 
+export function formatHealthTime(time: Date, now: Date = new Date()): string {
+  const seconds = Math.floor((now.getTime() - time.getTime()) / 1000)
+  if (seconds < 5) return 'just now'
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  return `${Math.floor(minutes / 60)}h ago`
+}
+
 // Renders the API status pill with optional CTA + copy button + retry.
 // Exported so tests can render and click the pill in isolation.
 export function ApiPill({ available, onRetry, onHealthCheck }: { available: boolean | null; onRetry?: () => void; onHealthCheck?: () => Promise<boolean> }) {
@@ -39,6 +48,7 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
   const [targetCopied, setTargetCopied] = useState(false)
   const [healthStatus, setHealthStatus] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle')
   const [healthResult, setHealthResult] = useState<'ok' | 'fail' | null>(null)
+  const [healthTime, setHealthTime] = useState<Date | null>(null)
   const [recovered, setRecovered] = useState(false)
   const prevAvailable = useRef(available)
   const pill = apiPillState(available)
@@ -67,10 +77,12 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
       const result = ok ? 'ok' : 'fail'
       setHealthStatus(result)
       setHealthResult(result)
+      setHealthTime(new Date())
       setTimeout(() => setHealthStatus('idle'), 1500)
     }, () => {
       setHealthStatus('fail')
       setHealthResult('fail')
+      setHealthTime(new Date())
       setTimeout(() => setHealthStatus('idle'), 1500)
     })
   }, [onHealthCheck])
@@ -127,6 +139,9 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
         <span className={`header-api-health-result header-api-health-result-${healthResult}`}>
           {healthResult === 'ok' ? 'reachable' : 'unreachable'}
         </span>
+      )}
+      {available === true && healthTime && healthResult && (
+        <span className="header-api-health-time">{formatHealthTime(healthTime)}</span>
       )}
       {pill.connectedNote && !recovered && (
         <span className="header-api-connected-note">{pill.connectedNote}</span>
