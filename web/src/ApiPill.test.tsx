@@ -1052,6 +1052,56 @@ describe('ApiPill health target change reset', () => {
     })
     expect(screen.queryByText('localhost:8080 unreachable')).toBeNull()
   })
+
+  it('failure handoff includes docs link', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    screen.getByTitle('Check new target').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('localhost:8080 unreachable')).toBeDefined()
+    })
+    const link = screen.getByTitle('Setup instructions')
+    expect(link).toBeDefined()
+    expect(link.textContent).toBe('docs')
+    expect(link.getAttribute('href')).toBe('/QUICKSTART.md')
+    expect(link.getAttribute('target')).toBe('_blank')
+    expect(link.className).toBe('header-api-target-failed-docs')
+  })
+
+  it('failure handoff docs link clears with failure handoff', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    screen.getByTitle('Check new target').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('localhost:8080 unreachable')).toBeDefined()
+    })
+    expect(screen.getByTitle('Setup instructions')).toBeDefined()
+    await act(async () => {
+      vi.advanceTimersByTime(3100)
+    })
+    expect(screen.queryByText('localhost:8080 unreachable')).toBeNull()
+    expect(screen.queryByTitle('Setup instructions')).toBeNull()
+  })
 })
 
 describe('ApiPill docs link', () => {
