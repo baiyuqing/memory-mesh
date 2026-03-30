@@ -866,6 +866,36 @@ describe('ApiPill health target change reset', () => {
     })
     expect(screen.queryByText('localhost:8080 reachable')).toBeNull()
   })
+
+  it('second target change clears stale success confirmation', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    // First check establishes health record
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    // First target change
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    // Ping from reset note — success confirmation appears
+    screen.getByTitle('Check new target').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('localhost:8080 reachable')).toBeDefined()
+    })
+    // Second target change — stale confirmation must be cleared
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    expect(screen.queryByText('localhost:8080 reachable')).toBeNull()
+  })
 })
 
 describe('ApiPill docs link', () => {

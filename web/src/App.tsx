@@ -76,6 +76,11 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
       setHealthTime(null)
       setHealthTarget(null)
       setHealthStatus('idle')
+      setTargetConfirmed(false)
+      if (targetConfirmedTimer.current) {
+        clearTimeout(targetConfirmedTimer.current)
+        targetConfirmedTimer.current = null
+      }
       setTargetChanged(true)
       if (targetChangedTimer.current) clearTimeout(targetChangedTimer.current)
       targetChangedTimer.current = setTimeout(() => setTargetChanged(false), 3000)
