@@ -51,9 +51,11 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
   const [recovered, setRecovered] = useState(false)
   const [targetChanged, setTargetChanged] = useState(false)
   const [targetConfirmed, setTargetConfirmed] = useState(false)
+  const [targetFailed, setTargetFailed] = useState(false)
   const targetChangedRef = useRef(false)
   const targetChangedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const targetConfirmedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const targetFailedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const prevAvailable = useRef(available)
   const pill = apiPillState(available)
 
@@ -80,6 +82,11 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
       if (targetConfirmedTimer.current) {
         clearTimeout(targetConfirmedTimer.current)
         targetConfirmedTimer.current = null
+      }
+      setTargetFailed(false)
+      if (targetFailedTimer.current) {
+        clearTimeout(targetFailedTimer.current)
+        targetFailedTimer.current = null
       }
       setTargetChanged(true)
       if (targetChangedTimer.current) clearTimeout(targetChangedTimer.current)
@@ -114,6 +121,15 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
         setTargetConfirmed(true)
         if (targetConfirmedTimer.current) clearTimeout(targetConfirmedTimer.current)
         targetConfirmedTimer.current = setTimeout(() => setTargetConfirmed(false), 3000)
+      } else if (!ok && targetChangedRef.current) {
+        setTargetChanged(false)
+        if (targetChangedTimer.current) {
+          clearTimeout(targetChangedTimer.current)
+          targetChangedTimer.current = null
+        }
+        setTargetFailed(true)
+        if (targetFailedTimer.current) clearTimeout(targetFailedTimer.current)
+        targetFailedTimer.current = setTimeout(() => setTargetFailed(false), 3000)
       } else if (ok) {
         setTargetChanged(false)
       }
@@ -123,6 +139,16 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
       setHealthTime(new Date())
       setHealthTarget(pill.target)
       setTimeout(() => setHealthStatus('idle'), 1500)
+      if (targetChangedRef.current) {
+        setTargetChanged(false)
+        if (targetChangedTimer.current) {
+          clearTimeout(targetChangedTimer.current)
+          targetChangedTimer.current = null
+        }
+        setTargetFailed(true)
+        if (targetFailedTimer.current) clearTimeout(targetFailedTimer.current)
+        targetFailedTimer.current = setTimeout(() => setTargetFailed(false), 3000)
+      }
     })
   }, [onHealthCheck, pill.target])
 
@@ -222,6 +248,9 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
       )}
       {available === true && targetConfirmed && (
         <span className="header-api-target-confirmed">{pill.target} reachable</span>
+      )}
+      {available === true && targetFailed && (
+        <span className="header-api-target-failed">{pill.target} unreachable</span>
       )}
       {pill.connectedNote && !recovered && (
         <span className="header-api-connected-note">{pill.connectedNote}</span>
