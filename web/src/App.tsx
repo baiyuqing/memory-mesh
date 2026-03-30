@@ -16,11 +16,11 @@ const initialBlocks: BlockRef[] = sampleComposition.composition.blocks.map(b => 
 }))
 
 // Derives the API status pill display state from the availability flag.
-// Exported so tests can verify the exact label/class mapping.
-export function apiPillState(available: boolean | null): { label: string; className: string } {
-  if (available === true) return { label: 'API connected', className: 'api-connected' }
-  if (available === false) return { label: 'API unavailable', className: 'api-unavailable' }
-  return { label: 'API', className: '' }
+// Exported so tests can verify the exact label/class/hint mapping.
+export function apiPillState(available: boolean | null): { label: string; className: string; hint: string | null } {
+  if (available === true) return { label: 'API connected', className: 'api-connected', hint: null }
+  if (available === false) return { label: 'API unavailable', className: 'api-unavailable', hint: 'make workbench' }
+  return { label: 'API', className: '', hint: null }
 }
 
 function categoryOf(kind: string): string {
@@ -270,6 +270,9 @@ function App() {
             <div className={`header-api-pill ${pill.className}`}>
               <span className="header-api-dot" />
               <span className="header-api-label">{pill.label}</span>
+              {pill.hint && (
+                <span className="header-api-hint">run <code>{pill.hint}</code></span>
+              )}
             </div>
           )
         })()}

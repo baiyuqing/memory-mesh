@@ -183,7 +183,7 @@ describe('credential source badge via API', () => {
 describe('API status pill state mapping', () => {
   // Import the extracted helper that drives the pill JSX
   // If the mapping or helper is removed/renamed, this import fails → test fails
-  let apiPillState: (available: boolean | null) => { label: string; className: string }
+  let apiPillState: (available: boolean | null) => { label: string; className: string; hint: string | null }
 
   beforeAll(async () => {
     const mod = await import('./App')
@@ -194,17 +194,20 @@ describe('API status pill state mapping', () => {
     const pill = apiPillState(null)
     expect(pill.label).toBe('API')
     expect(pill.className).toBe('')
+    expect(pill.hint).toBeNull()
   })
 
-  it('shows connected when API is available', () => {
+  it('shows connected when API is available, no CTA', () => {
     const pill = apiPillState(true)
     expect(pill.label).toBe('API connected')
     expect(pill.className).toBe('api-connected')
+    expect(pill.hint).toBeNull()
   })
 
-  it('shows unavailable when API is unreachable', () => {
+  it('shows unavailable with actionable CTA when API is unreachable', () => {
     const pill = apiPillState(false)
     expect(pill.label).toBe('API unavailable')
     expect(pill.className).toBe('api-unavailable')
+    expect(pill.hint).toBe('make workbench')
   })
 })
