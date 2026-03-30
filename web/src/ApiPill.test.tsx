@@ -1102,6 +1102,85 @@ describe('ApiPill health target change reset', () => {
     expect(screen.queryByText('localhost:8080 unreachable')).toBeNull()
     expect(screen.queryByTitle('Setup instructions')).toBeNull()
   })
+
+  it('failure handoff shows retry button', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    screen.getByTitle('Check new target').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('localhost:8080 unreachable')).toBeDefined()
+    })
+    const btn = screen.getByTitle('Retry health check')
+    expect(btn).toBeDefined()
+    expect(btn.className).toBe('header-api-target-failed-retry')
+    expect(btn.textContent).toBe('retry')
+  })
+
+  it('retry from failure handoff transitions to confirmed on success', async () => {
+    const onHealthCheck = vi.fn()
+      .mockResolvedValueOnce(true)  // establish record
+      .mockResolvedValueOnce(false) // fail on retry from reset note
+      .mockResolvedValueOnce(true)  // succeed on retry from failure handoff
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    screen.getByTitle('Check new target').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('localhost:8080 unreachable')).toBeDefined()
+    })
+    // Retry from failure handoff — succeeds
+    screen.getByTitle('Retry health check').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('localhost:8080 reachable')).toBeDefined()
+    })
+    expect(screen.queryByText('localhost:8080 unreachable')).toBeNull()
+  })
+
+  it('retry from failure handoff keeps failure visible on repeated failure', async () => {
+    const onHealthCheck = vi.fn()
+      .mockResolvedValueOnce(true)  // establish record
+      .mockResolvedValueOnce(false) // fail on retry from reset note
+      .mockResolvedValueOnce(false) // fail again on retry from failure handoff
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    screen.getByTitle('Check new target').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('localhost:8080 unreachable')).toBeDefined()
+    })
+    // Retry from failure handoff — fails again
+    screen.getByTitle('Retry health check').click()
+    await vi.waitFor(() => {
+      expect(screen.getByTitle('Retry health check').textContent).toBe('retry')
+    })
+    expect(screen.getByText('localhost:8080 unreachable')).toBeDefined()
+  })
 })
 
 describe('ApiPill docs link', () => {
