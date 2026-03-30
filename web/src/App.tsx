@@ -32,6 +32,40 @@ export function copyToClipboard(
   navigator.clipboard.writeText(command).then(onCopied, () => {})
 }
 
+// Renders the API status pill with optional CTA + copy button.
+// Exported so tests can render and click the pill in isolation.
+export function ApiPill({ available }: { available: boolean | null }) {
+  const [copied, setCopied] = useState(false)
+  const pill = apiPillState(available)
+
+  const handleCopy = useCallback(() => {
+    if (!pill.hint) return
+    copyToClipboard(pill.hint, () => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }, [pill.hint])
+
+  return (
+    <div className={`header-api-pill ${pill.className}`}>
+      <span className="header-api-dot" />
+      <span className="header-api-label">{pill.label}</span>
+      {pill.hint && (
+        <span className="header-api-hint">
+          run <code>{pill.hint}</code>
+          <button
+            className="header-api-copy"
+            onClick={handleCopy}
+            title="Copy command"
+          >
+            {copied ? 'copied' : 'copy'}
+          </button>
+        </span>
+      )}
+    </div>
+  )
+}
+
 function categoryOf(kind: string): string {
   return kind.split('.')[0]
 }
@@ -212,15 +246,7 @@ function App() {
   const wires = useMemo(() => getWires(currentBlocks), [currentBlocks])
   const [credentialSources, setCredentialSources] = useState<Record<string, string>>({})
   const [apiAvailable, setApiAvailable] = useState<boolean | null>(null)
-  const [copied, setCopied] = useState(false)
   const activeKinds = useMemo(() => new Set(currentBlocks.map(b => b.kind)), [currentBlocks])
-
-  const copyCommand = useCallback((command: string) => {
-    copyToClipboard(command, () => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
-  }, [])
 
   // Fetch credential sources from the API topology endpoint whenever
   // the composition changes. This consumes the same compiled wire truth
@@ -281,27 +307,7 @@ function App() {
           <div className="header-sep" />
           <span className="header-block-count">{currentBlocks.length} blocks &middot; {wires.length} wires</span>
         </div>
-        {(() => {
-          const pill = apiPillState(apiAvailable)
-          return (
-            <div className={`header-api-pill ${pill.className}`}>
-              <span className="header-api-dot" />
-              <span className="header-api-label">{pill.label}</span>
-              {pill.hint && (
-                <span className="header-api-hint">
-                  run <code>{pill.hint}</code>
-                  <button
-                    className="header-api-copy"
-                    onClick={() => copyCommand(pill.hint!)}
-                    title="Copy command"
-                  >
-                    {copied ? 'copied' : 'copy'}
-                  </button>
-                </span>
-              )}
-            </div>
-          )
-        })()}
+        <ApiPill available={apiAvailable} />
       </header>
 
       {/* Left: Block catalog */}
