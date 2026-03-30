@@ -220,3 +220,53 @@ describe('API status pill state mapping', () => {
     expect(pill.hint).not.toContain('`')
   })
 })
+
+describe('copy-to-clipboard action', () => {
+  let copyToClipboard: (command: string, onCopied: () => void) => void
+
+  beforeAll(async () => {
+    const mod = await import('./App')
+    copyToClipboard = mod.copyToClipboard
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('writes the exact command to navigator.clipboard', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    const onCopied = vi.fn()
+    copyToClipboard('make workbench', onCopied)
+
+    // writeText must receive the exact hint string
+    expect(writeText).toHaveBeenCalledOnce()
+    expect(writeText).toHaveBeenCalledWith('make workbench')
+
+    // onCopied fires after the promise resolves
+    await vi.waitFor(() => expect(onCopied).toHaveBeenCalledOnce())
+  })
+
+  it('calls onCopied callback on success (drives copied feedback)', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    let copiedState = false
+    copyToClipboard('make workbench', () => { copiedState = true })
+
+    await vi.waitFor(() => expect(copiedState).toBe(true))
+  })
+
+  it('does not call onCopied if clipboard write fails', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'))
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    const onCopied = vi.fn()
+    copyToClipboard('make workbench', onCopied)
+
+    // Give the promise time to settle
+    await new Promise(r => setTimeout(r, 50))
+    expect(onCopied).not.toHaveBeenCalled()
+  })
+})

@@ -23,6 +23,15 @@ export function apiPillState(available: boolean | null): { label: string; classN
   return { label: 'API', className: '', hint: null }
 }
 
+// Copies a command string to the clipboard and calls onCopied when done.
+// Exported so tests can verify the clipboard integration without rendering.
+export function copyToClipboard(
+  command: string,
+  onCopied: () => void,
+): void {
+  navigator.clipboard.writeText(command).then(onCopied, () => {})
+}
+
 function categoryOf(kind: string): string {
   return kind.split('.')[0]
 }
@@ -207,7 +216,7 @@ function App() {
   const activeKinds = useMemo(() => new Set(currentBlocks.map(b => b.kind)), [currentBlocks])
 
   const copyCommand = useCallback((command: string) => {
-    navigator.clipboard.writeText(command).then(() => {
+    copyToClipboard(command, () => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     })
