@@ -210,6 +210,14 @@
   opacity: 0.9;
 }
 
+.header-api-connected-note {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: #4ade80;
+  margin-left: 6px;
+  opacity: 0.7;
+}
+
 .header-api-target {
   font-family: var(--mono);
   font-size: 9px;
