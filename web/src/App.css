@@ -320,6 +320,11 @@
   background: rgba(248, 113, 113, 0.08);
 }
 
+.header-api-health-target {
+  margin-right: 4px;
+  opacity: 0.8;
+}
+
 .header-api-health-time {
   font-family: var(--mono);
   font-size: 9px;

@@ -270,7 +270,7 @@ describe('ApiPill health result', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows reachable result after successful health check resets', async () => {
+  it('shows reachable result with target after successful health check resets', async () => {
     const onHealthCheck = vi.fn().mockResolvedValue(true)
     render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
     const btn = screen.getByTitle('Check API health')
@@ -282,13 +282,16 @@ describe('ApiPill health result', () => {
     await vi.waitFor(() => {
       expect(btn.textContent).toBe('ping')
     })
-    const result = screen.getByText('reachable')
-    expect(result).toBeDefined()
-    expect(result.classList.contains('header-api-health-result')).toBe(true)
-    expect(result.classList.contains('header-api-health-result-ok')).toBe(true)
+    const result = document.querySelector('.header-api-health-result')
+    expect(result).not.toBeNull()
+    expect(result!.classList.contains('header-api-health-result-ok')).toBe(true)
+    expect(result!.textContent).toContain('reachable')
+    const target = result!.querySelector('.header-api-health-target')
+    expect(target).not.toBeNull()
+    expect(target!.textContent).toBe('localhost:8080')
   })
 
-  it('shows unreachable result after failed health check resets', async () => {
+  it('shows unreachable result with target after failed health check resets', async () => {
     const onHealthCheck = vi.fn().mockResolvedValue(false)
     render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
     const btn = screen.getByTitle('Check API health')
@@ -300,9 +303,13 @@ describe('ApiPill health result', () => {
     await vi.waitFor(() => {
       expect(btn.textContent).toBe('ping')
     })
-    const result = screen.getByText('unreachable')
-    expect(result).toBeDefined()
-    expect(result.classList.contains('header-api-health-result-fail')).toBe(true)
+    const result = document.querySelector('.header-api-health-result')
+    expect(result).not.toBeNull()
+    expect(result!.classList.contains('header-api-health-result-fail')).toBe(true)
+    expect(result!.textContent).toContain('unreachable')
+    const target = result!.querySelector('.header-api-health-target')
+    expect(target).not.toBeNull()
+    expect(target!.textContent).toBe('localhost:8080')
   })
 
   it('does not show result before health check runs', () => {
