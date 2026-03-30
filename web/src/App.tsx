@@ -38,6 +38,7 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
   const [copied, setCopied] = useState(false)
   const [targetCopied, setTargetCopied] = useState(false)
   const [healthStatus, setHealthStatus] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle')
+  const [healthResult, setHealthResult] = useState<'ok' | 'fail' | null>(null)
   const [recovered, setRecovered] = useState(false)
   const prevAvailable = useRef(available)
   const pill = apiPillState(available)
@@ -62,11 +63,15 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
   const handleHealthCheck = useCallback(() => {
     if (!onHealthCheck) return
     setHealthStatus('checking')
+    setHealthResult(null)
     onHealthCheck().then(ok => {
-      setHealthStatus(ok ? 'ok' : 'fail')
+      const result = ok ? 'ok' : 'fail'
+      setHealthStatus(result)
+      setHealthResult(result)
       setTimeout(() => setHealthStatus('idle'), 1500)
     }, () => {
       setHealthStatus('fail')
+      setHealthResult('fail')
       setTimeout(() => setHealthStatus('idle'), 1500)
     })
   }, [onHealthCheck])
@@ -118,6 +123,11 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
         >
           {healthStatus === 'idle' ? 'ping' : healthStatus}
         </button>
+      )}
+      {available === true && healthResult && healthStatus === 'idle' && (
+        <span className={`header-api-health-result header-api-health-result-${healthResult}`}>
+          {healthResult === 'ok' ? 'reachable' : 'unreachable'}
+        </span>
       )}
       {pill.connectedNote && !recovered && (
         <span className="header-api-connected-note">{pill.connectedNote}</span>
