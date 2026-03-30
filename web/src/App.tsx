@@ -37,11 +37,26 @@ function getWires(blocks: BlockRef[]): { from: string; to: string; port: string 
   return wires
 }
 
-// Derives per-consumer credential sources from wires.
-// Mirrors the Go block.CredentialSources logic: each wire whose
-// destination port is "upstream-credential" maps consumer → source.
+// Block kinds that expose a credential output port or accept an
+// upstream-credential input port. This mirrors the Go block registry
+// port definitions for the Phase 1 block set.
+const credentialOutputKinds = new Set([
+  'datastore.postgresql',
+  'security.password-rotation',
+])
+const credentialInputKinds = new Set([
+  'gateway.pgbouncer',
+])
+
+// Derives per-consumer credential sources from wires, including
+// auto-wired credential ports. Mirrors the Go block.CredentialSources
+// + AutoWire logic: if a block has an upstream-credential input that
+// is not explicitly wired and exactly one credential output exists
+// from another block, auto-wire it.
 function getCredentialSources(blocks: BlockRef[]): Map<string, string> {
   const sources = new Map<string, string>()
+
+  // Explicit wires from inputs
   const nameSet = new Set(blocks.map(b => b.name))
   for (const b of blocks) {
     if (!b.inputs) continue
@@ -53,6 +68,23 @@ function getCredentialSources(blocks: BlockRef[]): Map<string, string> {
       }
     }
   }
+
+  // Auto-wire: for blocks with credential input that aren't explicitly
+  // wired, find unambiguous credential output sources.
+  const credOutputBlocks = blocks
+    .filter(b => credentialOutputKinds.has(b.kind))
+    .map(b => b.name)
+
+  for (const b of blocks) {
+    if (!credentialInputKinds.has(b.kind)) continue
+    if (sources.has(b.name)) continue
+    // Filter out self (shouldn't happen, but matches Go logic)
+    const candidates = credOutputBlocks.filter(name => name !== b.name)
+    if (candidates.length === 1) {
+      sources.set(b.name, candidates[0])
+    }
+  }
+
   return sources
 }
 

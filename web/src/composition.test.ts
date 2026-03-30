@@ -2,13 +2,25 @@ import { describe, it, expect } from 'vitest'
 import sampleComposition from '@examples/sample-composition.json'
 import standardComposition from '@examples/standard-composition.json'
 
-// Mirrors Go block.CredentialSources: extracts consumer→source for
-// each wire whose destination port is "upstream-credential".
+// Block kinds that expose a credential output or accept upstream-credential
+// input. Mirrors the Go block registry port definitions for Phase 1 blocks.
+const credentialOutputKinds = new Set([
+  'datastore.postgresql',
+  'security.password-rotation',
+])
+const credentialInputKinds = new Set([
+  'gateway.pgbouncer',
+])
+
+// Mirrors Go block.CredentialSources + AutoWire: extracts consumer→source
+// for each upstream-credential wire, including auto-wired ones.
 function getCredentialSources(
-  blocks: Array<{ name: string; inputs?: Record<string, string> }>,
+  blocks: Array<{ kind: string; name: string; inputs?: Record<string, string> }>,
 ): Map<string, string> {
   const sources = new Map<string, string>()
   const nameSet = new Set(blocks.map(b => b.name))
+
+  // Explicit wires
   for (const b of blocks) {
     if (!b.inputs) continue
     for (const [port, ref] of Object.entries(b.inputs)) {
@@ -19,6 +31,21 @@ function getCredentialSources(
       }
     }
   }
+
+  // Auto-wire credential ports
+  const credOutputBlocks = blocks
+    .filter(b => credentialOutputKinds.has(b.kind))
+    .map(b => b.name)
+
+  for (const b of blocks) {
+    if (!credentialInputKinds.has(b.kind)) continue
+    if (sources.has(b.name)) continue
+    const candidates = credOutputBlocks.filter(name => name !== b.name)
+    if (candidates.length === 1) {
+      sources.set(b.name, candidates[0])
+    }
+  }
+
   return sources
 }
 
@@ -68,9 +95,10 @@ describe('onboarding sample composition', () => {
     expect(pooler.inputs!['upstream-dsn']).toBe('db/dsn')
   })
 
-  it('has no explicit credential source (auto-wired by backend)', () => {
+  it('derives credential source: pooler <- db (auto-wired)', () => {
     const sources = getCredentialSources(sampleComposition.composition.blocks)
-    expect(sources.size).toBe(0)
+    expect(sources.size).toBe(1)
+    expect(sources.get('pooler')).toBe('db')
   })
 })
 
