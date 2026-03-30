@@ -377,6 +377,18 @@
   margin-left: 4px;
   font-style: italic;
 }
+.header-api-target-changed-dismiss {
+  font-family: var(--mono);
+  font-size: 9px;
+  background: none;
+  border: 1px solid var(--text-muted);
+  color: var(--text-muted);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 4px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+}
 
 .header-api-docs {
   font-family: var(--mono);

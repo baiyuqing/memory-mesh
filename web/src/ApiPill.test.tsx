@@ -607,6 +607,84 @@ describe('ApiPill health target change reset', () => {
 
     expect(screen.queryByText('health record cleared — now targeting localhost:8080')).toBeNull()
   })
+
+  it('shows dismiss button on reset note', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    const btn = screen.getByTitle('Dismiss')
+    expect(btn).toBeDefined()
+    expect(btn.className).toBe('header-api-target-changed-dismiss')
+    expect(btn.textContent).toBe('dismiss')
+  })
+
+  it('dismiss button clears the reset note immediately', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    expect(screen.getByText('health record cleared — now targeting localhost:8080')).toBeDefined()
+    act(() => {
+      screen.getByTitle('Dismiss').click()
+    })
+    expect(screen.queryByText('health record cleared — now targeting localhost:8080')).toBeNull()
+    expect(screen.queryByTitle('Dismiss')).toBeNull()
+  })
+
+  it('dismiss cancels the auto-clear timer', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    // Dismiss before auto-clear fires
+    act(() => {
+      screen.getByTitle('Dismiss').click()
+    })
+    // Trigger another target change to show note again
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    // Note should reappear — old timer should not interfere
+    expect(screen.getByText('health record cleared — now targeting localhost:8080')).toBeDefined()
+  })
+
+  it('does not show dismiss button when no reset note', () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    expect(screen.queryByTitle('Dismiss')).toBeNull()
+  })
 })
 
 describe('ApiPill docs link', () => {
