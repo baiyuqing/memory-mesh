@@ -385,6 +385,14 @@
   margin-left: 4px;
   font-style: italic;
 }
+.header-api-target-failed {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.3px;
+  color: #f87171;
+  margin-left: 4px;
+  font-style: italic;
+}
 .header-api-target-changed-ping {
   font-family: var(--mono);
   font-size: 9px;
