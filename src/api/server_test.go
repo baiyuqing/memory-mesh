@@ -236,9 +236,11 @@ func TestTopology_CorrectOrder(t *testing.T) {
 	}
 
 	// Verify credential source derives from sample path.
-	if resp.CredentialSource != testfixture.SampleCredentialWire.FromBlock {
-		t.Errorf("expected credentialSource %q, got %q",
-			testfixture.SampleCredentialWire.FromBlock, resp.CredentialSource)
+	wantSrc := testfixture.SampleCredentialWire.FromBlock
+	wantConsumer := testfixture.SampleCredentialWire.ToBlock
+	if resp.CredentialSources[wantConsumer] != wantSrc {
+		t.Errorf("expected credentialSources[%q]=%q, got %q",
+			wantConsumer, wantSrc, resp.CredentialSources[wantConsumer])
 	}
 }
 
@@ -294,9 +296,11 @@ func TestTopology_StandardPath(t *testing.T) {
 	}
 
 	// Verify credential source derives from standard path.
-	if resp.CredentialSource != testfixture.StandardCredentialWire.FromBlock {
-		t.Errorf("expected credentialSource %q, got %q",
-			testfixture.StandardCredentialWire.FromBlock, resp.CredentialSource)
+	wantSrc := testfixture.StandardCredentialWire.FromBlock
+	wantConsumer := testfixture.StandardCredentialWire.ToBlock
+	if resp.CredentialSources[wantConsumer] != wantSrc {
+		t.Errorf("expected credentialSources[%q]=%q, got %q",
+			wantConsumer, wantSrc, resp.CredentialSources[wantConsumer])
 	}
 }
 

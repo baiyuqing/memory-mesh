@@ -365,8 +365,16 @@ func composeTopology(registry *block.Registry, filePath string, w io.Writer) err
 		fmt.Fprintf(w, "  %d. %s (%s)\n", i+1, ref.Name, ref.Kind)
 	}
 
-	if credSrc := block.CredentialSource(comp.Wires); credSrc != "" {
-		fmt.Fprintf(w, "\nCredential source: %s\n", credSrc)
+	if credSources := block.CredentialSources(comp.Wires); len(credSources) > 0 {
+		consumers := make([]string, 0, len(credSources))
+		for c := range credSources {
+			consumers = append(consumers, c)
+		}
+		sort.Strings(consumers)
+		fmt.Fprintln(w, "\nCredential sources:")
+		for _, consumer := range consumers {
+			fmt.Fprintf(w, "  %s <- %s\n", consumer, credSources[consumer])
+		}
 	}
 
 	if len(comp.Wires) > 0 {
@@ -470,12 +478,12 @@ type topoBlockEntry struct {
 }
 
 type topologyResult struct {
-	File             string           `json:"file"`
-	BlockCount       int              `json:"blockCount"`
-	Order            []topoBlockEntry `json:"order"`
-	CredentialSource string           `json:"credentialSource,omitempty"`
-	WireCount        int              `json:"wireCount"`
-	Wires            []wireEntry      `json:"wires"`
+	File              string            `json:"file"`
+	BlockCount        int               `json:"blockCount"`
+	Order             []topoBlockEntry  `json:"order"`
+	CredentialSources map[string]string `json:"credentialSources,omitempty"`
+	WireCount         int               `json:"wireCount"`
+	Wires             []wireEntry       `json:"wires"`
 }
 
 func composeTopologyJSON(registry *block.Registry, filePath string, w io.Writer) error {
@@ -518,13 +526,17 @@ func composeTopologyJSON(registry *block.Registry, filePath string, w io.Writer)
 
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
+	credSources := block.CredentialSources(comp.Wires)
+	if len(credSources) == 0 {
+		credSources = nil
+	}
 	return enc.Encode(topologyResult{
-		File:             filePath,
-		BlockCount:       len(sorted),
-		Order:            order,
-		CredentialSource: block.CredentialSource(comp.Wires),
-		WireCount:        len(comp.Wires),
-		Wires:            wires,
+		File:              filePath,
+		BlockCount:        len(sorted),
+		Order:             order,
+		CredentialSources: credSources,
+		WireCount:         len(comp.Wires),
+		Wires:             wires,
 	})
 }
 
