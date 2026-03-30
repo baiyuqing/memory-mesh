@@ -63,7 +63,6 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
   const handleHealthCheck = useCallback(() => {
     if (!onHealthCheck) return
     setHealthStatus('checking')
-    setHealthResult(null)
     onHealthCheck().then(ok => {
       const result = ok ? 'ok' : 'fail'
       setHealthStatus(result)
@@ -124,7 +123,7 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
           {healthStatus === 'idle' ? 'ping' : healthStatus}
         </button>
       )}
-      {available === true && healthResult && healthStatus === 'idle' && (
+      {available === true && healthResult && (
         <span className={`header-api-health-result header-api-health-result-${healthResult}`}>
           {healthResult === 'ok' ? 'reachable' : 'unreachable'}
         </span>
