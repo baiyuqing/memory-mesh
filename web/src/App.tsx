@@ -47,6 +47,7 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
   const [healthStatus, setHealthStatus] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle')
   const [healthResult, setHealthResult] = useState<'ok' | 'fail' | null>(null)
   const [healthTime, setHealthTime] = useState<Date | null>(null)
+  const [healthTarget, setHealthTarget] = useState<string | null>(null)
   const [recovered, setRecovered] = useState(false)
   const prevAvailable = useRef(available)
   const pill = apiPillState(available)
@@ -76,14 +77,16 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
       setHealthStatus(result)
       setHealthResult(result)
       setHealthTime(new Date())
+      setHealthTarget(pill.target)
       setTimeout(() => setHealthStatus('idle'), 1500)
     }, () => {
       setHealthStatus('fail')
       setHealthResult('fail')
       setHealthTime(new Date())
+      setHealthTarget(pill.target)
       setTimeout(() => setHealthStatus('idle'), 1500)
     })
-  }, [onHealthCheck])
+  }, [onHealthCheck, pill.target])
 
   const handleTargetCopy = useCallback(() => {
     if (!pill.target) return
@@ -135,6 +138,7 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
       )}
       {available === true && healthResult && (
         <span className={`header-api-health-result header-api-health-result-${healthResult}`}>
+          {healthTarget && <span className="header-api-health-target">{healthTarget}</span>}
           {healthResult === 'ok' ? 'reachable' : 'unreachable'}
         </span>
       )}
@@ -143,7 +147,7 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
           <span className="header-api-health-time">{formatHealthTime(healthTime)}</span>
           <button
             className="header-api-health-clear"
-            onClick={() => { setHealthResult(null); setHealthTime(null); setHealthStatus('idle') }}
+            onClick={() => { setHealthResult(null); setHealthTime(null); setHealthTarget(null); setHealthStatus('idle') }}
             title="Clear health result"
           >
             clear
