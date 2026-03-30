@@ -369,6 +369,15 @@
   color: var(--text);
 }
 
+.header-api-target-changed {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  margin-left: 4px;
+  font-style: italic;
+}
+
 .header-api-docs {
   font-family: var(--mono);
   font-size: 9px;

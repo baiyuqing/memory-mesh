@@ -554,6 +554,59 @@ describe('ApiPill health target change reset', () => {
     rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
     expect(screen.getByText('reachable')).toBeDefined()
   })
+
+  it('does not show reset note when no health record existed', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    // No health check performed — switch target
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    expect(screen.queryByText('health record cleared after target changed')).toBeNull()
+  })
+
+  it('shows reset note when target changes and health record existed', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    // Target changes: connected → neutral
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    // Back to connected — note should appear
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    expect(screen.getByText('health record cleared after target changed')).toBeDefined()
+  })
+
+  it('reset note auto-clears after 3 seconds', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    expect(screen.getByText('health record cleared after target changed')).toBeDefined()
+
+    await act(async () => {
+      vi.advanceTimersByTime(3100)
+    })
+
+    expect(screen.queryByText('health record cleared after target changed')).toBeNull()
+  })
 })
 
 describe('ApiPill docs link', () => {
