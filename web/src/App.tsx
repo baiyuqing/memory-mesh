@@ -18,7 +18,7 @@ const initialBlocks: BlockRef[] = sampleComposition.composition.blocks.map(b => 
 // Derives the API status pill display state from the availability flag.
 // Exported so tests can verify the exact label/class/hint/docsUrl mapping.
 export function apiPillState(available: boolean | null): { label: string; className: string; hint: string | null; docsUrl: string | null; target: string | null } {
-  if (available === true) return { label: 'API connected', className: 'api-connected', hint: null, docsUrl: null, target: null }
+  if (available === true) return { label: 'API connected', className: 'api-connected', hint: null, docsUrl: null, target: 'localhost:8080' }
   if (available === false) return { label: 'API unavailable', className: 'api-unavailable', hint: 'make workbench', docsUrl: '/QUICKSTART.md', target: 'localhost:8080' }
   return { label: 'API', className: '', hint: null, docsUrl: null, target: null }
 }

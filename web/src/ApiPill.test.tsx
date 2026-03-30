@@ -61,9 +61,9 @@ describe('ApiPill target note', () => {
     expect(screen.getByText('localhost:8080')).toBeDefined()
   })
 
-  it('does not show target when connected', () => {
+  it('shows target when connected', () => {
     render(<ApiPill available={true} />)
-    expect(screen.queryByText('localhost:8080')).toBeNull()
+    expect(screen.getByText('localhost:8080')).toBeDefined()
   })
 
   it('does not show target in neutral state', () => {
