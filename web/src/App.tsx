@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import sampleComposition from '@examples/sample-composition.json'
 import './App.css'
 
@@ -21,6 +21,49 @@ export function apiPillState(available: boolean | null): { label: string; classN
   if (available === true) return { label: 'API connected', className: 'api-connected', hint: null }
   if (available === false) return { label: 'API unavailable', className: 'api-unavailable', hint: 'make workbench' }
   return { label: 'API', className: '', hint: null }
+}
+
+// Copies a command string to the clipboard and calls onCopied when done.
+// Exported so tests can verify the clipboard integration without rendering.
+export function copyToClipboard(
+  command: string,
+  onCopied: () => void,
+): void {
+  navigator.clipboard.writeText(command).then(onCopied, () => {})
+}
+
+// Renders the API status pill with optional CTA + copy button.
+// Exported so tests can render and click the pill in isolation.
+export function ApiPill({ available }: { available: boolean | null }) {
+  const [copied, setCopied] = useState(false)
+  const pill = apiPillState(available)
+
+  const handleCopy = useCallback(() => {
+    if (!pill.hint) return
+    copyToClipboard(pill.hint, () => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }, [pill.hint])
+
+  return (
+    <div className={`header-api-pill ${pill.className}`}>
+      <span className="header-api-dot" />
+      <span className="header-api-label">{pill.label}</span>
+      {pill.hint && (
+        <span className="header-api-hint">
+          run <code>{pill.hint}</code>
+          <button
+            className="header-api-copy"
+            onClick={handleCopy}
+            title="Copy command"
+          >
+            {copied ? 'copied' : 'copy'}
+          </button>
+        </span>
+      )}
+    </div>
+  )
 }
 
 function categoryOf(kind: string): string {
@@ -264,18 +307,7 @@ function App() {
           <div className="header-sep" />
           <span className="header-block-count">{currentBlocks.length} blocks &middot; {wires.length} wires</span>
         </div>
-        {(() => {
-          const pill = apiPillState(apiAvailable)
-          return (
-            <div className={`header-api-pill ${pill.className}`}>
-              <span className="header-api-dot" />
-              <span className="header-api-label">{pill.label}</span>
-              {pill.hint && (
-                <span className="header-api-hint">run <code>{pill.hint}</code></span>
-              )}
-            </div>
-          )
-        })()}
+        <ApiPill available={apiAvailable} />
       </header>
 
       {/* Left: Block catalog */}
