@@ -178,6 +178,16 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
       {available === true && targetChanged && (
         <span className="header-api-target-changed">
           health record cleared — now targeting {pill.target}
+          {onHealthCheck && (
+            <button
+              className="header-api-target-changed-ping"
+              onClick={handleHealthCheck}
+              disabled={healthStatus === 'checking'}
+              title="Check new target"
+            >
+              {healthStatus === 'checking' ? 'checking' : 'ping'}
+            </button>
+          )}
           <button
             className="header-api-target-changed-dismiss"
             onClick={() => {
