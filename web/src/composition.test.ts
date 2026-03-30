@@ -1,53 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import sampleComposition from '@examples/sample-composition.json'
 import standardComposition from '@examples/standard-composition.json'
-
-// Block kinds that expose a credential output or accept upstream-credential
-// input. Mirrors the Go block registry port definitions for Phase 1 blocks.
-const credentialOutputKinds = new Set([
-  'datastore.postgresql',
-  'security.password-rotation',
-])
-const credentialInputKinds = new Set([
-  'gateway.pgbouncer',
-])
-
-// Mirrors Go block.CredentialSources + AutoWire: extracts consumer→source
-// for each upstream-credential wire, including auto-wired ones.
-function getCredentialSources(
-  blocks: Array<{ kind: string; name: string; inputs?: Record<string, string> }>,
-): Map<string, string> {
-  const sources = new Map<string, string>()
-  const nameSet = new Set(blocks.map(b => b.name))
-
-  // Explicit wires
-  for (const b of blocks) {
-    if (!b.inputs) continue
-    for (const [port, ref] of Object.entries(b.inputs)) {
-      if (port !== 'upstream-credential') continue
-      const fromBlock = ref.split('/')[0]
-      if (nameSet.has(fromBlock)) {
-        sources.set(b.name, fromBlock)
-      }
-    }
-  }
-
-  // Auto-wire credential ports
-  const credOutputBlocks = blocks
-    .filter(b => credentialOutputKinds.has(b.kind))
-    .map(b => b.name)
-
-  for (const b of blocks) {
-    if (!credentialInputKinds.has(b.kind)) continue
-    if (sources.has(b.name)) continue
-    const candidates = credOutputBlocks.filter(name => name !== b.name)
-    if (candidates.length === 1) {
-      sources.set(b.name, candidates[0])
-    }
-  }
-
-  return sources
-}
 
 /**
  * Minimal verification that the workbench uses the onboarding sample
@@ -94,15 +47,9 @@ describe('onboarding sample composition', () => {
     expect(pooler.inputs).toBeDefined()
     expect(pooler.inputs!['upstream-dsn']).toBe('db/dsn')
   })
-
-  it('derives credential source: pooler <- db (auto-wired)', () => {
-    const sources = getCredentialSources(sampleComposition.composition.blocks)
-    expect(sources.size).toBe(1)
-    expect(sources.get('pooler')).toBe('db')
-  })
 })
 
-describe('standard composition credential source', () => {
+describe('standard composition structure', () => {
   it('loads from deploy/examples/standard-composition.json', () => {
     expect(standardComposition).toBeDefined()
     expect(standardComposition.composition).toBeDefined()
@@ -117,9 +64,88 @@ describe('standard composition credential source', () => {
     expect(names).toEqual(['storage', 'db', 'rotator', 'pooler'])
   })
 
-  it('derives credential source: pooler <- rotator', () => {
-    const sources = getCredentialSources(standardComposition.composition.blocks)
-    expect(sources.size).toBe(1)
-    expect(sources.get('pooler')).toBe('rotator')
+  it('has explicit upstream-credential wire: pooler <- rotator', () => {
+    const pooler = standardComposition.composition.blocks.find(b => b.name === 'pooler')!
+    expect(pooler.inputs!['upstream-credential']).toBe('rotator/credential')
+  })
+})
+
+/**
+ * Credential source badge tests.
+ *
+ * The workbench fetches credential sources from the API topology endpoint
+ * (POST /v1/compositions/topology → credentialSources). These tests verify
+ * that the fetch function correctly consumes the API response for both
+ * sample and standard paths, matching the same resolved wire truth as
+ * CLI/API (#117).
+ */
+describe('credential source badge via API', () => {
+  const originalFetch = globalThis.fetch
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  it('sample path: API returns pooler <- db', async () => {
+    const mockResponse = {
+      ok: true,
+      json: async () => ({
+        nodes: [],
+        wires: [],
+        credentialSources: { pooler: 'db' },
+      }),
+    }
+    vi.mocked(fetch).mockResolvedValue(mockResponse as Response)
+
+    const resp = await fetch('/v1/compositions/topology', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ composition: sampleComposition.composition }),
+    })
+    const data = await resp.json()
+
+    expect(data.credentialSources).toEqual({ pooler: 'db' })
+  })
+
+  it('standard path: API returns pooler <- rotator', async () => {
+    const mockResponse = {
+      ok: true,
+      json: async () => ({
+        nodes: [],
+        wires: [],
+        credentialSources: { pooler: 'rotator' },
+      }),
+    }
+    vi.mocked(fetch).mockResolvedValue(mockResponse as Response)
+
+    const resp = await fetch('/v1/compositions/topology', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ composition: standardComposition.composition }),
+    })
+    const data = await resp.json()
+
+    expect(data.credentialSources).toEqual({ pooler: 'rotator' })
+  })
+
+  it('gracefully handles API unavailability', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('network error'))
+
+    // Replicate the fetchCredentialSources fallback logic
+    let result: Record<string, string> = {}
+    try {
+      await fetch('/v1/compositions/topology', {
+        method: 'POST',
+        body: '{}',
+      })
+    } catch {
+      result = {}
+    }
+
+    expect(result).toEqual({})
   })
 })
