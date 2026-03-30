@@ -34,10 +34,10 @@ export function copyToClipboard(
 
 // Renders the API status pill with optional CTA + copy button + retry.
 // Exported so tests can render and click the pill in isolation.
-export function ApiPill({ available, onRetry }: { available: boolean | null; onRetry?: () => void }) {
+export function ApiPill({ available, onRetry, onHealthCheck }: { available: boolean | null; onRetry?: () => void; onHealthCheck?: () => Promise<boolean> }) {
   const [copied, setCopied] = useState(false)
   const [targetCopied, setTargetCopied] = useState(false)
-  const [healthChecked, setHealthChecked] = useState(false)
+  const [healthStatus, setHealthStatus] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle')
   const [recovered, setRecovered] = useState(false)
   const prevAvailable = useRef(available)
   const pill = apiPillState(available)
@@ -60,11 +60,16 @@ export function ApiPill({ available, onRetry }: { available: boolean | null; onR
   }, [pill.hint])
 
   const handleHealthCheck = useCallback(() => {
-    if (!onRetry) return
-    onRetry()
-    setHealthChecked(true)
-    setTimeout(() => setHealthChecked(false), 1500)
-  }, [onRetry])
+    if (!onHealthCheck) return
+    setHealthStatus('checking')
+    onHealthCheck().then(ok => {
+      setHealthStatus(ok ? 'ok' : 'fail')
+      setTimeout(() => setHealthStatus('idle'), 1500)
+    }, () => {
+      setHealthStatus('fail')
+      setTimeout(() => setHealthStatus('idle'), 1500)
+    })
+  }, [onHealthCheck])
 
   const handleTargetCopy = useCallback(() => {
     if (!pill.target) return
@@ -104,13 +109,14 @@ export function ApiPill({ available, onRetry }: { available: boolean | null; onR
           docs
         </a>
       )}
-      {available === true && onRetry && (
+      {available === true && onHealthCheck && (
         <button
           className="header-api-target-health"
           onClick={handleHealthCheck}
           title="Check API health"
+          disabled={healthStatus === 'checking'}
         >
-          {healthChecked ? 'ok' : 'ping'}
+          {healthStatus === 'idle' ? 'ping' : healthStatus}
         </button>
       )}
       {pill.connectedNote && !recovered && (
@@ -342,6 +348,12 @@ function App() {
     })
   }, [currentBlocks])
 
+  const checkApiHealth = useCallback(async (): Promise<boolean> => {
+    const { available } = await fetchCredentialSources(currentBlocks)
+    setApiAvailable(available)
+    return available
+  }, [currentBlocks])
+
   // Fetch credential sources from the API topology endpoint whenever
   // the composition changes. This consumes the same compiled wire truth
   // as CLI/API (#117) instead of reimplementing auto-wire logic locally.
@@ -401,7 +413,7 @@ function App() {
           <div className="header-sep" />
           <span className="header-block-count">{currentBlocks.length} blocks &middot; {wires.length} wires</span>
         </div>
-        <ApiPill available={apiAvailable} onRetry={retryApi} />
+        <ApiPill available={apiAvailable} onRetry={retryApi} onHealthCheck={checkApiHealth} />
       </header>
 
       {/* Left: Block catalog */}
