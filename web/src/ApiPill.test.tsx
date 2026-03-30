@@ -3,6 +3,33 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
 import { ApiPill } from './App'
 
+describe('ApiPill target note', () => {
+  beforeEach(() => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  it('shows target endpoint when unavailable', () => {
+    render(<ApiPill available={false} />)
+    expect(screen.getByText('localhost:8080')).toBeDefined()
+  })
+
+  it('does not show target when connected', () => {
+    render(<ApiPill available={true} />)
+    expect(screen.queryByText('localhost:8080')).toBeNull()
+  })
+
+  it('does not show target in neutral state', () => {
+    render(<ApiPill available={null} />)
+    expect(screen.queryByText('localhost:8080')).toBeNull()
+  })
+})
+
 describe('ApiPill docs link', () => {
   beforeEach(() => {
     const writeText = vi.fn().mockResolvedValue(undefined)

@@ -183,7 +183,7 @@ describe('credential source badge via API', () => {
 describe('API status pill state mapping', () => {
   // Import the extracted helper that drives the pill JSX
   // If the mapping or helper is removed/renamed, this import fails → test fails
-  let apiPillState: (available: boolean | null) => { label: string; className: string; hint: string | null; docsUrl: string | null }
+  let apiPillState: (available: boolean | null) => { label: string; className: string; hint: string | null; docsUrl: string | null; target: string | null }
 
   beforeAll(async () => {
     const mod = await import('./App')
@@ -196,6 +196,7 @@ describe('API status pill state mapping', () => {
     expect(pill.className).toBe('')
     expect(pill.hint).toBeNull()
     expect(pill.docsUrl).toBeNull()
+    expect(pill.target).toBeNull()
   })
 
   it('shows connected when API is available, no CTA', () => {
@@ -204,6 +205,7 @@ describe('API status pill state mapping', () => {
     expect(pill.className).toBe('api-connected')
     expect(pill.hint).toBeNull()
     expect(pill.docsUrl).toBeNull()
+    expect(pill.target).toBeNull()
   })
 
   it('shows unavailable with actionable CTA when API is unreachable', () => {
@@ -225,6 +227,11 @@ describe('API status pill state mapping', () => {
   it('provides docs link only when unavailable', () => {
     const pill = apiPillState(false)
     expect(pill.docsUrl).toBe('/QUICKSTART.md')
+  })
+
+  it('shows API target endpoint when unavailable', () => {
+    const pill = apiPillState(false)
+    expect(pill.target).toBe('localhost:8080')
   })
 })
 
