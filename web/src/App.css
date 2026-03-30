@@ -182,6 +182,26 @@
   color: var(--text);
 }
 
+.header-api-retry {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.header-api-retry:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
 /* --- Sidebar (left) --- */
 .sidebar {
   grid-area: sidebar;

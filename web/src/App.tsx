@@ -32,9 +32,9 @@ export function copyToClipboard(
   navigator.clipboard.writeText(command).then(onCopied, () => {})
 }
 
-// Renders the API status pill with optional CTA + copy button.
+// Renders the API status pill with optional CTA + copy button + retry.
 // Exported so tests can render and click the pill in isolation.
-export function ApiPill({ available }: { available: boolean | null }) {
+export function ApiPill({ available, onRetry }: { available: boolean | null; onRetry?: () => void }) {
   const [copied, setCopied] = useState(false)
   const pill = apiPillState(available)
 
@@ -60,6 +60,15 @@ export function ApiPill({ available }: { available: boolean | null }) {
           >
             {copied ? 'copied' : 'copy'}
           </button>
+          {onRetry && (
+            <button
+              className="header-api-retry"
+              onClick={onRetry}
+              title="Retry connection"
+            >
+              retry
+            </button>
+          )}
         </span>
       )}
     </div>
@@ -248,6 +257,14 @@ function App() {
   const [apiAvailable, setApiAvailable] = useState<boolean | null>(null)
   const activeKinds = useMemo(() => new Set(currentBlocks.map(b => b.kind)), [currentBlocks])
 
+  const retryApi = useCallback(() => {
+    if (currentBlocks.length === 0) return
+    fetchCredentialSources(currentBlocks).then(({ sources, available }) => {
+      setCredentialSources(sources)
+      setApiAvailable(available)
+    })
+  }, [currentBlocks])
+
   // Fetch credential sources from the API topology endpoint whenever
   // the composition changes. This consumes the same compiled wire truth
   // as CLI/API (#117) instead of reimplementing auto-wire logic locally.
@@ -307,7 +324,7 @@ function App() {
           <div className="header-sep" />
           <span className="header-block-count">{currentBlocks.length} blocks &middot; {wires.length} wires</span>
         </div>
-        <ApiPill available={apiAvailable} />
+        <ApiPill available={apiAvailable} onRetry={retryApi} />
       </header>
 
       {/* Left: Block catalog */}
