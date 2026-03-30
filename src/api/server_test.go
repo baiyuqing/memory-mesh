@@ -234,6 +234,12 @@ func TestTopology_CorrectOrder(t *testing.T) {
 			t.Errorf("%s (pos %d) should come before %s (pos %d)", a, posMap[a], b, posMap[b])
 		}
 	}
+
+	// Verify credential source derives from sample path.
+	if resp.CredentialSource != testfixture.SampleCredentialWire.FromBlock {
+		t.Errorf("expected credentialSource %q, got %q",
+			testfixture.SampleCredentialWire.FromBlock, resp.CredentialSource)
+	}
 }
 
 func TestValidateComposition_StandardPath(t *testing.T) {
@@ -285,6 +291,12 @@ func TestTopology_StandardPath(t *testing.T) {
 		if posMap[a] >= posMap[b] {
 			t.Errorf("%s (pos %d) should come before %s (pos %d)", a, posMap[a], b, posMap[b])
 		}
+	}
+
+	// Verify credential source derives from standard path.
+	if resp.CredentialSource != testfixture.StandardCredentialWire.FromBlock {
+		t.Errorf("expected credentialSource %q, got %q",
+			testfixture.StandardCredentialWire.FromBlock, resp.CredentialSource)
 	}
 }
 

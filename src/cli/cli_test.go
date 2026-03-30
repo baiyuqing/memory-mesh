@@ -668,6 +668,8 @@ func TestGolden_ComposeTopology(t *testing.T) {
 		"\n" +
 		topoSection +
 		"\n" +
+		fmt.Sprintf("Credential source: %s\n", testfixture.SampleCredentialWire.FromBlock) +
+		"\n" +
 		fmt.Sprintf("Wires (%d):\n", sampleSpec.wireCount) +
 		"  storage/pvc-spec -> db/storage\n" +
 		"  db/dsn -> pooler/upstream-dsn\n" +
@@ -757,6 +759,7 @@ func TestGolden_ComposeTopologyJSON(t *testing.T) {
       "kind": "gateway.pgbouncer"
     }
   ],
+  "credentialSource": %q,
   "wireCount": %d,
   "wires": [
     {
@@ -779,7 +782,7 @@ func TestGolden_ComposeTopologyJSON(t *testing.T) {
     }
   ]
 }
-`, path, sampleSpec.blockCount, sampleSpec.wireCount)
+`, path, sampleSpec.blockCount, testfixture.SampleCredentialWire.FromBlock, sampleSpec.wireCount)
 	if got := buf.String(); got != want {
 		t.Errorf("compose topology --format json output mismatch.\nwant:\n%s\ngot:\n%s", want, got)
 	}

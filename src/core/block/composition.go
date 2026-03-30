@@ -23,6 +23,17 @@ type Wire struct {
 	ToPort    string `json:"toPort"    yaml:"toPort"`
 }
 
+// CredentialSource returns the FromBlock of the first wire whose ToPort
+// is "upstream-credential". If no such wire exists, it returns "".
+func CredentialSource(wires []Wire) string {
+	for _, w := range wires {
+		if w.ToPort == "upstream-credential" {
+			return w.FromBlock
+		}
+	}
+	return ""
+}
+
 // Composition is the domain model for a fully described, wired-together
 // set of blocks. This is what the CRD's spec.blocks section maps to.
 type Composition struct {

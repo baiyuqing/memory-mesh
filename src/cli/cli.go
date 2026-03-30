@@ -365,6 +365,10 @@ func composeTopology(registry *block.Registry, filePath string, w io.Writer) err
 		fmt.Fprintf(w, "  %d. %s (%s)\n", i+1, ref.Name, ref.Kind)
 	}
 
+	if credSrc := block.CredentialSource(comp.Wires); credSrc != "" {
+		fmt.Fprintf(w, "\nCredential source: %s\n", credSrc)
+	}
+
 	if len(comp.Wires) > 0 {
 		fmt.Fprintf(w, "\nWires (%d):\n", len(comp.Wires))
 		for _, wire := range comp.Wires {
@@ -466,11 +470,12 @@ type topoBlockEntry struct {
 }
 
 type topologyResult struct {
-	File       string           `json:"file"`
-	BlockCount int              `json:"blockCount"`
-	Order      []topoBlockEntry `json:"order"`
-	WireCount  int              `json:"wireCount"`
-	Wires      []wireEntry      `json:"wires"`
+	File             string           `json:"file"`
+	BlockCount       int              `json:"blockCount"`
+	Order            []topoBlockEntry `json:"order"`
+	CredentialSource string           `json:"credentialSource,omitempty"`
+	WireCount        int              `json:"wireCount"`
+	Wires            []wireEntry      `json:"wires"`
 }
 
 func composeTopologyJSON(registry *block.Registry, filePath string, w io.Writer) error {
@@ -514,11 +519,12 @@ func composeTopologyJSON(registry *block.Registry, filePath string, w io.Writer)
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(topologyResult{
-		File:       filePath,
-		BlockCount: len(sorted),
-		Order:      order,
-		WireCount:  len(comp.Wires),
-		Wires:      wires,
+		File:             filePath,
+		BlockCount:       len(sorted),
+		Order:            order,
+		CredentialSource: block.CredentialSource(comp.Wires),
+		WireCount:        len(comp.Wires),
+		Wires:            wires,
 	})
 }
 
