@@ -210,4 +210,13 @@ describe('API status pill state mapping', () => {
     expect(pill.className).toBe('api-unavailable')
     expect(pill.hint).toBe('make workbench')
   })
+
+  it('hint text is a valid copyable command', () => {
+    const pill = apiPillState(false)
+    // The hint must be the exact command the user should run —
+    // the copy button sends this value to navigator.clipboard.writeText
+    expect(pill.hint).toBe('make workbench')
+    expect(pill.hint).not.toContain('\n')
+    expect(pill.hint).not.toContain('`')
+  })
 })

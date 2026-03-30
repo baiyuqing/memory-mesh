@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import sampleComposition from '@examples/sample-composition.json'
 import './App.css'
 
@@ -203,7 +203,15 @@ function App() {
   const wires = useMemo(() => getWires(currentBlocks), [currentBlocks])
   const [credentialSources, setCredentialSources] = useState<Record<string, string>>({})
   const [apiAvailable, setApiAvailable] = useState<boolean | null>(null)
+  const [copied, setCopied] = useState(false)
   const activeKinds = useMemo(() => new Set(currentBlocks.map(b => b.kind)), [currentBlocks])
+
+  const copyCommand = useCallback((command: string) => {
+    navigator.clipboard.writeText(command).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }, [])
 
   // Fetch credential sources from the API topology endpoint whenever
   // the composition changes. This consumes the same compiled wire truth
@@ -271,7 +279,16 @@ function App() {
               <span className="header-api-dot" />
               <span className="header-api-label">{pill.label}</span>
               {pill.hint && (
-                <span className="header-api-hint">run <code>{pill.hint}</code></span>
+                <span className="header-api-hint">
+                  run <code>{pill.hint}</code>
+                  <button
+                    className="header-api-copy"
+                    onClick={() => copyCommand(pill.hint!)}
+                    title="Copy command"
+                  >
+                    {copied ? 'copied' : 'copy'}
+                  </button>
+                </span>
               )}
             </div>
           )
