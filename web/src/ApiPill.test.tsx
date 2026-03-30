@@ -3,6 +3,59 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
 import { ApiPill } from './App'
 
+describe('ApiPill retry action', () => {
+  beforeEach(() => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  it('does not render retry button when no onRetry prop', () => {
+    render(<ApiPill available={false} />)
+    expect(screen.queryByTitle('Retry connection')).toBeNull()
+  })
+
+  it('renders retry button when unavailable and onRetry provided', () => {
+    const onRetry = vi.fn()
+    render(<ApiPill available={false} onRetry={onRetry} />)
+    const btn = screen.getByTitle('Retry connection')
+    expect(btn).toBeDefined()
+    expect(btn.textContent).toBe('retry')
+  })
+
+  it('does not render retry button when connected', () => {
+    const onRetry = vi.fn()
+    render(<ApiPill available={true} onRetry={onRetry} />)
+    expect(screen.queryByTitle('Retry connection')).toBeNull()
+  })
+
+  it('calls onRetry when retry button is clicked', () => {
+    const onRetry = vi.fn()
+    render(<ApiPill available={false} onRetry={onRetry} />)
+    fireEvent.click(screen.getByTitle('Retry connection'))
+    expect(onRetry).toHaveBeenCalledOnce()
+  })
+
+  it('flips to connected state after successful retry', () => {
+    const onRetry = vi.fn()
+    const { rerender } = render(<ApiPill available={false} onRetry={onRetry} />)
+
+    // Retry button visible in unavailable state
+    expect(screen.getByTitle('Retry connection')).toBeDefined()
+
+    // Simulate parent updating available to true after retry succeeds
+    rerender(<ApiPill available={true} onRetry={onRetry} />)
+
+    // Retry button and hint should disappear
+    expect(screen.queryByTitle('Retry connection')).toBeNull()
+    expect(screen.getByText('API connected')).toBeDefined()
+  })
+})
+
 describe('ApiPill rendered copy action', () => {
   let writeText: ReturnType<typeof vi.fn>
 
