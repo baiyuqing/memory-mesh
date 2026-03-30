@@ -732,6 +732,84 @@ describe('ApiPill health target change reset', () => {
     })
     expect(screen.getByText('health record cleared — now targeting localhost:8080')).toBeDefined()
   })
+
+  it('shows ping button on reset note when onHealthCheck provided', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    const btn = screen.getByTitle('Check new target')
+    expect(btn).toBeDefined()
+    expect(btn.className).toBe('header-api-target-changed-ping')
+    expect(btn.textContent).toBe('ping')
+  })
+
+  it('does not show ping button on reset note without onHealthCheck', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} />)
+    })
+    expect(screen.queryByTitle('Check new target')).toBeNull()
+  })
+
+  it('ping from reset note triggers health check and auto-hides on success', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    expect(screen.getByText('health record cleared — now targeting localhost:8080')).toBeDefined()
+    // Click ping from the reset note
+    screen.getByTitle('Check new target').click()
+    await vi.waitFor(() => {
+      expect(screen.queryByText('health record cleared — now targeting localhost:8080')).toBeNull()
+    })
+  })
+
+  it('ping from reset note keeps note visible on failure', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    expect(screen.getByText('health record cleared — now targeting localhost:8080')).toBeDefined()
+    // Click ping — fails
+    screen.getByTitle('Check new target').click()
+    await vi.waitFor(() => {
+      expect(screen.getByTitle('Check new target').textContent).toBe('ping')
+    })
+    expect(screen.getByText('health record cleared — now targeting localhost:8080')).toBeDefined()
+  })
 })
 
 describe('ApiPill docs link', () => {
