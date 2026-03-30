@@ -393,6 +393,15 @@
   margin-left: 4px;
   font-style: italic;
 }
+.header-api-target-failed-docs {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-left: 4px;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--text-muted);
+  letter-spacing: 0.3px;
+}
 .header-api-target-changed-ping {
   font-family: var(--mono);
   font-size: 9px;

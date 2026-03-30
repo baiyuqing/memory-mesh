@@ -250,7 +250,20 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
         <span className="header-api-target-confirmed">{pill.target} reachable</span>
       )}
       {available === true && targetFailed && (
-        <span className="header-api-target-failed">{pill.target} unreachable</span>
+        <span className="header-api-target-failed">
+          {pill.target} unreachable
+          {pill.docsUrl && (
+            <a
+              className="header-api-target-failed-docs"
+              href={pill.docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Setup instructions"
+            >
+              docs
+            </a>
+          )}
+        </span>
       )}
       {pill.connectedNote && !recovered && (
         <span className="header-api-connected-note">{pill.connectedNote}</span>
