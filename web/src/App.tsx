@@ -504,6 +504,22 @@ function App() {
               </div>
             </div>
             <pre className="results-pre">{outputFormat === 'json' ? jsonOutput : yamlOutput}</pre>
+            {Object.keys(credentialSources).length > 0 && (
+              <div className="output-credential-note">
+                {Object.entries(credentialSources)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([consumer, source]) => (
+                    <span key={consumer} className="output-credential-item">
+                      credential: {consumer} &larr; {source}
+                    </span>
+                  ))}
+              </div>
+            )}
+            {apiAvailable === false && (
+              <div className="output-credential-note output-credential-unavailable">
+                <span className="output-credential-item">credential sources unavailable — start API server</span>
+              </div>
+            )}
           </div>
 
           {/* Validation */}

@@ -132,6 +132,32 @@ describe('credential source badge via API', () => {
     expect(data.credentialSources).toEqual({ pooler: 'rotator' })
   })
 
+  it('credential note is separate from composition payload', async () => {
+    const mockResponse = {
+      ok: true,
+      json: async () => ({
+        nodes: [],
+        wires: [],
+        credentialSources: { pooler: 'db' },
+      }),
+    }
+    vi.mocked(fetch).mockResolvedValue(mockResponse as Response)
+
+    const resp = await fetch('/v1/compositions/topology', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ composition: sampleComposition.composition }),
+    })
+    const data = await resp.json()
+
+    // Composition payload must stay clean — no credentialSources field
+    const compositionPayload = { composition: { blocks: sampleComposition.composition.blocks } }
+    expect(compositionPayload).not.toHaveProperty('credentialSources')
+
+    // Credential note data comes from API response, shown as adjacent summary
+    expect(data.credentialSources).toEqual({ pooler: 'db' })
+  })
+
   it('surfaces API unavailability instead of silently hiding badges', async () => {
     vi.mocked(fetch).mockRejectedValue(new Error('network error'))
 

@@ -958,6 +958,25 @@
   color: var(--text-muted);
 }
 
+.output-credential-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+  background: rgba(251, 191, 36, 0.06);
+}
+
+.output-credential-note.output-credential-unavailable {
+  background: rgba(156, 163, 175, 0.06);
+}
+
+.output-credential-item {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .wires-list {
   margin-top: 10px;
   padding-top: 8px;
