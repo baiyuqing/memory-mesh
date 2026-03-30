@@ -41,20 +41,22 @@ function getWires(blocks: BlockRef[]): { from: string; to: string; port: string 
 // The API compiles the composition (normalize, auto-wire, validate,
 // topo-sort) and returns credentialSources as a per-consumer map,
 // so the workbench consumes the same resolved truth as CLI/API.
+// Returns { sources, available } so the UI can distinguish "no sources"
+// from "API unreachable".
 async function fetchCredentialSources(
   blocks: BlockRef[],
-): Promise<Record<string, string>> {
+): Promise<{ sources: Record<string, string>; available: boolean }> {
   try {
     const resp = await fetch('/v1/compositions/topology', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ composition: { blocks } }),
     })
-    if (!resp.ok) return {}
+    if (!resp.ok) return { sources: {}, available: false }
     const data = await resp.json()
-    return data.credentialSources ?? {}
+    return { sources: data.credentialSources ?? {}, available: true }
   } catch {
-    return {}
+    return { sources: {}, available: false }
   }
 }
 
@@ -192,6 +194,7 @@ function App() {
   const sorted = useMemo(() => topoSort(currentBlocks), [currentBlocks])
   const wires = useMemo(() => getWires(currentBlocks), [currentBlocks])
   const [credentialSources, setCredentialSources] = useState<Record<string, string>>({})
+  const [apiAvailable, setApiAvailable] = useState<boolean | null>(null)
   const activeKinds = useMemo(() => new Set(currentBlocks.map(b => b.kind)), [currentBlocks])
 
   // Fetch credential sources from the API topology endpoint whenever
@@ -200,9 +203,13 @@ function App() {
   useEffect(() => {
     if (currentBlocks.length === 0) {
       setCredentialSources({})
+      setApiAvailable(null)
       return
     }
-    fetchCredentialSources(currentBlocks).then(setCredentialSources)
+    fetchCredentialSources(currentBlocks).then(({ sources, available }) => {
+      setCredentialSources(sources)
+      setApiAvailable(available)
+    })
   }, [currentBlocks])
 
   const compositionData = useMemo(() => ({ composition: { blocks: currentBlocks } }), [currentBlocks])
@@ -547,6 +554,14 @@ function App() {
                       </div>
                     ))}
                   </div>
+                  {apiAvailable === false && (
+                    <div className="credential-sources">
+                      <div className="credential-source-row">
+                        <span className="credential-source-badge credential-source-unavailable">credential</span>
+                        <span className="credential-source-text">unavailable — start API server for credential source badges</span>
+                      </div>
+                    </div>
+                  )}
                   {Object.keys(credentialSources).length > 0 && (
                     <div className="credential-sources">
                       {Object.entries(credentialSources)

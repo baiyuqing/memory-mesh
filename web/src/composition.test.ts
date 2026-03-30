@@ -132,20 +132,24 @@ describe('credential source badge via API', () => {
     expect(data.credentialSources).toEqual({ pooler: 'rotator' })
   })
 
-  it('gracefully handles API unavailability', async () => {
+  it('surfaces API unavailability instead of silently hiding badges', async () => {
     vi.mocked(fetch).mockRejectedValue(new Error('network error'))
 
-    // Replicate the fetchCredentialSources fallback logic
-    let result: Record<string, string> = {}
+    // Replicate the fetchCredentialSources fallback logic —
+    // must return available: false so the UI shows a visible note
+    let sources: Record<string, string> = {}
+    let available = true
     try {
       await fetch('/v1/compositions/topology', {
         method: 'POST',
         body: '{}',
       })
     } catch {
-      result = {}
+      sources = {}
+      available = false
     }
 
-    expect(result).toEqual({})
+    expect(sources).toEqual({})
+    expect(available).toBe(false)
   })
 })

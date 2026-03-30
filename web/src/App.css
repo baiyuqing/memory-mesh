@@ -947,6 +947,11 @@
   flex-shrink: 0;
 }
 
+.credential-source-badge.credential-source-unavailable {
+  background: rgba(156, 163, 175, 0.12);
+  color: #9ca3af;
+}
+
 .credential-source-text {
   font-family: var(--mono);
   font-size: 11px;
