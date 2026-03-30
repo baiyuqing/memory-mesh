@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import sampleComposition from '@examples/sample-composition.json'
 import standardComposition from '@examples/standard-composition.json'
 
@@ -177,5 +177,34 @@ describe('credential source badge via API', () => {
 
     expect(sources).toEqual({})
     expect(available).toBe(false)
+  })
+})
+
+describe('API status pill state mapping', () => {
+  // Import the extracted helper that drives the pill JSX
+  // If the mapping or helper is removed/renamed, this import fails → test fails
+  let apiPillState: (available: boolean | null) => { label: string; className: string }
+
+  beforeAll(async () => {
+    const mod = await import('./App')
+    apiPillState = mod.apiPillState
+  })
+
+  it('shows neutral state before API response', () => {
+    const pill = apiPillState(null)
+    expect(pill.label).toBe('API')
+    expect(pill.className).toBe('')
+  })
+
+  it('shows connected when API is available', () => {
+    const pill = apiPillState(true)
+    expect(pill.label).toBe('API connected')
+    expect(pill.className).toBe('api-connected')
+  })
+
+  it('shows unavailable when API is unreachable', () => {
+    const pill = apiPillState(false)
+    expect(pill.label).toBe('API unavailable')
+    expect(pill.className).toBe('api-unavailable')
   })
 })
