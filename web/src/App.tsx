@@ -212,7 +212,13 @@ function App() {
     })
   }, [currentBlocks])
 
-  const compositionData = useMemo(() => ({ composition: { blocks: currentBlocks } }), [currentBlocks])
+  const compositionData = useMemo(() => {
+    const data: Record<string, unknown> = { composition: { blocks: currentBlocks } }
+    if (Object.keys(credentialSources).length > 0) {
+      data.credentialSources = credentialSources
+    }
+    return data
+  }, [currentBlocks, credentialSources])
   const jsonOutput = useMemo(() => JSON.stringify(compositionData, null, 2), [compositionData])
   const yamlOutput = useMemo(() => toYaml(compositionData), [compositionData])
 

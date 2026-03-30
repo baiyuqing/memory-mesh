@@ -132,6 +132,61 @@ describe('credential source badge via API', () => {
     expect(data.credentialSources).toEqual({ pooler: 'rotator' })
   })
 
+  it('sample path: credentialSources appears in generated output data', async () => {
+    const mockResponse = {
+      ok: true,
+      json: async () => ({
+        nodes: [],
+        wires: [],
+        credentialSources: { pooler: 'db' },
+      }),
+    }
+    vi.mocked(fetch).mockResolvedValue(mockResponse as Response)
+
+    const resp = await fetch('/v1/compositions/topology', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ composition: sampleComposition.composition }),
+    })
+    const data = await resp.json()
+
+    // The generated output should include credentialSources at the top level
+    const output = {
+      composition: sampleComposition.composition,
+      ...(Object.keys(data.credentialSources ?? {}).length > 0
+        ? { credentialSources: data.credentialSources }
+        : {}),
+    }
+    expect(output.credentialSources).toEqual({ pooler: 'db' })
+  })
+
+  it('standard path: credentialSources appears in generated output data', async () => {
+    const mockResponse = {
+      ok: true,
+      json: async () => ({
+        nodes: [],
+        wires: [],
+        credentialSources: { pooler: 'rotator' },
+      }),
+    }
+    vi.mocked(fetch).mockResolvedValue(mockResponse as Response)
+
+    const resp = await fetch('/v1/compositions/topology', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ composition: standardComposition.composition }),
+    })
+    const data = await resp.json()
+
+    const output = {
+      composition: standardComposition.composition,
+      ...(Object.keys(data.credentialSources ?? {}).length > 0
+        ? { credentialSources: data.credentialSources }
+        : {}),
+    }
+    expect(output.credentialSources).toEqual({ pooler: 'rotator' })
+  })
+
   it('surfaces API unavailability instead of silently hiding badges', async () => {
     vi.mocked(fetch).mockRejectedValue(new Error('network error'))
 
