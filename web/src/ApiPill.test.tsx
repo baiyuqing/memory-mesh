@@ -3,6 +3,37 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
 import { ApiPill } from './App'
 
+describe('ApiPill docs link', () => {
+  beforeEach(() => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  it('renders docs link when unavailable', () => {
+    render(<ApiPill available={false} />)
+    const link = screen.getByTitle('Setup instructions')
+    expect(link).toBeDefined()
+    expect(link.textContent).toBe('docs')
+    expect(link.getAttribute('href')).toBe('web/QUICKSTART.md')
+    expect(link.getAttribute('target')).toBe('_blank')
+  })
+
+  it('does not render docs link when connected', () => {
+    render(<ApiPill available={true} />)
+    expect(screen.queryByTitle('Setup instructions')).toBeNull()
+  })
+
+  it('does not render docs link in neutral state', () => {
+    render(<ApiPill available={null} />)
+    expect(screen.queryByTitle('Setup instructions')).toBeNull()
+  })
+})
+
 describe('ApiPill retry action', () => {
   beforeEach(() => {
     const writeText = vi.fn().mockResolvedValue(undefined)
