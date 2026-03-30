@@ -418,6 +418,58 @@ describe('ApiPill health timestamp', () => {
   })
 })
 
+describe('ApiPill health clear action', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('shows clear button when health result is visible', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    const clearBtn = screen.getByTitle('Clear health result')
+    expect(clearBtn).toBeDefined()
+    expect(clearBtn.className).toBe('header-api-health-clear')
+    expect(clearBtn.textContent).toBe('clear')
+  })
+
+  it('clears result, timestamp, and button status on click', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    // Click clear during the ok window (before 1.5s reset)
+    // — should fully clear all visible health state
+    const btn = screen.getByTitle('Check API health')
+    expect(btn.textContent).toBe('ok')
+    act(() => {
+      screen.getByTitle('Clear health result').click()
+    })
+    expect(screen.queryByText('reachable')).toBeNull()
+    expect(document.querySelector('.header-api-health-time')).toBeNull()
+    expect(screen.queryByTitle('Clear health result')).toBeNull()
+    // Button should reset to ping immediately
+    expect(btn.textContent).toBe('ping')
+  })
+
+  it('does not show clear button before health check', () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    expect(screen.queryByTitle('Clear health result')).toBeNull()
+  })
+})
+
 describe('ApiPill docs link', () => {
   beforeEach(() => {
     const writeText = vi.fn().mockResolvedValue(undefined)
