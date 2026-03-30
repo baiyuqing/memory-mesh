@@ -3,6 +3,33 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
 import { ApiPill } from './App'
 
+describe('ApiPill connected-source emphasis', () => {
+  beforeEach(() => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  it('shows credential sources live note when connected', () => {
+    render(<ApiPill available={true} />)
+    expect(screen.getByText('credential sources live')).toBeDefined()
+  })
+
+  it('does not show connected note when unavailable', () => {
+    render(<ApiPill available={false} />)
+    expect(screen.queryByText('credential sources live')).toBeNull()
+  })
+
+  it('does not show connected note in neutral state', () => {
+    render(<ApiPill available={null} />)
+    expect(screen.queryByText('credential sources live')).toBeNull()
+  })
+})
+
 describe('ApiPill connected confirmation', () => {
   beforeEach(() => {
     const writeText = vi.fn().mockResolvedValue(undefined)
