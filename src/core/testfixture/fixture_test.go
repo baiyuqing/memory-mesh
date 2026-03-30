@@ -44,6 +44,13 @@ func TestSampleSummaryTruth(t *testing.T) {
 			t.Errorf("SampleTopoLabels[%d]=%q but TopoLabels() produces %q", i, want, labels[i])
 		}
 	}
+
+	// Verify SampleExpectedWires matches the actual compilation result.
+	testfixture.AssertSampleWires(t, result.Composition.Wires)
+	if len(testfixture.SampleExpectedWires) != testfixture.SampleWireCount {
+		t.Errorf("len(SampleExpectedWires)=%d but SampleWireCount=%d",
+			len(testfixture.SampleExpectedWires), testfixture.SampleWireCount)
+	}
 }
 
 // TestStandardSummaryTruth verifies that the standard path summary constants
@@ -81,6 +88,13 @@ func TestStandardSummaryTruth(t *testing.T) {
 		if labels[i] != want {
 			t.Errorf("StandardTopoLabels[%d]=%q but TopoLabels() produces %q", i, want, labels[i])
 		}
+	}
+
+	// Verify StandardExpectedWires matches the actual compilation result.
+	testfixture.AssertCredentialPathWires(t, result.Composition.Wires)
+	if len(testfixture.StandardExpectedWires) != testfixture.StandardWireCount {
+		t.Errorf("len(StandardExpectedWires)=%d but StandardWireCount=%d",
+			len(testfixture.StandardExpectedWires), testfixture.StandardWireCount)
 	}
 }
 
