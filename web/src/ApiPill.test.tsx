@@ -3,6 +3,48 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
 import { ApiPill } from './App'
 
+describe('ApiPill connected confirmation', () => {
+  beforeEach(() => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('shows recovery confirmation when transitioning from unavailable to connected', () => {
+    const { rerender } = render(<ApiPill available={false} />)
+    rerender(<ApiPill available={true} />)
+    expect(screen.getByText('credential sources ready')).toBeDefined()
+  })
+
+  it('does not show confirmation on initial connected state', () => {
+    render(<ApiPill available={true} />)
+    expect(screen.queryByText('credential sources ready')).toBeNull()
+  })
+
+  it('does not show confirmation on initial neutral state', () => {
+    render(<ApiPill available={null} />)
+    expect(screen.queryByText('credential sources ready')).toBeNull()
+  })
+
+  it('confirmation auto-clears after 3 seconds', async () => {
+    const { rerender } = render(<ApiPill available={false} />)
+    rerender(<ApiPill available={true} />)
+    expect(screen.getByText('credential sources ready')).toBeDefined()
+
+    await act(async () => {
+      vi.advanceTimersByTime(3000)
+    })
+
+    expect(screen.queryByText('credential sources ready')).toBeNull()
+  })
+})
+
 describe('ApiPill target note', () => {
   beforeEach(() => {
     const writeText = vi.fn().mockResolvedValue(undefined)

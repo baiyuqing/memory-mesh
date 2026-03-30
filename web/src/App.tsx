@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import sampleComposition from '@examples/sample-composition.json'
 import './App.css'
 
@@ -36,7 +36,18 @@ export function copyToClipboard(
 // Exported so tests can render and click the pill in isolation.
 export function ApiPill({ available, onRetry }: { available: boolean | null; onRetry?: () => void }) {
   const [copied, setCopied] = useState(false)
+  const [recovered, setRecovered] = useState(false)
+  const prevAvailable = useRef(available)
   const pill = apiPillState(available)
+
+  useEffect(() => {
+    if (prevAvailable.current === false && available === true) {
+      setRecovered(true)
+      const timer = setTimeout(() => setRecovered(false), 3000)
+      return () => clearTimeout(timer)
+    }
+    prevAvailable.current = available
+  }, [available])
 
   const handleCopy = useCallback(() => {
     if (!pill.hint) return
@@ -50,6 +61,9 @@ export function ApiPill({ available, onRetry }: { available: boolean | null; onR
     <div className={`header-api-pill ${pill.className}`}>
       <span className="header-api-dot" />
       <span className="header-api-label">{pill.label}</span>
+      {recovered && (
+        <span className="header-api-recovered">credential sources ready</span>
+      )}
       {pill.target && (
         <span className="header-api-target">{pill.target}</span>
       )}
