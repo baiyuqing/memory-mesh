@@ -16,11 +16,11 @@ const initialBlocks: BlockRef[] = sampleComposition.composition.blocks.map(b => 
 }))
 
 // Derives the API status pill display state from the availability flag.
-// Exported so tests can verify the exact label/class/hint mapping.
-export function apiPillState(available: boolean | null): { label: string; className: string; hint: string | null } {
-  if (available === true) return { label: 'API connected', className: 'api-connected', hint: null }
-  if (available === false) return { label: 'API unavailable', className: 'api-unavailable', hint: 'make workbench' }
-  return { label: 'API', className: '', hint: null }
+// Exported so tests can verify the exact label/class/hint/docsUrl mapping.
+export function apiPillState(available: boolean | null): { label: string; className: string; hint: string | null; docsUrl: string | null } {
+  if (available === true) return { label: 'API connected', className: 'api-connected', hint: null, docsUrl: null }
+  if (available === false) return { label: 'API unavailable', className: 'api-unavailable', hint: 'make workbench', docsUrl: '/QUICKSTART.md' }
+  return { label: 'API', className: '', hint: null, docsUrl: null }
 }
 
 // Copies a command string to the clipboard and calls onCopied when done.
@@ -68,6 +68,17 @@ export function ApiPill({ available, onRetry }: { available: boolean | null; onR
             >
               retry
             </button>
+          )}
+          {pill.docsUrl && (
+            <a
+              className="header-api-docs"
+              href={pill.docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Setup instructions"
+            >
+              docs
+            </a>
           )}
         </span>
       )}
