@@ -190,6 +190,50 @@ describe('ApiPill target docs link', () => {
   })
 })
 
+describe('ApiPill target health action', () => {
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  it('shows ping button when connected with onRetry', () => {
+    const onRetry = vi.fn()
+    render(<ApiPill available={true} onRetry={onRetry} />)
+    const btn = screen.getByTitle('Check API health')
+    expect(btn).toBeDefined()
+    expect(btn.className).toBe('header-api-target-health')
+    expect(btn.textContent).toBe('ping')
+  })
+
+  it('calls onRetry and shows ok feedback on click', async () => {
+    const onRetry = vi.fn()
+    render(<ApiPill available={true} onRetry={onRetry} />)
+    const btn = screen.getByTitle('Check API health')
+    btn.click()
+    expect(onRetry).toHaveBeenCalledOnce()
+    await vi.waitFor(() => {
+      expect(btn.textContent).toBe('ok')
+    })
+  })
+
+  it('does not show ping button when unavailable', () => {
+    const onRetry = vi.fn()
+    render(<ApiPill available={false} onRetry={onRetry} />)
+    expect(screen.queryByTitle('Check API health')).toBeNull()
+  })
+
+  it('does not show ping button without onRetry', () => {
+    render(<ApiPill available={true} />)
+    expect(screen.queryByTitle('Check API health')).toBeNull()
+  })
+
+  it('does not show ping button in neutral state', () => {
+    const onRetry = vi.fn()
+    render(<ApiPill available={null} onRetry={onRetry} />)
+    expect(screen.queryByTitle('Check API health')).toBeNull()
+  })
+})
+
 describe('ApiPill docs link', () => {
   beforeEach(() => {
     const writeText = vi.fn().mockResolvedValue(undefined)

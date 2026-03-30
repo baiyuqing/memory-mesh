@@ -37,6 +37,7 @@ export function copyToClipboard(
 export function ApiPill({ available, onRetry }: { available: boolean | null; onRetry?: () => void }) {
   const [copied, setCopied] = useState(false)
   const [targetCopied, setTargetCopied] = useState(false)
+  const [healthChecked, setHealthChecked] = useState(false)
   const [recovered, setRecovered] = useState(false)
   const prevAvailable = useRef(available)
   const pill = apiPillState(available)
@@ -57,6 +58,13 @@ export function ApiPill({ available, onRetry }: { available: boolean | null; onR
       setTimeout(() => setCopied(false), 1500)
     })
   }, [pill.hint])
+
+  const handleHealthCheck = useCallback(() => {
+    if (!onRetry) return
+    onRetry()
+    setHealthChecked(true)
+    setTimeout(() => setHealthChecked(false), 1500)
+  }, [onRetry])
 
   const handleTargetCopy = useCallback(() => {
     if (!pill.target) return
@@ -95,6 +103,15 @@ export function ApiPill({ available, onRetry }: { available: boolean | null; onR
         >
           docs
         </a>
+      )}
+      {available === true && onRetry && (
+        <button
+          className="header-api-target-health"
+          onClick={handleHealthCheck}
+          title="Check API health"
+        >
+          {healthChecked ? 'ok' : 'ping'}
+        </button>
       )}
       {pill.connectedNote && !recovered && (
         <span className="header-api-connected-note">{pill.connectedNote}</span>
