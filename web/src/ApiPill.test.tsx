@@ -810,6 +810,62 @@ describe('ApiPill health target change reset', () => {
     })
     expect(screen.getByText('health record cleared — now targeting localhost:8080')).toBeDefined()
   })
+
+  it('shows success confirmation after ping from reset note succeeds', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    // Ping from reset note
+    screen.getByTitle('Check new target').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('localhost:8080 reachable')).toBeDefined()
+    })
+    // Reset note should be gone
+    expect(screen.queryByText('health record cleared — now targeting localhost:8080')).toBeNull()
+  })
+
+  it('success confirmation auto-clears after 3 seconds', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    screen.getByTitle('Check new target').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('localhost:8080 reachable')).toBeDefined()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(3100)
+    })
+    expect(screen.queryByText('localhost:8080 reachable')).toBeNull()
+  })
+
+  it('does not show success confirmation on regular health check', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    // Regular ping without target change
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    expect(screen.queryByText('localhost:8080 reachable')).toBeNull()
+  })
 })
 
 describe('ApiPill docs link', () => {

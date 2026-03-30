@@ -50,7 +50,10 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
   const [healthTarget, setHealthTarget] = useState<string | null>(null)
   const [recovered, setRecovered] = useState(false)
   const [targetChanged, setTargetChanged] = useState(false)
+  const [targetConfirmed, setTargetConfirmed] = useState(false)
+  const targetChangedRef = useRef(false)
   const targetChangedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const targetConfirmedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const prevAvailable = useRef(available)
   const pill = apiPillState(available)
 
@@ -62,6 +65,10 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
     }
     prevAvailable.current = available
   }, [available])
+
+  useEffect(() => {
+    targetChangedRef.current = targetChanged
+  }, [targetChanged])
 
   useEffect(() => {
     if (healthTarget && pill.target !== healthTarget) {
@@ -93,12 +100,17 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
       setHealthTime(new Date())
       setHealthTarget(pill.target)
       setTimeout(() => setHealthStatus('idle'), 1500)
-      if (ok) {
+      if (ok && targetChangedRef.current) {
         setTargetChanged(false)
         if (targetChangedTimer.current) {
           clearTimeout(targetChangedTimer.current)
           targetChangedTimer.current = null
         }
+        setTargetConfirmed(true)
+        if (targetConfirmedTimer.current) clearTimeout(targetConfirmedTimer.current)
+        targetConfirmedTimer.current = setTimeout(() => setTargetConfirmed(false), 3000)
+      } else if (ok) {
+        setTargetChanged(false)
       }
     }, () => {
       setHealthStatus('fail')
@@ -202,6 +214,9 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
             dismiss
           </button>
         </span>
+      )}
+      {available === true && targetConfirmed && (
+        <span className="header-api-target-confirmed">{pill.target} reachable</span>
       )}
       {pill.connectedNote && !recovered && (
         <span className="header-api-connected-note">{pill.connectedNote}</span>
