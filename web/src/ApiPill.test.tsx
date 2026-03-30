@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
-import { ApiPill } from './App'
+import { ApiPill, formatHealthTime } from './App'
 
 describe('ApiPill connected-source emphasis', () => {
   beforeEach(() => {
@@ -356,6 +356,65 @@ describe('ApiPill health result', () => {
       expect(screen.getByText('unreachable')).toBeDefined()
     })
     expect(screen.queryByText('reachable')).toBeNull()
+  })
+})
+
+describe('formatHealthTime', () => {
+  it('formats time as HH:MM:SS', () => {
+    const time = new Date(2026, 2, 30, 14, 5, 9)
+    expect(formatHealthTime(time)).toBe('14:05:09')
+  })
+
+  it('zero-pads single digit values', () => {
+    const time = new Date(2026, 0, 1, 1, 2, 3)
+    expect(formatHealthTime(time)).toBe('01:02:03')
+  })
+
+  it('handles midnight', () => {
+    const time = new Date(2026, 0, 1, 0, 0, 0)
+    expect(formatHealthTime(time)).toBe('00:00:00')
+  })
+})
+
+describe('ApiPill health timestamp', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('shows timestamp after health check completes', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    const timeEl = document.querySelector('.header-api-health-time')
+    expect(timeEl).not.toBeNull()
+    expect(timeEl!.textContent).toMatch(/^\d{2}:\d{2}:\d{2}$/)
+  })
+
+  it('does not show timestamp before health check', () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    expect(document.querySelector('.header-api-health-time')).toBeNull()
+  })
+
+  it('shows timestamp after failed health check', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(false)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('unreachable')).toBeDefined()
+    })
+    const timeEl = document.querySelector('.header-api-health-time')
+    expect(timeEl).not.toBeNull()
+    expect(timeEl!.textContent).toMatch(/^\d{2}:\d{2}:\d{2}$/)
   })
 })
 
