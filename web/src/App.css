@@ -920,6 +920,44 @@
   font-size: 12px;
 }
 
+/* Credential sources */
+.credential-sources {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.credential-source-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+
+.credential-source-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  flex-shrink: 0;
+}
+
+.credential-source-badge.credential-source-unavailable {
+  background: rgba(156, 163, 175, 0.12);
+  color: #9ca3af;
+}
+
+.credential-source-text {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .wires-list {
   margin-top: 10px;
   padding-top: 8px;

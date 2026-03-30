@@ -13,5 +13,8 @@ export default defineConfig({
     fs: {
       allow: ['.', '../deploy/examples'],
     },
+    proxy: {
+      '/v1': 'http://localhost:8080',
+    },
   },
 })
