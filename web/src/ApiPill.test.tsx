@@ -88,9 +88,11 @@ describe('ApiPill target note', () => {
     expect(screen.getByText('localhost:8080')).toBeDefined()
   })
 
-  it('shows target when connected', () => {
+  it('shows target as badge when connected', () => {
     render(<ApiPill available={true} />)
-    expect(screen.getByText('localhost:8080')).toBeDefined()
+    const target = screen.getByText('localhost:8080')
+    expect(target).toBeDefined()
+    expect(target.className).toBe('header-api-target')
   })
 
   it('does not show target in neutral state', () => {
