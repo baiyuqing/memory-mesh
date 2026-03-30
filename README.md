@@ -12,15 +12,23 @@ A composable local infrastructure workbench for AI agents. Define your stack as 
 
 ## Start Here
 
-### Browser (recommended)
+### Workbench + API (recommended)
+
+```bash
+make workbench
+```
+
+Starts both the API server (`:8080`) and the browser workbench (`:5173`) in one command. Open [http://localhost:5173](http://localhost:5173). All credential-source surfaces are available by default.
+
+### Browser only (frontend-only, no API)
 
 ```bash
 cd web && npm install && npm start
 ```
 
-Open [http://localhost:5173](http://localhost:5173). The workbench loads the onboarding sample automatically.
+Open [http://localhost:5173](http://localhost:5173). The workbench loads the onboarding sample but credential-source badges show as unavailable without the API.
 
-### API server
+### API server only
 
 ```bash
 make demo
@@ -121,6 +129,7 @@ This difference is visible across all surfaces: CLI (`compose topology`), API (`
 
 ```bash
 make help          # Show all targets
+make workbench     # Start API + workbench together (recommended)
 make build         # Build api-server and operator binaries
 make test          # Unit tests
 make demo          # Build and run API server locally
