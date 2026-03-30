@@ -256,6 +256,12 @@ function App() {
           <div className="header-sep" />
           <span className="header-block-count">{currentBlocks.length} blocks &middot; {wires.length} wires</span>
         </div>
+        <div className={`header-api-pill ${apiAvailable === true ? 'api-connected' : apiAvailable === false ? 'api-unavailable' : ''}`}>
+          <span className="header-api-dot" />
+          <span className="header-api-label">
+            {apiAvailable === null ? 'API' : apiAvailable ? 'API connected' : 'API unavailable'}
+          </span>
+        </div>
       </header>
 
       {/* Left: Block catalog */}

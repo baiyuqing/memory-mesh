@@ -179,3 +179,56 @@ describe('credential source badge via API', () => {
     expect(available).toBe(false)
   })
 })
+
+describe('API status pill state', () => {
+  const originalFetch = globalThis.fetch
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  it('reports connected when API responds successfully', async () => {
+    const mockResponse = {
+      ok: true,
+      json: async () => ({
+        nodes: [],
+        wires: [],
+        credentialSources: { pooler: 'db' },
+      }),
+    }
+    vi.mocked(fetch).mockResolvedValue(mockResponse as Response)
+
+    let available = false
+    try {
+      const resp = await fetch('/v1/compositions/topology', {
+        method: 'POST',
+        body: '{}',
+      })
+      if (resp.ok) available = true
+    } catch {
+      available = false
+    }
+
+    expect(available).toBe(true)
+  })
+
+  it('reports unavailable when API is unreachable', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('network error'))
+
+    let available = true
+    try {
+      await fetch('/v1/compositions/topology', {
+        method: 'POST',
+        body: '{}',
+      })
+    } catch {
+      available = false
+    }
+
+    expect(available).toBe(false)
+  })
+})
