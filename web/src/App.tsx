@@ -169,7 +169,22 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
         </>
       )}
       {available === true && targetChanged && (
-        <span className="header-api-target-changed">health record cleared — now targeting {pill.target}</span>
+        <span className="header-api-target-changed">
+          health record cleared — now targeting {pill.target}
+          <button
+            className="header-api-target-changed-dismiss"
+            onClick={() => {
+              setTargetChanged(false)
+              if (targetChangedTimer.current) {
+                clearTimeout(targetChangedTimer.current)
+                targetChangedTimer.current = null
+              }
+            }}
+            title="Dismiss"
+          >
+            dismiss
+          </button>
+        </span>
       )}
       {pill.connectedNote && !recovered && (
         <span className="header-api-connected-note">{pill.connectedNote}</span>
