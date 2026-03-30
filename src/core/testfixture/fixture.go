@@ -154,7 +154,7 @@ func WireLabel(w block.Wire) string {
 var SampleExpectedWires = []block.Wire{
 	{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
 	{FromBlock: "db", FromPort: "dsn", ToBlock: "pooler", ToPort: "upstream-dsn"},
-	{FromBlock: "db", FromPort: "credential", ToBlock: "pooler", ToPort: "upstream-credential"},
+	SampleCredentialWire,
 }
 
 // StandardExpectedWires lists the wires produced by the standard (4-block credential) path.
@@ -162,7 +162,7 @@ var StandardExpectedWires = []block.Wire{
 	{FromBlock: "storage", FromPort: "pvc-spec", ToBlock: "db", ToPort: "storage"},
 	{FromBlock: "db", FromPort: "dsn", ToBlock: "rotator", ToPort: "upstream-dsn"},
 	{FromBlock: "db", FromPort: "dsn", ToBlock: "pooler", ToPort: "upstream-dsn"},
-	{FromBlock: "rotator", FromPort: "credential", ToBlock: "pooler", ToPort: "upstream-credential"},
+	StandardCredentialWire,
 }
 
 // blockKindMap maps block name to kind from Phase1Blocks.
