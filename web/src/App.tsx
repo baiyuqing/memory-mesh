@@ -146,7 +146,7 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
         </button>
       )}
       {available === true && healthResult && (
-        <span className={`header-api-health-result header-api-health-result-${healthResult}${healthResult === 'fail' ? ' header-api-health-emphasis' : ''}`}>
+        <span className={`header-api-health-result header-api-health-result-${healthResult} header-api-health-emphasis`}>
           {healthTarget && <span className="header-api-health-target">{healthTarget}</span>}
           {healthResult === 'ok' ? 'reachable' : 'unreachable'}
         </span>
