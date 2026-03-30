@@ -442,24 +442,25 @@ describe('ApiPill health clear action', () => {
     expect(clearBtn.textContent).toBe('clear')
   })
 
-  it('clears result and timestamp on click', async () => {
+  it('clears result, timestamp, and button status on click', async () => {
     const onHealthCheck = vi.fn().mockResolvedValue(true)
     render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
     screen.getByTitle('Check API health').click()
     await vi.waitFor(() => {
       expect(screen.getByText('reachable')).toBeDefined()
     })
-    // Wait for button to reset to idle so clear button is in the time/result section
-    vi.advanceTimersByTime(1500)
-    await vi.waitFor(() => {
-      expect(screen.getByTitle('Check API health').textContent).toBe('ping')
-    })
+    // Click clear during the ok window (before 1.5s reset)
+    // — should fully clear all visible health state
+    const btn = screen.getByTitle('Check API health')
+    expect(btn.textContent).toBe('ok')
     act(() => {
       screen.getByTitle('Clear health result').click()
     })
     expect(screen.queryByText('reachable')).toBeNull()
     expect(document.querySelector('.header-api-health-time')).toBeNull()
     expect(screen.queryByTitle('Clear health result')).toBeNull()
+    // Button should reset to ping immediately
+    expect(btn.textContent).toBe('ping')
   })
 
   it('does not show clear button before health check', () => {

@@ -143,7 +143,7 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
           <span className="header-api-health-time">{formatHealthTime(healthTime)}</span>
           <button
             className="header-api-health-clear"
-            onClick={() => { setHealthResult(null); setHealthTime(null) }}
+            onClick={() => { setHealthResult(null); setHealthTime(null); setHealthStatus('idle') }}
             title="Clear health result"
           >
             clear
