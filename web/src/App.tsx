@@ -61,6 +61,15 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
     prevAvailable.current = available
   }, [available])
 
+  useEffect(() => {
+    if (healthTarget && pill.target !== healthTarget) {
+      setHealthResult(null)
+      setHealthTime(null)
+      setHealthTarget(null)
+      setHealthStatus('idle')
+    }
+  }, [pill.target, healthTarget])
+
   const handleCopy = useCallback(() => {
     if (!pill.hint) return
     copyToClipboard(pill.hint, () => {
