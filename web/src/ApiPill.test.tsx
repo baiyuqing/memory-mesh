@@ -497,6 +497,61 @@ describe('ApiPill health clear action', () => {
   })
 })
 
+describe('ApiPill health target change reset', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('clears health record when target changes to null', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    // Target changes: connected (localhost:8080) → neutral (null)
+    rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    // Re-render as connected — stale record should be gone
+    rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    expect(screen.queryByText('reachable')).toBeNull()
+    expect(screen.queryByText('unreachable')).toBeNull()
+    expect(document.querySelector('.header-api-health-time')).toBeNull()
+  })
+
+  it('clears health record including failure emphasis on target change', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(false)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('unreachable')).toBeDefined()
+    })
+    expect(document.querySelector('.header-api-health-emphasis')).not.toBeNull()
+    // Target changes
+    rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    expect(screen.queryByText('unreachable')).toBeNull()
+    expect(document.querySelector('.header-api-health-emphasis')).toBeNull()
+  })
+
+  it('preserves health record when target stays the same', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    // Re-render with same available=true (same target)
+    rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    expect(screen.getByText('reachable')).toBeDefined()
+  })
+})
+
 describe('ApiPill docs link', () => {
   beforeEach(() => {
     const writeText = vi.fn().mockResolvedValue(undefined)
