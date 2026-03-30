@@ -49,6 +49,8 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
   const [healthTime, setHealthTime] = useState<Date | null>(null)
   const [healthTarget, setHealthTarget] = useState<string | null>(null)
   const [recovered, setRecovered] = useState(false)
+  const [targetChanged, setTargetChanged] = useState(false)
+  const targetChangedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const prevAvailable = useRef(available)
   const pill = apiPillState(available)
 
@@ -67,6 +69,9 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
       setHealthTime(null)
       setHealthTarget(null)
       setHealthStatus('idle')
+      setTargetChanged(true)
+      if (targetChangedTimer.current) clearTimeout(targetChangedTimer.current)
+      targetChangedTimer.current = setTimeout(() => setTargetChanged(false), 3000)
     }
   }, [pill.target, healthTarget])
 
@@ -162,6 +167,9 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
             clear
           </button>
         </>
+      )}
+      {available === true && targetChanged && (
+        <span className="header-api-target-changed">health record cleared</span>
       )}
       {pill.connectedNote && !recovered && (
         <span className="header-api-connected-note">{pill.connectedNote}</span>
