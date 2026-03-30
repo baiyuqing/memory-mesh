@@ -164,6 +164,32 @@ describe('ApiPill target copy action', () => {
   })
 })
 
+describe('ApiPill target docs link', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('shows docs link next to target when connected', () => {
+    render(<ApiPill available={true} />)
+    const link = screen.getByTitle('API docs')
+    expect(link).toBeDefined()
+    expect(link.className).toBe('header-api-target-docs')
+    expect(link.textContent).toBe('docs')
+    expect(link.getAttribute('href')).toBe('/QUICKSTART.md')
+    expect(link.getAttribute('target')).toBe('_blank')
+  })
+
+  it('does not show target docs link when unavailable', () => {
+    render(<ApiPill available={false} />)
+    expect(screen.queryByTitle('API docs')).toBeNull()
+  })
+
+  it('does not show target docs link in neutral state', () => {
+    render(<ApiPill available={null} />)
+    expect(screen.queryByTitle('API docs')).toBeNull()
+  })
+})
+
 describe('ApiPill docs link', () => {
   beforeEach(() => {
     const writeText = vi.fn().mockResolvedValue(undefined)

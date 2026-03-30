@@ -18,7 +18,7 @@ const initialBlocks: BlockRef[] = sampleComposition.composition.blocks.map(b => 
 // Derives the API status pill display state from the availability flag.
 // Exported so tests can verify the exact label/class/hint/docsUrl mapping.
 export function apiPillState(available: boolean | null): { label: string; className: string; hint: string | null; docsUrl: string | null; target: string | null; connectedNote: string | null } {
-  if (available === true) return { label: 'API connected', className: 'api-connected', hint: null, docsUrl: null, target: 'localhost:8080', connectedNote: 'credential sources live' }
+  if (available === true) return { label: 'API connected', className: 'api-connected', hint: null, docsUrl: '/QUICKSTART.md', target: 'localhost:8080', connectedNote: 'credential sources live' }
   if (available === false) return { label: 'API unavailable', className: 'api-unavailable', hint: 'make workbench', docsUrl: '/QUICKSTART.md', target: 'localhost:8080', connectedNote: null }
   return { label: 'API', className: '', hint: null, docsUrl: null, target: null, connectedNote: null }
 }
@@ -84,6 +84,17 @@ export function ApiPill({ available, onRetry }: { available: boolean | null; onR
         >
           {targetCopied ? 'copied' : 'copy'}
         </button>
+      )}
+      {available === true && pill.docsUrl && (
+        <a
+          className="header-api-target-docs"
+          href={pill.docsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="API docs"
+        >
+          docs
+        </a>
       )}
       {pill.connectedNote && !recovered && (
         <span className="header-api-connected-note">{pill.connectedNote}</span>
