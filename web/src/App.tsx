@@ -32,13 +32,11 @@ export function copyToClipboard(
   navigator.clipboard.writeText(command).then(onCopied, () => {})
 }
 
-export function formatHealthTime(time: Date, now: Date = new Date()): string {
-  const seconds = Math.floor((now.getTime() - time.getTime()) / 1000)
-  if (seconds < 5) return 'just now'
-  if (seconds < 60) return `${seconds}s ago`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  return `${Math.floor(minutes / 60)}h ago`
+export function formatHealthTime(time: Date): string {
+  const h = String(time.getHours()).padStart(2, '0')
+  const m = String(time.getMinutes()).padStart(2, '0')
+  const s = String(time.getSeconds()).padStart(2, '0')
+  return `${h}:${m}:${s}`
 }
 
 // Renders the API status pill with optional CTA + copy button + retry.

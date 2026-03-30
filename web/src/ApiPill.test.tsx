@@ -360,28 +360,19 @@ describe('ApiPill health result', () => {
 })
 
 describe('formatHealthTime', () => {
-  it('shows just now for recent checks', () => {
-    const now = new Date('2026-03-30T12:00:03Z')
-    const time = new Date('2026-03-30T12:00:00Z')
-    expect(formatHealthTime(time, now)).toBe('just now')
+  it('formats time as HH:MM:SS', () => {
+    const time = new Date(2026, 2, 30, 14, 5, 9)
+    expect(formatHealthTime(time)).toBe('14:05:09')
   })
 
-  it('shows seconds for checks under a minute', () => {
-    const now = new Date('2026-03-30T12:00:30Z')
-    const time = new Date('2026-03-30T12:00:00Z')
-    expect(formatHealthTime(time, now)).toBe('30s ago')
+  it('zero-pads single digit values', () => {
+    const time = new Date(2026, 0, 1, 1, 2, 3)
+    expect(formatHealthTime(time)).toBe('01:02:03')
   })
 
-  it('shows minutes for checks under an hour', () => {
-    const now = new Date('2026-03-30T12:05:00Z')
-    const time = new Date('2026-03-30T12:00:00Z')
-    expect(formatHealthTime(time, now)).toBe('5m ago')
-  })
-
-  it('shows hours for older checks', () => {
-    const now = new Date('2026-03-30T14:00:00Z')
-    const time = new Date('2026-03-30T12:00:00Z')
-    expect(formatHealthTime(time, now)).toBe('2h ago')
+  it('handles midnight', () => {
+    const time = new Date(2026, 0, 1, 0, 0, 0)
+    expect(formatHealthTime(time)).toBe('00:00:00')
   })
 })
 
@@ -403,15 +394,15 @@ describe('ApiPill health timestamp', () => {
     await vi.waitFor(() => {
       expect(screen.getByText('reachable')).toBeDefined()
     })
-    const timeEl = screen.getByText('just now')
-    expect(timeEl).toBeDefined()
-    expect(timeEl.className).toBe('header-api-health-time')
+    const timeEl = document.querySelector('.header-api-health-time')
+    expect(timeEl).not.toBeNull()
+    expect(timeEl!.textContent).toMatch(/^\d{2}:\d{2}:\d{2}$/)
   })
 
   it('does not show timestamp before health check', () => {
     const onHealthCheck = vi.fn().mockResolvedValue(true)
     render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
-    expect(screen.queryByText('just now')).toBeNull()
+    expect(document.querySelector('.header-api-health-time')).toBeNull()
   })
 
   it('shows timestamp after failed health check', async () => {
@@ -421,7 +412,9 @@ describe('ApiPill health timestamp', () => {
     await vi.waitFor(() => {
       expect(screen.getByText('unreachable')).toBeDefined()
     })
-    expect(screen.getByText('just now')).toBeDefined()
+    const timeEl = document.querySelector('.header-api-health-time')
+    expect(timeEl).not.toBeNull()
+    expect(timeEl!.textContent).toMatch(/^\d{2}:\d{2}:\d{2}$/)
   })
 })
 
