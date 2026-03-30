@@ -312,6 +312,25 @@ describe('ApiPill health result', () => {
     expect(target!.textContent).toBe('localhost:8080')
   })
 
+  it('failure result has distinct emphasis class from success', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    // First: success
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(document.querySelector('.header-api-health-result-ok')).not.toBeNull()
+    })
+    vi.advanceTimersByTime(1500)
+    // Second: failure
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      const result = document.querySelector('.header-api-health-result')
+      expect(result).not.toBeNull()
+      expect(result!.classList.contains('header-api-health-result-fail')).toBe(true)
+      expect(result!.classList.contains('header-api-health-result-ok')).toBe(false)
+    })
+  })
+
   it('does not show result before health check runs', () => {
     const onHealthCheck = vi.fn().mockResolvedValue(true)
     render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
