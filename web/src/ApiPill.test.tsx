@@ -685,6 +685,53 @@ describe('ApiPill health target change reset', () => {
     render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
     expect(screen.queryByTitle('Dismiss')).toBeNull()
   })
+
+  it('auto-hides reset note after successful health check on new target', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    // Target changes
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    expect(screen.getByText('health record cleared — now targeting localhost:8080')).toBeDefined()
+    // Successful health check on new target — note should auto-hide
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.queryByText('health record cleared — now targeting localhost:8080')).toBeNull()
+    })
+  })
+
+  it('does not auto-hide reset note after failed health check', async () => {
+    const onHealthCheck = vi.fn()
+      .mockResolvedValueOnce(true)   // first check establishes record
+      .mockResolvedValueOnce(false)  // second check fails on new target
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    // Target changes
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    expect(screen.getByText('health record cleared — now targeting localhost:8080')).toBeDefined()
+    // Failed health check — note should stay visible
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByTitle('Check API health').textContent).toBe('fail')
+    })
+    expect(screen.getByText('health record cleared — now targeting localhost:8080')).toBeDefined()
+  })
 })
 
 describe('ApiPill docs link', () => {

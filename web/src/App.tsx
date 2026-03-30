@@ -93,6 +93,13 @@ export function ApiPill({ available, onRetry, onHealthCheck }: { available: bool
       setHealthTime(new Date())
       setHealthTarget(pill.target)
       setTimeout(() => setHealthStatus('idle'), 1500)
+      if (ok) {
+        setTargetChanged(false)
+        if (targetChangedTimer.current) {
+          clearTimeout(targetChangedTimer.current)
+          targetChangedTimer.current = null
+        }
+      }
     }, () => {
       setHealthStatus('fail')
       setHealthResult('fail')
