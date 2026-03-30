@@ -205,7 +205,7 @@ describe('API status pill state mapping', () => {
     expect(pill.className).toBe('api-connected')
     expect(pill.hint).toBeNull()
     expect(pill.docsUrl).toBeNull()
-    expect(pill.target).toBeNull()
+    expect(pill.target).toBe('localhost:8080')
   })
 
   it('shows unavailable with actionable CTA when API is unreachable', () => {
