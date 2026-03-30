@@ -1181,6 +1181,78 @@ describe('ApiPill health target change reset', () => {
     })
     expect(screen.getByText('localhost:8080 unreachable')).toBeDefined()
   })
+
+  it('failure retry button shows checking state during in-flight', async () => {
+    let resolve: (v: boolean) => void
+    const onHealthCheck = vi.fn()
+      .mockResolvedValueOnce(true)  // establish record
+      .mockResolvedValueOnce(false) // fail on retry from reset note
+      .mockImplementationOnce(() => new Promise<boolean>(r => { resolve = r }))
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    screen.getByTitle('Check new target').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('localhost:8080 unreachable')).toBeDefined()
+    })
+    const btn = screen.getByTitle('Retry health check') as HTMLButtonElement
+    expect(btn.textContent).toBe('retry')
+    btn.click()
+    await vi.waitFor(() => {
+      expect(btn.textContent).toBe('checking')
+    })
+    expect(btn.disabled).toBe(true)
+    // Failure handoff stays visible during checking
+    expect(screen.getByText('localhost:8080 unreachable')).toBeDefined()
+    // Resolve to let cleanup happen
+    resolve!(true)
+    await vi.waitFor(() => {
+      expect(screen.getByText('localhost:8080 reachable')).toBeDefined()
+    })
+  })
+
+  it('failure retry button re-enables after failed check', async () => {
+    let resolve: (v: boolean) => void
+    const onHealthCheck = vi.fn()
+      .mockResolvedValueOnce(true)  // establish record
+      .mockResolvedValueOnce(false) // fail on retry from reset note
+      .mockImplementationOnce(() => new Promise<boolean>(r => { resolve = r }))
+    const { rerender } = render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    await act(async () => {
+      rerender(<ApiPill available={null} onHealthCheck={onHealthCheck} />)
+    })
+    await act(async () => {
+      rerender(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    })
+    screen.getByTitle('Check new target').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('localhost:8080 unreachable')).toBeDefined()
+    })
+    const btn = screen.getByTitle('Retry health check') as HTMLButtonElement
+    btn.click()
+    await vi.waitFor(() => {
+      expect(btn.textContent).toBe('checking')
+      expect(btn.disabled).toBe(true)
+    })
+    // Resolve with failure — button should re-enable
+    resolve!(false)
+    await vi.waitFor(() => {
+      expect(btn.disabled).toBe(false)
+    })
+    expect(screen.getByText('localhost:8080 unreachable')).toBeDefined()
+  })
 })
 
 describe('ApiPill docs link', () => {
