@@ -17,10 +17,10 @@ const initialBlocks: BlockRef[] = sampleComposition.composition.blocks.map(b => 
 
 // Derives the API status pill display state from the availability flag.
 // Exported so tests can verify the exact label/class/hint/docsUrl mapping.
-export function apiPillState(available: boolean | null): { label: string; className: string; hint: string | null; docsUrl: string | null } {
-  if (available === true) return { label: 'API connected', className: 'api-connected', hint: null, docsUrl: null }
-  if (available === false) return { label: 'API unavailable', className: 'api-unavailable', hint: 'make workbench', docsUrl: '/QUICKSTART.md' }
-  return { label: 'API', className: '', hint: null, docsUrl: null }
+export function apiPillState(available: boolean | null): { label: string; className: string; hint: string | null; docsUrl: string | null; target: string | null } {
+  if (available === true) return { label: 'API connected', className: 'api-connected', hint: null, docsUrl: null, target: null }
+  if (available === false) return { label: 'API unavailable', className: 'api-unavailable', hint: 'make workbench', docsUrl: '/QUICKSTART.md', target: 'localhost:8080' }
+  return { label: 'API', className: '', hint: null, docsUrl: null, target: null }
 }
 
 // Copies a command string to the clipboard and calls onCopied when done.
@@ -50,6 +50,9 @@ export function ApiPill({ available, onRetry }: { available: boolean | null; onR
     <div className={`header-api-pill ${pill.className}`}>
       <span className="header-api-dot" />
       <span className="header-api-label">{pill.label}</span>
+      {pill.target && (
+        <span className="header-api-target">{pill.target}</span>
+      )}
       {pill.hint && (
         <span className="header-api-hint">
           run <code>{pill.hint}</code>
