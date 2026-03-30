@@ -37,6 +37,25 @@ function getWires(blocks: BlockRef[]): { from: string; to: string; port: string 
   return wires
 }
 
+// Derives per-consumer credential sources from wires.
+// Mirrors the Go block.CredentialSources logic: each wire whose
+// destination port is "upstream-credential" maps consumer → source.
+function getCredentialSources(blocks: BlockRef[]): Map<string, string> {
+  const sources = new Map<string, string>()
+  const nameSet = new Set(blocks.map(b => b.name))
+  for (const b of blocks) {
+    if (!b.inputs) continue
+    for (const [port, ref] of Object.entries(b.inputs)) {
+      if (port !== 'upstream-credential') continue
+      const fromBlock = ref.split('/')[0]
+      if (nameSet.has(fromBlock)) {
+        sources.set(b.name, fromBlock)
+      }
+    }
+  }
+  return sources
+}
+
 function topoSort(blocks: BlockRef[]): BlockRef[] {
   const byName = new Map(blocks.map(b => [b.name, b]))
   const visited = new Set<string>()
@@ -170,6 +189,7 @@ function App() {
 
   const sorted = useMemo(() => topoSort(currentBlocks), [currentBlocks])
   const wires = useMemo(() => getWires(currentBlocks), [currentBlocks])
+  const credentialSources = useMemo(() => getCredentialSources(currentBlocks), [currentBlocks])
   const activeKinds = useMemo(() => new Set(currentBlocks.map(b => b.kind)), [currentBlocks])
 
   const compositionData = useMemo(() => ({ composition: { blocks: currentBlocks } }), [currentBlocks])
@@ -514,6 +534,18 @@ function App() {
                       </div>
                     ))}
                   </div>
+                  {credentialSources.size > 0 && (
+                    <div className="credential-sources">
+                      {Array.from(credentialSources.entries())
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .map(([consumer, source]) => (
+                          <div className="credential-source-row" key={consumer}>
+                            <span className="credential-source-badge">credential</span>
+                            <span className="credential-source-text">{consumer} &larr; {source}</span>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                   {wires.length > 0 && (
                     <div className="wires-list">
                       {wires.map((w, i) => (
