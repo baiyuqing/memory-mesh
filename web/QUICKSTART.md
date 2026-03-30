@@ -69,6 +69,27 @@ go run ./cmd/ottoplus compose topology --file deploy/examples/sample-composition
 
 The CLI accepts any composition JSON via `--file` — it is not limited to the onboarding sample. Run any command with `--help` for usage details.
 
+## Credential sources
+
+The workbench topology panel shows which block provides the upstream credential for each consumer. This is derived from the API (`POST /v1/compositions/topology`) and reflects the same compiled wire truth as the CLI and API.
+
+| Path | Credential source | Why |
+|------|-------------------|-----|
+| Sample (3-block) | `pooler <- db` | No explicit `upstream-credential` wire — the compiler auto-wires it from `db`'s `credential` output |
+| Standard (4-block) | `pooler <- rotator` | The pooler's `upstream-credential` input is explicitly wired to `rotator/credential` |
+
+To see the credential badge in the workbench, start the API server alongside the frontend:
+
+```bash
+# Terminal 1: API server
+make demo
+
+# Terminal 2: Workbench (Vite proxies /v1 to localhost:8080)
+cd web && npm install && npm start
+```
+
+If the API is not running, the workbench shows a visible "unavailable" note instead of credential badges.
+
 ## Sample file location
 
 The default composition is loaded from:

@@ -69,6 +69,17 @@ local-pv  →  postgresql  →  pgbouncer
 
 The workbench imports this file directly and loads it on startup. The CLI and API examples in this README use it as a demo input, but they accept any composition file — they are not bound to this one. A 4-block standard path (`+ password-rotation`) is available at `deploy/examples/standard-composition.json` for CI and regression tests.
 
+### Credential sources
+
+The two example compositions differ in how the pooler gets its upstream credential:
+
+| Path | Composition | Credential source |
+|------|-------------|-------------------|
+| Sample (3-block) | `sample-composition.json` | `pooler <- db` — the pooler has no explicit `upstream-credential` input, so the compiler auto-wires it from `db`'s `credential` output |
+| Standard (4-block) | `standard-composition.json` | `pooler <- rotator` — the pooler's `upstream-credential` input is explicitly wired to `rotator/credential` |
+
+This difference is visible across all surfaces: CLI (`compose topology`), API (`POST /v1/compositions/topology` → `credentialSources`), and the workbench topology panel.
+
 ## How It Is Structured
 
 ```
