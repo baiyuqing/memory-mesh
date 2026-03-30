@@ -1,4 +1,4 @@
-.PHONY: help dev-up dev-down test test-unit test-standard ci-smoke ci-unit ci-web ci-cli-smoke ci-local lint seed logs build clean demo fmt fmt-check
+.PHONY: help dev-up dev-down test test-unit test-standard ci-smoke ci-unit ci-web ci-cli-smoke ci-local lint seed logs build clean demo workbench fmt fmt-check
 
 CLUSTER_NAME := ottoplus-dev
 K3D_CONFIG := deploy/k3d-config.yaml
@@ -47,6 +47,17 @@ demo: build ## Run the API server locally (no K8s needed) and print sample curl 
 	@echo "    -d @deploy/examples/sample-composition.json | jq ."
 	@echo ""
 	@./bin/api-server -addr :8080
+
+workbench: build ## Start API server + workbench together (credential-source surfaces available by default)
+	@cd web && npm install --silent
+	@echo ""
+	@echo "Starting ottoplus API server on :8080 and workbench on :5173 ..."
+	@echo "Open http://localhost:5173 in your browser."
+	@echo ""
+	@./bin/api-server -addr :8080 & API_PID=$$!; \
+		cd web && npx vite --host 2>/dev/null & WEB_PID=$$!; \
+		trap 'kill $$API_PID $$WEB_PID 2>/dev/null' EXIT INT TERM; \
+		wait
 
 # --- Testing ---
 

@@ -2,15 +2,23 @@
 
 The ottoplus workbench is a local browser UI for viewing and editing block compositions.
 
-## Start the workbench
+## Start the workbench (recommended)
+
+From the repo root:
 
 ```bash
-cd web
-npm install
-npm start
+make workbench
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+This starts both the API server (`:8080`) and the workbench (`:5173`) together. All credential-source surfaces are available by default. Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+### Browser only (no API)
+
+```bash
+cd web && npm install && npm start
+```
+
+The workbench loads but credential-source badges show as unavailable without the API.
 
 ## What you see
 
@@ -78,17 +86,7 @@ The workbench topology panel shows which block provides the upstream credential 
 | Sample (3-block) | `pooler <- db` | No explicit `upstream-credential` wire — the compiler auto-wires it from `db`'s `credential` output |
 | Standard (4-block) | `pooler <- rotator` | The pooler's `upstream-credential` input is explicitly wired to `rotator/credential` |
 
-To see the credential badge in the workbench, start the API server alongside the frontend:
-
-```bash
-# Terminal 1: API server
-make demo
-
-# Terminal 2: Workbench (Vite proxies /v1 to localhost:8080)
-cd web && npm install && npm start
-```
-
-If the API is not running, the workbench shows a visible "unavailable" note instead of credential badges.
+To see credential badges in the workbench, use `make workbench` (recommended) which starts both API and frontend together. If you started with the browser-only path, the header pill shows "API unavailable" and credential badges are not displayed.
 
 ## Sample file location
 
