@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import sampleComposition from '@examples/sample-composition.json'
 import standardComposition from '@examples/standard-composition.json'
 
@@ -180,55 +180,31 @@ describe('credential source badge via API', () => {
   })
 })
 
-describe('API status pill state', () => {
-  const originalFetch = globalThis.fetch
+describe('API status pill state mapping', () => {
+  // Import the extracted helper that drives the pill JSX
+  // If the mapping or helper is removed/renamed, this import fails → test fails
+  let apiPillState: (available: boolean | null) => { label: string; className: string }
 
-  beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn())
+  beforeAll(async () => {
+    const mod = await import('./App')
+    apiPillState = mod.apiPillState
   })
 
-  afterEach(() => {
-    globalThis.fetch = originalFetch
+  it('shows neutral state before API response', () => {
+    const pill = apiPillState(null)
+    expect(pill.label).toBe('API')
+    expect(pill.className).toBe('')
   })
 
-  it('reports connected when API responds successfully', async () => {
-    const mockResponse = {
-      ok: true,
-      json: async () => ({
-        nodes: [],
-        wires: [],
-        credentialSources: { pooler: 'db' },
-      }),
-    }
-    vi.mocked(fetch).mockResolvedValue(mockResponse as Response)
-
-    let available = false
-    try {
-      const resp = await fetch('/v1/compositions/topology', {
-        method: 'POST',
-        body: '{}',
-      })
-      if (resp.ok) available = true
-    } catch {
-      available = false
-    }
-
-    expect(available).toBe(true)
+  it('shows connected when API is available', () => {
+    const pill = apiPillState(true)
+    expect(pill.label).toBe('API connected')
+    expect(pill.className).toBe('api-connected')
   })
 
-  it('reports unavailable when API is unreachable', async () => {
-    vi.mocked(fetch).mockRejectedValue(new Error('network error'))
-
-    let available = true
-    try {
-      await fetch('/v1/compositions/topology', {
-        method: 'POST',
-        body: '{}',
-      })
-    } catch {
-      available = false
-    }
-
-    expect(available).toBe(false)
+  it('shows unavailable when API is unreachable', () => {
+    const pill = apiPillState(false)
+    expect(pill.label).toBe('API unavailable')
+    expect(pill.className).toBe('api-unavailable')
   })
 })

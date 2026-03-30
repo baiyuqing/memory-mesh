@@ -15,6 +15,14 @@ const initialBlocks: BlockRef[] = sampleComposition.composition.blocks.map(b => 
   inputs: b.inputs ? { ...b.inputs } : undefined,
 }))
 
+// Derives the API status pill display state from the availability flag.
+// Exported so tests can verify the exact label/class mapping.
+export function apiPillState(available: boolean | null): { label: string; className: string } {
+  if (available === true) return { label: 'API connected', className: 'api-connected' }
+  if (available === false) return { label: 'API unavailable', className: 'api-unavailable' }
+  return { label: 'API', className: '' }
+}
+
 function categoryOf(kind: string): string {
   return kind.split('.')[0]
 }
@@ -256,12 +264,15 @@ function App() {
           <div className="header-sep" />
           <span className="header-block-count">{currentBlocks.length} blocks &middot; {wires.length} wires</span>
         </div>
-        <div className={`header-api-pill ${apiAvailable === true ? 'api-connected' : apiAvailable === false ? 'api-unavailable' : ''}`}>
-          <span className="header-api-dot" />
-          <span className="header-api-label">
-            {apiAvailable === null ? 'API' : apiAvailable ? 'API connected' : 'API unavailable'}
-          </span>
-        </div>
+        {(() => {
+          const pill = apiPillState(apiAvailable)
+          return (
+            <div className={`header-api-pill ${pill.className}`}>
+              <span className="header-api-dot" />
+              <span className="header-api-label">{pill.label}</span>
+            </div>
+          )
+        })()}
       </header>
 
       {/* Left: Block catalog */}
