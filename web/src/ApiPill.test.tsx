@@ -418,6 +418,57 @@ describe('ApiPill health timestamp', () => {
   })
 })
 
+describe('ApiPill health clear action', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('shows clear button when health result is visible', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    const clearBtn = screen.getByTitle('Clear health result')
+    expect(clearBtn).toBeDefined()
+    expect(clearBtn.className).toBe('header-api-health-clear')
+    expect(clearBtn.textContent).toBe('clear')
+  })
+
+  it('clears result and timestamp on click', async () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    screen.getByTitle('Check API health').click()
+    await vi.waitFor(() => {
+      expect(screen.getByText('reachable')).toBeDefined()
+    })
+    // Wait for button to reset to idle so clear button is in the time/result section
+    vi.advanceTimersByTime(1500)
+    await vi.waitFor(() => {
+      expect(screen.getByTitle('Check API health').textContent).toBe('ping')
+    })
+    act(() => {
+      screen.getByTitle('Clear health result').click()
+    })
+    expect(screen.queryByText('reachable')).toBeNull()
+    expect(document.querySelector('.header-api-health-time')).toBeNull()
+    expect(screen.queryByTitle('Clear health result')).toBeNull()
+  })
+
+  it('does not show clear button before health check', () => {
+    const onHealthCheck = vi.fn().mockResolvedValue(true)
+    render(<ApiPill available={true} onHealthCheck={onHealthCheck} />)
+    expect(screen.queryByTitle('Clear health result')).toBeNull()
+  })
+})
+
 describe('ApiPill docs link', () => {
   beforeEach(() => {
     const writeText = vi.fn().mockResolvedValue(undefined)
